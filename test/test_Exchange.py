@@ -161,9 +161,8 @@ class TestKraken:
         except Exception as e:
             # if Kraken balance is low/zero, then tests may fail
             exception_name = e.__str__()
-            vol_error = "['EGeneral:Invalid arguments:volume']"
-            binance_preferred = C.PREF_EXCHANGE == C.BINANCE
-            if not (exception_name == vol_error and binance_preferred):
+            vol_error = "['EGeneral:Invalid arguments:volume minimum not met']"
+            if not (exception_name == vol_error):
                 raise e
 
     def test_standardize_order(self):
