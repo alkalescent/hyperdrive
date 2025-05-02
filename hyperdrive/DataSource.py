@@ -401,7 +401,7 @@ class MarketData:
             soup = BeautifulSoup(res.text, 'html.parser')
             html = soup.select("table#constituents")[0]
             df = pd.read_html(str(html))[0]
-            symbols = df[C.SYMBOL]
+            symbols = df['Ticker']
             today = datetime.today().strftime(C.DATE_FMT)
             df = pd.DataFrame({
                 C.TIME: len(symbols) * [today],
