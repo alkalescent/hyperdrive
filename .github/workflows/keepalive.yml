@@ -20,13 +20,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install twine python-dotenv setuptools wheel
+          pip install python-dotenv PyGithub
 
-      - name: Publish package
+      - name: Enable workflows
         env:
           GITHUB: ${{ secrets.GITHUB }}
-          PYPI: ${{ secrets.PYPI }}
         run: |
-          python setup.py sdist bdist_wheel
-          python util/pypi.py
-          python -m twine upload dist/*
+          python util/keepalive.py
