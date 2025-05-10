@@ -1,17 +1,29 @@
-name: Keepalive Workflow
+name: Keep Alive
+
 on:
-  schedule:
-    - cron: "0 0 * * *"
-permissions:
-  actions: write
+    schedule:
+      - cron: "0 0 * * *"
+    workflow_dispatch:
 jobs:
-  cronjob-based-github-action:
-    name: Keepalive Workflow
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: gautamkrishnar/keepalive-workflow@v2
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
         with:
-          workflow_files: "api.yml, deps.yml, dividends.yml, indicators.yml, indices.yml, intraday.yml, model.yml, ohlc.yml, optimize.yml, predict.yml, splits.yml, symbols.yml, unrate.yml, visualize.yml"
-          time_elapsed: "0"
-          use_api: true
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-dotenv PyGithub
+
+      - name: Enable workflows
+        env:
+          GITHUB: ${{ secrets.GITHUB }}
+        run: |
+          python util/keepalive.py
