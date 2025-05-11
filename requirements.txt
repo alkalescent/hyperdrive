@@ -12,9 +12,8 @@ ta == 0.11.0
 python-binance == 1.0.28
 imbalanced-learn == 0.13.0
 icosphere == 0.1.3
-numpy == 2.2.5
+numpy == 2.2.0
 beautifulsoup4 == 4.13.4
 lxml == 5.4.0
-PyYAML == 6.0.2
 autogluon == 1.3.0
 selenium
