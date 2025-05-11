@@ -1,8 +1,8 @@
 python-dotenv == 1.1.0
-pandas == 1.5.3
+pandas == 2.2.3
 git+https://github.com/bhyman67/robin_stocks_bh67.git@0d4574fb11ba4f1ff0acc8046174924bfd7ec532
 boto3 == 1.38.13
-polygon-api-client == 1.10.1
+polygon-api-client == 1.14.5
 pytz == 2025.2
 vectorbt == 0.27.3
 scipy == 1.15.3
