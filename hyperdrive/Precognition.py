@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.decomposition import PCA
+from autogluon.tabular import TabularDataset, TabularPredictor
 from FileOps import FileReader, FileWriter
 from Calculus import Calculator
 import Constants as C
@@ -24,6 +25,11 @@ class Oracle:
 
     def predict(self, data):
         model = self.load_model_pickle('model')
+        if (
+                isinstance(model, TabularPredictor) and not
+                isinstance(data, TabularDataset)
+        ):
+            data = TabularDataset(data)
         return model.predict(data)
 
     def visualize(self, X, y, dimensions, refinement, increase_percent=0):
