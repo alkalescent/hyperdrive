@@ -4,6 +4,8 @@ from Precognition import Oracle  # noqa
 
 oracle = Oracle()
 
+metadata = oracle.reader.load_json('models/latest/metadata.json')
+features = metadata['features']
 
 X = oracle.load_model_pickle('X')
 y = oracle.load_model_pickle('y')
@@ -15,7 +17,7 @@ y = oracle.load_model_pickle('y')
     radius_2D,
     grid_2D,
     preds_2D
-) = oracle.visualize(X=X, y=y, dimensions=2, refinement=10)
+) = oracle.visualize(X=X, y=y, dimensions=2, refinement=10, features=features)
 
 
 oracle.save_model_pickle('2D/actual', actual_2D)
@@ -31,7 +33,7 @@ oracle.save_model_pickle('2D/preds', preds_2D)
     radius_3D,
     grid_3D,
     preds_3D
-) = oracle.visualize(X=X, y=y, dimensions=3, refinement=4)
+) = oracle.visualize(X=X, y=y, dimensions=3, refinement=4, features=features)
 
 
 oracle.save_model_pickle('3D/actual', actual_3D)

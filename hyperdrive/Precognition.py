@@ -23,16 +23,16 @@ class Oracle:
         filename = self.get_filename(name)
         return self.writer.save_pickle(filename, data)
 
-    def predict(self, data):
+    def predict(self, data, columns=[]):
         model = self.load_model_pickle('model')
         if (
                 isinstance(model, TabularPredictor) and not
                 isinstance(data, TabularDataset)
         ):
-            data = TabularDataset(data)
+            data = TabularDataset(data, columns)
         return model.predict(data)
 
-    def visualize(self, X, y, dimensions, refinement, increase_percent=0):
+    def visualize(self, X, y, dimensions, refinement, increase_percent=0, features=[]):
         # # recommended in the range [4, 100]
         num_points = refinement
         reducer = PCA(n_components=dimensions)
@@ -55,7 +55,7 @@ class Oracle:
         flattened = [arr.flatten() for arr in unflattened]
         reduced = np.array(flattened).T
         unreduced = reducer.inverse_transform(reduced)
-        preds = self.predict(unreduced).astype(int)
+        preds = self.predict(unreduced, features).astype(int)
         actual = [
             {
                 C.BUY: [
