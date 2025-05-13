@@ -377,7 +377,7 @@ class MarketData:
             df = pd.DataFrame(columns=[C.TIME, C.SYMBOL, C.DELTA])
         df = df.sort_values(
             by=[C.TIME, C.SYMBOL]
-        ).drop_duplicates(C.SYMBOL, 'last')
+        ).drop_duplicates(C.SYMBOL, keep='last')
         df = df[df[C.DELTA] == '+'].reset_index(drop=True)
         return df
 

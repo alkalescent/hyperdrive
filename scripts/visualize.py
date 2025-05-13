@@ -4,6 +4,8 @@ from Precognition import Oracle  # noqa
 
 oracle = Oracle()
 
+metadata = oracle.reader.load_json('models/latest/metadata.json')
+features = metadata['features']
 
 X = oracle.load_model_pickle('X')
 y = oracle.load_model_pickle('y')
