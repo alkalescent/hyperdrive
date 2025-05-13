@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.decomposition import PCA
 from autogluon.tabular import TabularDataset, TabularPredictor
+import pandas as pd
 from FileOps import FileReader, FileWriter
 from Calculus import Calculator
 import Constants as C
@@ -23,16 +24,16 @@ class Oracle:
         filename = self.get_filename(name)
         return self.writer.save_pickle(filename, data)
 
-    def predict(self, data, columns=[]):
+    def predict(self, data):
         model = self.load_model_pickle('model')
         if (
                 isinstance(model, TabularPredictor) and not
                 isinstance(data, TabularDataset)
         ):
-            data = TabularDataset(data, columns)
+            data = TabularDataset(data)
         return model.predict(data)
 
-    def visualize(self, X, y, dimensions, refinement, increase_percent=0, features=[]):
+    def visualize(self, X, y, dimensions, refinement, increase_percent=0):
         # # recommended in the range [4, 100]
         num_points = refinement
         reducer = PCA(n_components=dimensions)
@@ -55,7 +56,10 @@ class Oracle:
         flattened = [arr.flatten() for arr in unflattened]
         reduced = np.array(flattened).T
         unreduced = reducer.inverse_transform(reduced)
-        preds = self.predict(unreduced, features).astype(int)
+        metadata = self.reader.load_pickle(self.get_filename('metadata'))
+        features = metadata['features']
+        data = pd.DataFrame(unreduced, columns=features)
+        preds = self.predict(data).astype(int)
         actual = [
             {
                 C.BUY: [
