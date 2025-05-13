@@ -13,8 +13,12 @@ class Oracle:
         self.writer = FileWriter()
         self.calc = Calculator()
 
-    def get_filename(self, name):
-        return f'models/latest/{name}.pkl'
+    def get_filename(self, name, ext='pkl'):
+        return f'models/latest/{name}.{ext}'
+
+    def load_metadata(self):
+        filename = self.get_filename('metadata', 'json')
+        return self.reader.load_json(filename)
 
     def load_model_pickle(self, name):
         filename = self.get_filename(name)
@@ -56,7 +60,7 @@ class Oracle:
         flattened = [arr.flatten() for arr in unflattened]
         reduced = np.array(flattened).T
         unreduced = reducer.inverse_transform(reduced)
-        metadata = self.reader.load_pickle(self.get_filename('metadata'))
+        metadata = self.load_metadata()
         features = metadata['features']
         data = pd.DataFrame(unreduced, columns=features)
         preds = self.predict(data).astype(int)
