@@ -44,7 +44,6 @@ class TestOracle:
 
     def test_visualize(self):
         metadata = oracle.reader.load_json('models/latest/metadata.json')
-        features = metadata['features']
         X = oracle.load_model_pickle('X')
         y = oracle.load_model_pickle('y')
 
@@ -55,7 +54,7 @@ class TestOracle:
             radius_2D,
             grid_2D,
             preds_2D
-        ) = oracle.visualize(X=X, y=y, dimensions=2, refinement=4, features=features)
+        ) = oracle.visualize(X=X, y=y, dimensions=2, refinement=4)
         assert len(actual_2D) == len(centroid_2D) == len(grid_2D) == 2
         assert isinstance(radius_2D, float)
         assert preds_2D.dtype == np.dtype(int)
@@ -67,7 +66,7 @@ class TestOracle:
             radius_3D,
             grid_3D,
             preds_3D
-        ) = oracle.visualize(X=X, y=y, dimensions=3, refinement=4, features=features)
+        ) = oracle.visualize(X=X, y=y, dimensions=3, refinement=4)
         assert len(actual_3D) == len(centroid_3D) == len(grid_3D) == 3
         assert isinstance(radius_3D, float)
         assert preds_3D.dtype == np.dtype(int)
