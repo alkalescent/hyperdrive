@@ -43,7 +43,6 @@ class TestOracle:
         assert pred.dtype == np.dtype(bool)
 
     def test_visualize(self):
-        metadata = oracle.reader.load_json('models/latest/metadata.json')
         X = oracle.load_model_pickle('X')
         y = oracle.load_model_pickle('y')
 
