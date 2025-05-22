@@ -1,11 +1,12 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv, find_dotenv
 from multiprocessing import Pool
 from Constants import PathFinder
 import Constants as C
+from typing import Optional
 
 
 class Store:
@@ -33,18 +34,18 @@ class Store:
         with Pool() as p:
             p.map(self.upload_file, paths)
 
-    def delete_objects(self, keys):
+    def delete_objects(self, keys: list[str]) -> None:
         if keys:
             objects = [{'Key': key.replace('\\', '/')} for key in keys]
             bucket = self.get_bucket()
             bucket.delete_objects(Delete={'Objects': objects})
 
-    def get_all_keys(self):
+    def get_keys(self, filter: Optional[str] = None) -> list[str]:
         bucket = self.get_bucket()
-        keys = [obj.key for obj in bucket.objects.filter()]
+        keys = [obj.key for obj in bucket.objects.filter(Prefix=filter)]
         return keys
 
-    def key_exists(self, key, download=False):
+    def key_exists(self, key: str, download=False) -> bool:
         key = key.replace('\\', '/')
         try:
             if download:
@@ -57,7 +58,7 @@ class Store:
         else:
             return True
 
-    def download_file(self, key):
+    def download_file(self, key: str) -> None:
         try:
             self.finder.make_path(key)
             with open(key, 'wb') as file:
@@ -69,7 +70,12 @@ class Store:
             os.remove(key)
             raise e
 
-    def copy_object(self, src, dst):
+    def download_dir(self, path: str) -> None:
+        keys = self.get_keys(path)
+        with Pool() as p:
+            p.starmap(self.key_exists, zip(keys, [True] * len(keys)))
+
+    def copy_object(self, src: str, dst: str) -> None:
         src = src.replace('\\', '/')
         dst = dst.replace('\\', '/')
         bucket = self.get_bucket()
@@ -79,20 +85,20 @@ class Store:
         }
         bucket.copy(copy_source, dst)
 
-    def rename_key(self, old_key, new_key):
+    def rename_key(self, old_key: str, new_key: str) -> None:
         old_key = old_key.replace('\\', '/')
         new_key = new_key.replace('\\', '/')
         self.copy_object(old_key, new_key)
         self.delete_objects([old_key])
 
-    def last_modified(self, key):
+    def last_modified(self, key: str) -> datetime:
         key = key.replace('\\', '/')
         bucket = self.get_bucket()
         obj = bucket.Object(key)
         then = obj.last_modified.replace(tzinfo=None)
         return then
 
-    def modified_delta(self, key):
+    def modified_delta(self, key: str) -> timedelta:
         key = key.replace('\\', '/')
         then = self.last_modified(key)
         now = datetime.utcnow()

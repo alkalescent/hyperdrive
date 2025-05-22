@@ -29,7 +29,9 @@ class Oracle:
         return self.writer.save_pickle(filename, data)
 
     def predict(self, data):
-        model = self.load_model_pickle('model')
+        model_path = 'models/latest/autogluon'
+        self.reader.store.download_dir(model_path)
+        model = TabularPredictor.load(model_path)
         if (
                 isinstance(model, TabularPredictor) and not
                 isinstance(data, TabularDataset)
