@@ -42,10 +42,10 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - name: Set up Python 3.9
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.11'
 
       - name: Cache pip dependencies
         uses: actions/cache@v3
@@ -64,7 +64,9 @@ jobs:
         run: python util/update.py
 
       - name: Install dependencies
+        # pip install flake8-annotations
         run: |
+          python -m pip install --upgrade pip
           pip install flake8 pytest coverage
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 

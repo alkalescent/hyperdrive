@@ -48,8 +48,8 @@ class TestStore:
         store.delete_objects([test_file1, test_file2])
         assert not store.key_exists(test_file2)
 
-    def test_get_all_keys(self):
-        keys = set(store.get_all_keys())
+    def test_get_keys(self):
+        keys = set(store.get_keys())
 
         assert symbols_path in keys
         assert 'README.md' in keys
