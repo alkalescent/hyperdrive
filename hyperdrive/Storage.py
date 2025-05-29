@@ -40,7 +40,7 @@ class Store:
             bucket = self.get_bucket()
             bucket.delete_objects(Delete={'Objects': objects})
 
-    def get_keys(self, filter: Optional[str] = None) -> list[str]:
+    def get_keys(self, filter: str = '') -> list[str]:
         bucket = self.get_bucket()
         keys = [obj.key for obj in bucket.objects.filter(Prefix=filter)]
         return keys
