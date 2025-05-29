@@ -6,7 +6,7 @@ from dotenv import load_dotenv, find_dotenv
 from multiprocessing import Pool
 from Constants import PathFinder
 import Constants as C
-from typing import Optional
+# from typing import Optional
 
 
 class Store:
