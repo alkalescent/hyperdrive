@@ -38,7 +38,7 @@ class TestOracle:
         num_features = metadata['num_pca'] or len(features)
         data = np.full((1, num_features), 1)
         features = metadata['features']
-        ds = pd.DataFrame(data, columns=features)
+        ds = pd.DataFrame(data, columns=features[:num_features])
         pred = oracle.predict(ds)
         assert pred.dtype == np.dtype(bool)
 
