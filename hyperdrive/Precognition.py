@@ -65,7 +65,7 @@ class Oracle:
         metadata = self.load_metadata()
         features = metadata['features']
         data = pd.DataFrame(unreduced, columns=features[:unreduced.shape[1]])
-        preds = self.predict(data).astype(int)
+        preds = self.predict(data).astype(int).to_numpy()
         actual = [
             {
                 C.BUY: [
