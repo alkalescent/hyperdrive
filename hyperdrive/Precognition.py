@@ -64,7 +64,7 @@ class Oracle:
         unreduced = reducer.inverse_transform(reduced)
         metadata = self.load_metadata()
         features = metadata['features']
-        data = pd.DataFrame(unreduced, columns=features)
+        data = pd.DataFrame(unreduced, columns=features[:unreduced.shape[1]])
         preds = self.predict(data).astype(int)
         actual = [
             {
