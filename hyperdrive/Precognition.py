@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.decomposition import PCA
+from autogluon.tabular import TabularDataset, TabularPredictor
+import pandas as pd
 from FileOps import FileReader, FileWriter
 from Calculus import Calculator
 import Constants as C
@@ -11,8 +13,12 @@ class Oracle:
         self.writer = FileWriter()
         self.calc = Calculator()
 
-    def get_filename(self, name):
-        return f'models/latest/{name}.pkl'
+    def get_filename(self, name, ext='pkl'):
+        return f'models/latest/{name}.{ext}'
+
+    def load_metadata(self):
+        filename = self.get_filename('metadata', 'json')
+        return self.reader.load_json(filename)
 
     def load_model_pickle(self, name):
         filename = self.get_filename(name)
@@ -23,7 +29,14 @@ class Oracle:
         return self.writer.save_pickle(filename, data)
 
     def predict(self, data):
-        model = self.load_model_pickle('model')
+        model_path = 'models/latest/autogluon'
+        self.reader.store.download_dir(model_path)
+        model = TabularPredictor.load(model_path)
+        if (
+                isinstance(model, TabularPredictor) and not
+                isinstance(data, TabularDataset)
+        ):
+            data = TabularDataset(data)
         return model.predict(data)
 
     def visualize(self, X, y, dimensions, refinement, increase_percent=0):
@@ -49,7 +62,10 @@ class Oracle:
         flattened = [arr.flatten() for arr in unflattened]
         reduced = np.array(flattened).T
         unreduced = reducer.inverse_transform(reduced)
-        preds = self.predict(unreduced).astype(int)
+        metadata = self.load_metadata()
+        features = metadata['features']
+        data = pd.DataFrame(unreduced, columns=features[:unreduced.shape[1]])
+        preds = self.predict(data).astype(int).to_numpy()
         actual = [
             {
                 C.BUY: [

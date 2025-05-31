@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import pandas as pd
 sys.path.append('hyperdrive')
 from Precognition import Oracle  # noqa autopep8
 from Utils import SwissArmyKnife  # noqa autopep8
@@ -33,9 +34,12 @@ class TestOracle:
 
     def test_predict(self):
         metadata = oracle.reader.load_json('models/latest/metadata.json')
-        num_features = metadata['num_pca'] or len(metadata['features'])
+        features = metadata['features']
+        num_features = metadata['num_pca'] or len(features)
         data = np.full((1, num_features), 1)
-        pred = oracle.predict(data)
+        features = metadata['features']
+        ds = pd.DataFrame(data, columns=features[:num_features])
+        pred = oracle.predict(ds)
         assert pred.dtype == np.dtype(bool)
 
     def test_visualize(self):
