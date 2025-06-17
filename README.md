@@ -11,7 +11,7 @@
 <!-- green left, gray right https://static.pepy.tech/personalized-badge/hyperdrive?period=total&units=international_system&left_color=brightgreen&right_color=gray&left_text=Downloads-->
 <!-- black and indigo https://static.pepy.tech/personalized-badge/hyperdrive?period=total&units=international_system&left_color=black&right_color=indigo&left_text=Downloads -->
 
-**_hyperdrive_** is an algorithmic trading library that powers quant research firm &nbsp;[<img src="https://raw.githubusercontent.com/suchak1/hyperdrive/master/img/forcepush.png" width="16" /> **FORCEPU.SH**](https://forcepu.sh).
+**_hyperdrive_** is an algorithmic trading library that powers quant research firm &nbsp;[<img src="https://raw.githubusercontent.com/suchak1/hyperdrive/master/img/logo.png" width="16" /> **Algotrade.io**](https://algotrade.io).
 
 Unlike other backtesting libraries, _`hyperdrive`_ specializes in data collection and quantitative research.
 
