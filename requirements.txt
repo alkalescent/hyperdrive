@@ -1,6 +1,6 @@
 python-dotenv == 1.1.0
 pandas == 2.2.3
-git+https://github.com/bhyman67/robin_stocks_bh67.git@0d4574fb11ba4f1ff0acc8046174924bfd7ec532
+robin-stocks == 3.4.0
 boto3 == 1.38.13
 polygon-api-client == 1.11.0
 pytz == 2025.2
