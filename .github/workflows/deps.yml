@@ -137,7 +137,7 @@ jobs:
         run: python scripts/execute_order.py
 
       - name: Commit new file(s)
-        uses: stefanzweifel/git-auto-commit-action@v4
+        uses: stefanzweifel/git-auto-commit-action@v6
         with:
           file_pattern: requirements.txt
           commit_message: "[auto] dep update #patch"
