@@ -3,12 +3,14 @@ from typing import Union
 from datetime import datetime, timedelta
 from Constants import TZ, UTC, DATE_FMT, TIME_FMT, PRECISE_TIME_FMT
 
+FlexibleDate = Union[datetime, str]
+
 
 class TimeTraveller:
     def get_delta(
         self,
-        d1: Union[datetime, str],
-        d2: Union[datetime, str] = datetime.now(),
+        d1: FlexibleDate,
+        d2: FlexibleDate = datetime.now(),
         format: str = DATE_FMT
     ) -> timedelta:
         """Calculate the difference between two dates."""
@@ -19,13 +21,13 @@ class TimeTraveller:
 
         return abs(d2 - d1)
 
-    def convert_timeframe(self, d1, d2) -> str:
+    def convert_timeframe(self, d1: FlexibleDate, d2: FlexibleDate) -> str:
         """Convert two datetime objects to a string representation of the timeframe."""
         delta = self.get_delta(d1, d2)
         days = delta.days
         return f'{days}d'
 
-    def convert_delta(self, timeframe):
+    def convert_delta(self, timeframe: str) -> timedelta:
         """Convert a timeframe string to a timedelta object."""
         if timeframe == 'max':
             return timedelta(days=36500)
@@ -51,7 +53,8 @@ class TimeTraveller:
 
         return delta
 
-    def convert_dates(self, timeframe, format=DATE_FMT):
+    def convert_dates(
+            self, timeframe: str, format: str = DATE_FMT) -> FlexibleDate:
         """Convert a timeframe to a start and end date."""
         # if timeframe='max': timeframe = '25y'
         end = datetime.now(TZ) - self.convert_delta('1d')
@@ -62,7 +65,8 @@ class TimeTraveller:
             end = end.strftime(format)
         return start, end
 
-    def dates_in_range(self, timeframe, format=DATE_FMT):
+    def dates_in_range(self, timeframe: str, format: str = DATE_FMT
+                       ) -> list[FlexibleDate]:
         """Get a list of dates in the specified timeframe."""
         start, end = self.convert_dates(timeframe, None)
         dates = [start + timedelta(days=x)
