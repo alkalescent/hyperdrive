@@ -1,12 +1,12 @@
 from time import sleep
-from typing import Union, Self
+from typing import Union
 from datetime import datetime, timedelta
 from Constants import TZ, UTC, DATE_FMT, TIME_FMT, PRECISE_TIME_FMT
 
 
 class TimeTraveller:
     def get_delta(
-        self: Self,
+        self,
         d1: Union[datetime, str],
         d2: Union[datetime, str] = datetime.now(),
         format: str = DATE_FMT
