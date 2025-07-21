@@ -4,7 +4,8 @@ from Constants import TZ, UTC, DATE_FMT, TIME_FMT, PRECISE_TIME_FMT
 
 
 class TimeTraveller:
-    def get_delta(self, d1, d2, format=DATE_FMT):
+    def get_delta(self, d1, d2=datetime.now(), format=DATE_FMT) -> timedelta:
+        """Calculate the difference between two dates."""
         if isinstance(d1, str):
             d1 = datetime.strptime(d1, format)
         if isinstance(d2, str):
@@ -12,7 +13,12 @@ class TimeTraveller:
 
         return abs(d2 - d1)
 
+    def convert_timeframe(self, d1, d2) -> str:
+        """Convert two datetime objects to a string representation of the timeframe."""
+        pass
+
     def convert_delta(self, timeframe):
+        """Convert a timeframe string to a timedelta object."""
         if timeframe == 'max':
             return timedelta(days=36500)
 
@@ -38,6 +44,7 @@ class TimeTraveller:
         return delta
 
     def convert_dates(self, timeframe, format=DATE_FMT):
+        """Convert a timeframe to a start and end date."""
         # if timeframe='max': timeframe = '25y'
         end = datetime.now(TZ) - self.convert_delta('1d')
         delta = self.convert_delta(timeframe) - self.convert_delta('1d')
@@ -48,6 +55,7 @@ class TimeTraveller:
         return start, end
 
     def dates_in_range(self, timeframe, format=DATE_FMT):
+        """Get a list of dates in the specified timeframe."""
         start, end = self.convert_dates(timeframe, None)
         dates = [start + timedelta(days=x)
                  for x in range(0, (end - start).days + 1)]
@@ -56,19 +64,23 @@ class TimeTraveller:
         return dates
 
     def get_time(self, time):
+        """Converts time string to a time object."""
         return datetime.strptime(
             time, TIME_FMT if len(time.split(':')) == 2 else PRECISE_TIME_FMT
         ).time()
 
     def combine_date_time(self, date, time):
+        """Combines date and time into a datetime object."""
         date = datetime.strptime(date, DATE_FMT)
         time = self.get_time(time)
         return date.combine(date, time)
 
     def get_diff(self, t1, t2):
+        """Get the difference in seconds between two datetime objects."""
         return abs((t1 - t2).total_seconds())
 
     def sleep_until(self, time, tz=UTC):
+        """Sleep until the specified time in the given timezone."""
         # time could be "00:00"
         curr = datetime.now(tz)
         prev_sched = datetime.combine(curr.date(), self.get_time(time), tz)
@@ -86,4 +98,5 @@ class TimeTraveller:
             sleep(diff)
 
     def convert_date(self, date):
+        """Convert a date to a string in the specified format."""
         return date if isinstance(date, str) else date.strftime(DATE_FMT)

@@ -53,7 +53,7 @@ jobs:
         # pip install flake8-annotations
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest coverage
+          pip install flake8 pytest coverage interrogate
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Lint with flake8
@@ -62,6 +62,9 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
+          # Check for minimum docstring coverage
+          interrogate --fail-under=2
+          # --exclude tests --ignore-init-module
 
       - uses: browser-actions/setup-chrome@v1
         with:
