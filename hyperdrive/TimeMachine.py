@@ -15,7 +15,22 @@ class TimeTraveller:
 
     def convert_timeframe(self, d1, d2) -> str:
         """Convert two datetime objects to a string representation of the timeframe."""
-        pass
+        delta = self.get_delta(d1, d2)
+        days = delta.days
+        # Perhaps only return days?
+        if days < 1:
+            return '1d'
+        elif days < 7:
+            return f'{days}d'
+        elif days < 30:
+            weeks = days // 7
+            return f'{weeks}w'
+        elif days < 365:
+            months = days // 30
+            return f'{months}m'
+        else:
+            years = days // 365
+            return f'{years}y'
 
     def convert_delta(self, timeframe):
         """Convert a timeframe string to a timedelta object."""
