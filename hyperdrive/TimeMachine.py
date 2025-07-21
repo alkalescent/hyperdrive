@@ -1,10 +1,16 @@
 from time import sleep
+from typing import Union, Self
 from datetime import datetime, timedelta
 from Constants import TZ, UTC, DATE_FMT, TIME_FMT, PRECISE_TIME_FMT
 
 
 class TimeTraveller:
-    def get_delta(self, d1, d2=datetime.now(), format=DATE_FMT) -> timedelta:
+    def get_delta(
+        self: Self,
+        d1: Union[datetime, str],
+        d2: Union[datetime, str] = datetime.now(),
+        format: str = DATE_FMT
+    ) -> timedelta:
         """Calculate the difference between two dates."""
         if isinstance(d1, str):
             d1 = datetime.strptime(d1, format)
@@ -17,20 +23,7 @@ class TimeTraveller:
         """Convert two datetime objects to a string representation of the timeframe."""
         delta = self.get_delta(d1, d2)
         days = delta.days
-        # Perhaps only return days?
-        if days < 1:
-            return '1d'
-        elif days < 7:
-            return f'{days}d'
-        elif days < 30:
-            weeks = days // 7
-            return f'{weeks}w'
-        elif days < 365:
-            months = days // 30
-            return f'{months}m'
-        else:
-            years = days // 365
-            return f'{years}y'
+        return f'{days}d'
 
     def convert_delta(self, timeframe):
         """Convert a timeframe string to a timedelta object."""
