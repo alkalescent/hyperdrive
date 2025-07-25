@@ -120,7 +120,7 @@ class TestMarketData:
             os.rename(splt_path, temp_path)
 
         for _ in range(retries):
-            poly.save_splits(symbol=symbol, timeframe='1y', retries=1, delay=0)
+            poly.save_splits(symbol=symbol, timeframe='2y', retries=1, delay=0)
             if not md.reader.check_file_exists(splt_path):
                 delay = choice(range(5, 10))
                 sleep(delay)
