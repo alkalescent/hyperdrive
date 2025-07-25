@@ -634,7 +634,10 @@ class Polygon(MarketData):
             try:
                 response = self.client.get_aggs(
                     symbol, 1, 'day',
-                    from_=formatted_start, to=formatted_end, adjusted=True, limit=C.POLY_MAX_AGGS_LIMIT
+                    from_=formatted_start,
+                    to=formatted_end,
+                    adjusted=True,
+                    limit=C.POLY_MAX_AGGS_LIMIT
                 )
             finally:
                 self.log_api_call_time()
@@ -791,7 +794,10 @@ class Glassnode(MarketData):
         sleep(15)
         driver.get('https://studio.glassnode.com/metrics')
         sleep(5)
-        url = "https://api.glassnode.com/v1/metrics/market/price_usd_close?a=BTC&i=24h&referer=charts"
+        url = (
+            "https://api.glassnode.com/v1/metrics/market/price_usd_close"
+            "?a=BTC&i=24h&referer=charts"
+        )
         driver.get(url)
         sleep(5)  # wait for the requests to take place
 

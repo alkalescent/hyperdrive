@@ -120,7 +120,7 @@ class TestMarketData:
             os.rename(splt_path, temp_path)
 
         for _ in range(retries):
-            poly.save_splits(symbol=symbol, timeframe='1y', retries=1, delay=0)
+            poly.save_splits(symbol=symbol, timeframe='2y', retries=1, delay=0)
             if not md.reader.check_file_exists(splt_path):
                 delay = choice(range(5, 10))
                 sleep(delay)
@@ -179,6 +179,7 @@ class TestMarketData:
             os.rename(temp_path, ohlc_path)
 
     def test_save_intraday(self):
+        sleep(C.POLY_FREE_DELAY)
         symbol = 'NFLX'
         timeframe = '4d'
         dates = md.traveller.dates_in_range(timeframe)

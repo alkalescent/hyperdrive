@@ -180,10 +180,12 @@ class TestKraken:
                                 ('type', 'MARKET'),
                                 ('side', 'SELL'),
                                 ('fills',
-                                    [OrderedDict([('price', '0.9999'),
-                                                  ('qty', '5.41394641'),
-                                                  ('commission', '0.01082681'),
-                                                  ('tradeId', 'TZX2YO-WCZN5-6GIH3E')])])])
+                                    [OrderedDict(
+                                        [('price', '0.9999'),
+                                         ('qty', '5.41394641'),
+                                         ('commission', '0.01082681'),
+                                         ('tradeId', 'TZX2YO-WCZN5-6GIH3E')]
+                                    )])])
         assert std_order == expected
 
 

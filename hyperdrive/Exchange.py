@@ -405,7 +405,10 @@ class Binance(CEX):
         params[quantity_label] = quantity
 
         params['side'] = side
-        fx = self.client.create_test_order if test else self.client.create_order
+        fx = (
+            self.client.create_test_order
+            if test else self.client.create_order
+        )
 
         order = fx(**params)
         return order
