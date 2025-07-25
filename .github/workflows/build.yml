@@ -66,7 +66,7 @@ jobs:
           # Check type annotation coverage
           TYPE_MIN_COVERAGE=60
           mypy . --txt-report . | :
-          percentage=$(grep -oE "\d+\.\d+%" index.txt | tail -n 1 | sed 's/%//'); (( $(echo "$percentage < ${TYPE_MIN_COVERAGE}" | bc -l) ))
+          percentage=$(grep -oE "[0-9]+\.[0-9]+%" index.txt | tail -n 1 | sed 's/%//'); awk -v p="$percentage" -v min="$TYPE_MIN_COVERAGE" 'BEGIN { exit !(p < min) }'
 
       - uses: browser-actions/setup-chrome@v1
         with:
