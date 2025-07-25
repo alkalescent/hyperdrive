@@ -43,13 +43,16 @@ oracle.save_model_pickle('3D/grid', grid_3D)
 oracle.save_model_pickle('3D/preds', preds_3D)
 
 
-# Don't actually need to save the radius => just need to use it to modify points that plot will use ultimately
+# Don't actually need to save the radius =>
+# just need to use it to modify points that plot will use ultimately
 # Need to save final data plot will use after deciding shapes and processing
 
 
 # and then get 2d and 3d correct from visualize_plotly.ipynb
 # make 2d square?
 # use contour for 2d?
-# have options for rect prism, cube, sphere, icosphere, or octahedron as param for 3d
-# have option for go.Volume / Isosurface vs small points (from notebook) - may be js
+# have options for rect prism, cube, sphere, icosphere, or octahedron
+# as param for 3d
+# have option for go.Volume / Isosurface vs small points (from notebook)
+# - may be js
 # have param for refinement / num of points in linspace

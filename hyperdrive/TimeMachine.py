@@ -97,7 +97,10 @@ class TimeTraveller:
         return delta
 
     def convert_dates(
-            self, timeframe: str, format: str = DATE_FMT) -> FlexibleDate:
+        self,
+        timeframe: str,
+        format: str = DATE_FMT
+    ) -> tuple[FlexibleDate, FlexibleDate]:
         """
         Convert a timeframe to a start and end date.
 
@@ -109,7 +112,8 @@ class TimeTraveller:
                 The format to return the dates in, defaults to DATE_FMT.
 
         Returns:
-            tuple: A tuple containing the start and end dates as strings.
+            tuple[FlexibleDate, FlexibleDate]:
+                A tuple containing the start and end dates as strings.
         """
         # if timeframe='max': timeframe = '25y'
         end = datetime.now(TZ) - self.convert_delta('1d')
@@ -132,7 +136,7 @@ class TimeTraveller:
                 The format to return the dates in, defaults to DATE_FMT.
 
         Returns:
-            list: A list of dates in the specified timeframe.
+            list[FlexibleDate]: A list of dates in the specified timeframe.
         """
         start, end = self.convert_dates(timeframe, None)
         dates = [start + timedelta(days=x)
