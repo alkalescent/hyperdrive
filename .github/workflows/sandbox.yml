@@ -69,7 +69,8 @@ jobs:
           TYPE_MIN_COVERAGE=60
           mypy . --txt-report . | :
           # cat index.txt
-          echo $(grep -oE "\d+\.\d+%" index.txt | tail -n 1 | sed 's/%//')
+          percentage=$(grep -oE "\d+\.\d+%" index.txt | tail -n 1 | sed 's/%//')
+          echo "$percentage < ${TYPE_MIN_COVERAGE}"
           # percentage=$(grep -oE "\d+\.\d+%" index.txt | tail -n 1 | sed 's/%//'); (( $(echo "$percentage < ${TYPE_MIN_COVERAGE}" | bc -l) ))
 
       - run: exit 1
