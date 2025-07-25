@@ -179,6 +179,7 @@ class TestMarketData:
             os.rename(temp_path, ohlc_path)
 
     def test_save_intraday(self):
+        sleep(C.POLY_FREE_DELAY)
         symbol = 'NFLX'
         timeframe = '4d'
         dates = md.traveller.dates_in_range(timeframe)
