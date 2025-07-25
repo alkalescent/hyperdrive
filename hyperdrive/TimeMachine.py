@@ -68,6 +68,9 @@ class TimeTraveller:
 
         Returns:
             timedelta: A timedelta object representing the specified timeframe.
+
+        Raises:
+            ValueError: If the timeframe string is not in a supported format.
         """
         if timeframe == 'max':
             return timedelta(days=36500)
@@ -100,7 +103,8 @@ class TimeTraveller:
 
         Args:
             timeframe (str):
-                A string representing the timeframe, e.g., '1d', '2w', '3m', '1y'.
+                A string representing the timeframe,
+                e.g., '1d', '2w', '3m', '1y'.
             format (str):
                 The format to return the dates in, defaults to DATE_FMT.
 
@@ -196,7 +200,7 @@ class TimeTraveller:
                 The timezone to use for the time, defaults to UTC.
 
         Returns:
-            None
+            None: This function does not return anything.
         """
         # time could be "00:00"
         curr = datetime.now(tz)

@@ -634,7 +634,10 @@ class Polygon(MarketData):
             try:
                 response = self.client.get_aggs(
                     symbol, 1, 'day',
-                    from_=formatted_start, to=formatted_end, adjusted=True, limit=C.POLY_MAX_AGGS_LIMIT
+                    from_=formatted_start,
+                    to=formatted_end,
+                    adjusted=True,
+                    limit=C.POLY_MAX_AGGS_LIMIT
                 )
             finally:
                 self.log_api_call_time()

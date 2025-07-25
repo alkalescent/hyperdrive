@@ -8,7 +8,12 @@ load_dotenv(find_dotenv('config.env'))
 
 
 def get_env_int(var_name, default=None):
-    return int(os.environ[var_name]) if os.environ.get(var_name) and os.environ[var_name].isnumeric() else default
+    return (
+        int(os.environ[var_name])
+        if os.environ.get(var_name)
+        and os.environ[var_name].isnumeric()
+        else default
+    )
 
 
 def get_env_bool(var_name):

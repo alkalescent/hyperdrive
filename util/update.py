@@ -41,5 +41,6 @@ with open(filename, 'r') as file:
 with open(filename, 'w') as file:
     for package in new_packages:
         prefix = package['package']
-        suffix = f"{' == ' + package['version'] if 'version' in package else ''}\n"
+        suffix = (
+            f"{' == ' + package['version'] if 'version' in package else ''}\n")
         file.write(f"{prefix}{suffix}")
