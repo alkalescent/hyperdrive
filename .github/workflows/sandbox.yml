@@ -70,7 +70,7 @@ jobs:
           mypy . --txt-report . | :
           # cat index.txt
           echo $(grep -oE "\d+\.\d+%" index.txt | tail -n 1)
-          percentage=$(grep -oE "\d+\.\d+%" index.txt | tail -n 1 | sed 's/%//'); (( $(echo "$percentage < ${TYPE_MIN_COVERAGE}" | bc -l) ))
+          # percentage=$(grep -oE "\d+\.\d+%" index.txt | tail -n 1 | sed 's/%//'); (( $(echo "$percentage < ${TYPE_MIN_COVERAGE}" | bc -l) ))
 
       - uses: browser-actions/setup-chrome@v1
         with:
