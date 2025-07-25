@@ -794,7 +794,10 @@ class Glassnode(MarketData):
         sleep(15)
         driver.get('https://studio.glassnode.com/metrics')
         sleep(5)
-        url = "https://api.glassnode.com/v1/metrics/market/price_usd_close?a=BTC&i=24h&referer=charts"
+        url = (
+            "https://api.glassnode.com/v1/metrics/market/price_usd_close"
+            "?a=BTC&i=24h&referer=charts"
+        )
         driver.get(url)
         sleep(5)  # wait for the requests to take place
 
