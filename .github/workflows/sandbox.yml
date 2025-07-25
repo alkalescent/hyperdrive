@@ -55,7 +55,7 @@ jobs:
         # pip install flake8-annotations
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest coverage interrogate
+          pip install flake8 pytest coverage interrogate mypy
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Lint with flake8
@@ -65,7 +65,12 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
           # Check for minimum docstring coverage
-          interrogate --fail-under=2
+          DOC_MIN_COVERAGE=2
+          interrogate --fail-under="${DOC_MIN_COVERAGE}"
+          # Check type annotation coverage
+          TYPE_MIN_COVERAGE=60
+          mypy . --txt-report .
+          percentage=$(grep -oE "\d+\.\d+%" index.txt | tail -n 1 | sed 's/%//'); (( $(echo "$percentage < ${TYPE_MIN_COVERAGE}" | bc -l) ))
 
       - uses: browser-actions/setup-chrome@v1
         with:

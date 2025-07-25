@@ -1,6 +1,6 @@
 from time import sleep
 from typing import Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 from Constants import TZ, UTC, DATE_FMT, TIME_FMT, PRECISE_TIME_FMT
 
 FlexibleDate = Union[datetime, str]
@@ -75,23 +75,23 @@ class TimeTraveller:
             dates = [date.strftime(format) for date in dates]
         return dates
 
-    def get_time(self, time):
+    def get_time(self, time: str) -> datetime.time:
         """Converts time string to a time object."""
         return datetime.strptime(
             time, TIME_FMT if len(time.split(':')) == 2 else PRECISE_TIME_FMT
         ).time()
 
-    def combine_date_time(self, date, time):
+    def combine_date_time(self, date: str, time: str) -> datetime:
         """Combines date and time into a datetime object."""
         date = datetime.strptime(date, DATE_FMT)
         time = self.get_time(time)
         return date.combine(date, time)
 
-    def get_diff(self, t1, t2):
+    def get_diff(self, t1: datetime, t2: datetime) -> float:
         """Get the difference in seconds between two datetime objects."""
         return abs((t1 - t2).total_seconds())
 
-    def sleep_until(self, time, tz=UTC):
+    def sleep_until(self, time: str, tz: tzinfo = UTC) -> None:
         """Sleep until the specified time in the given timezone."""
         # time could be "00:00"
         curr = datetime.now(tz)
@@ -109,6 +109,6 @@ class TimeTraveller:
             diff = self.get_diff(curr, sched) if sched > curr else 0
             sleep(diff)
 
-    def convert_date(self, date):
+    def convert_date(self, date: FlexibleDate) -> str:
         """Convert a date to a string in the specified format."""
         return date if isinstance(date, str) else date.strftime(DATE_FMT)
