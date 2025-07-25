@@ -61,7 +61,7 @@ jobs:
       - name: Lint with flake8
         run: |
           # Lint with flake8
-          flake8
+          flake8 --style=google
           # Check for minimum docstring coverage
           DOC_MIN_COVERAGE=2
           interrogate --fail-under="${DOC_MIN_COVERAGE}"

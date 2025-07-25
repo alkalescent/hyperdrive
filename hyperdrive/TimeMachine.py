@@ -7,13 +7,31 @@ FlexibleDate = Union[datetime, str]
 
 
 class TimeTraveller:
+    """
+    A class to handle time-related operations, such as calculating deltas,
+    converting timeframes, and managing sleep intervals.
+    """
+
     def get_delta(
         self,
         d1: FlexibleDate,
         d2: FlexibleDate = datetime.now(),
         format: str = DATE_FMT
     ) -> timedelta:
-        """Calculate the difference between two dates."""
+        """
+        Calculate the difference between two dates.
+
+        Args:
+            d1 (FlexibleDate):
+                The first date, can be a datetime object or a string.
+            d2 (FlexibleDate):
+                The second date, defaults to the current time.
+            format (str):
+                The format to parse the date strings, defaults to DATE_FMT.
+
+        Returns:
+            timedelta: The absolute difference between the two dates.
+        """
         if isinstance(d1, str):
             d1 = datetime.strptime(d1, format)
         if isinstance(d2, str):
@@ -22,7 +40,10 @@ class TimeTraveller:
         return abs(d2 - d1)
 
     def convert_timeframe(self, d1: FlexibleDate, d2: FlexibleDate) -> str:
-        """Convert two datetime objects to a string representation of the timeframe."""
+        """
+        Convert two datetime objects
+        to a string representation of the timeframe.
+        """
         delta = self.get_delta(d1, d2)
         days = delta.days
         return f'{days}d'
