@@ -54,4 +54,23 @@ class Cryptographer:
         return nonce + ciphertext
 
     def decrypt(self, ciphertext: bytes) -> bytes:
-        return self.f.decrypt(ciphertext)
+        """
+        Decrypts and verifies a ciphertext blob.
+
+        Args:
+            ciphertext_blob: The combined nonce and ciphertext.
+
+        Returns:
+            The original plaintext 
+                if decryption and authentication are successful.
+
+        Raises:
+            cryptography.exceptions.InvalidTag: 
+                If the ciphertext has been tampered with.
+        """
+        # Extract the nonce
+        nonce = ciphertext[:self.nonce_size]
+        # Extract the actual ciphertext (without the nonce)
+        ciphertext = ciphertext[self.nonce_size:]
+        # Decrypt the data. The tag is verified automatically.
+        return self._aesgcm.decrypt(nonce, ciphertext, None)
