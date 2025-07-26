@@ -73,4 +73,4 @@ class Cryptographer:
         # Extract the actual ciphertext (without the nonce)
         ciphertext = ciphertext[self.nonce_size:]
         # Decrypt the data. The tag is verified automatically.
-        return self._aesgcm.decrypt(nonce, ciphertext, None)
+        return self.aesgcm.decrypt(nonce, ciphertext, None)
