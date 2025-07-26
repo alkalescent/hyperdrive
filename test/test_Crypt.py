@@ -3,9 +3,7 @@ sys.path.append('hyperdrive')
 from Crypt import Cryptographer  # noqa autopep8
 
 
-password = b'password'
-salt = b'salt'
-crypt = Cryptographer(password, salt)
+crypt = Cryptographer('password', 'salt')
 
 
 class TestCryptographer():
