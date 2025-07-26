@@ -18,9 +18,9 @@ class Cryptographer:
     Derives a 256-bit (32-byte) key from the password and salt.
 
     Args:
-        password (str):
+        password (FlexibleBytes):
             The password to use for key derivation.
-        salt (str):
+        salt (FlexibleBytes):
             A random salt, which should be stored and reused for decryption.
     """
 
@@ -46,7 +46,7 @@ class Cryptographer:
         Convert a string to bytes, if necessary.
 
         Args:
-            value (str or bytes): The value to convert.
+            value (FlexibleBytes): The value to convert.
 
         Returns:
             bytes: The converted value.
@@ -60,10 +60,10 @@ class Cryptographer:
         Encrypts and authenticates plaintext using AES-256-GCM.
 
         Args:
-            plaintext: The data to encrypt.
+            plaintext (FlexibleBytes): The data to encrypt.
 
         Returns:
-            A self-contained ciphertext blob in the format:
+            bytes: A self-contained ciphertext blob in the format:
             nonce + encrypted_data_and_tag.
         """
         plaintext = self.convert_to_bytes(plaintext)
@@ -79,15 +79,11 @@ class Cryptographer:
         Decrypts and verifies a ciphertext blob.
 
         Args:
-            ciphertext_blob: The combined nonce and ciphertext.
+            ciphertext (bytes): The combined nonce and ciphertext.
 
         Returns:
-            The original plaintext
+            FlexibleBytes: The original plaintext
                 if decryption and authentication are successful.
-
-        Raises:
-            cryptography.exceptions.InvalidTag:
-                If the ciphertext has been tampered with.
         """
         # Extract the nonce
         nonce = ciphertext[:self.nonce_size]
