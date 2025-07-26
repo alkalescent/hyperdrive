@@ -74,11 +74,11 @@ jobs:
         run: |
           # Lint with flake8
           flake8 --style=google
-          # Check for minimum docstring coverage
-          DOC_MIN_COVERAGE=2.6
+          # Check for minimum docstring coverage (higher is better)
+          DOC_MIN_COVERAGE=3.4
           interrogate --fail-under="${DOC_MIN_COVERAGE}"
-          # Check type annotation coverage
-          TYPE_MIN_COVERAGE=60
+          # Check type annotation coverage (lower is better)
+          TYPE_MIN_COVERAGE=24
           mypy . --txt-report . | :
           pct=$(grep -oE "[0-9]+\.[0-9]+%" index.txt | tail -n 1 | sed 's/%//'); awk -v p="${pct}" -v min="${TYPE_MIN_COVERAGE}" 'BEGIN { exit !(p < min) }'
 
