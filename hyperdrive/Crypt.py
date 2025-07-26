@@ -11,16 +11,17 @@ class Cryptographer:
     The key is derived from a user-provided password and salt using Scrypt.
     This approach is considered post-quantum
     resistant for symmetric encryption.
+
+    Derives a 256-bit (32-byte) key from the password and salt.
+
+    Args:
+        password (str):
+            The password to use for key derivation.
+        salt (str):
+            A random salt, which should be stored and reused for decryption.
     """
 
-    def __init__(self, password, salt):
-        """
-        Derives a 256-bit (32-byte) key from the password and salt.
-
-        Args:
-            password: The password to use for key derivation.
-            salt: A random salt, which should be stored and reused for decryption.
-        """
+    def __init__(self, password: str, salt: str):
         kdf = Scrypt(
             salt=salt,
             length=32,
@@ -31,8 +32,8 @@ class Cryptographer:
         key = base64.urlsafe_b64encode(kdf.derive(password))
         self.f = Fernet(key)
 
-    def encrypt(self, plaintext):
+    def encrypt(self, plaintext: bytes) -> bytes:
         return self.f.encrypt(plaintext)
 
-    def decrypt(self, ciphertext):
+    def decrypt(self, ciphertext) -> bytes:
         return self.f.decrypt(ciphertext)
