@@ -74,7 +74,7 @@ class Cryptographer:
         # Prepend the nonce to the ciphertext for use during decryption
         return nonce + ciphertext
 
-    def decrypt(self, ciphertext: bytes) -> bytes:
+    def decrypt(self, ciphertext: bytes) -> FlexibleBytes:
         """
         Decrypts and verifies a ciphertext blob.
 
@@ -94,4 +94,10 @@ class Cryptographer:
         # Extract the actual ciphertext (without the nonce)
         ciphertext = ciphertext[self.nonce_size:]
         # Decrypt the data. The tag is verified automatically.
-        return self.aesgcm.decrypt(nonce, ciphertext, None)
+        plaintext = self.aesgcm.decrypt(nonce, ciphertext, None)
+        try:
+            return plaintext.decode('UTF-8')
+        except UnicodeDecodeError:
+            return plaintext
+        except Exception as e:
+            raise Exception(f"Decryption failed: {str(e)}")
