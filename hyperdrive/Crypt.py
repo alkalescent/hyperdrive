@@ -31,10 +31,27 @@ class Cryptographer:
         # Store the key for encryption/decryption operations
         self.key = kdf.derive(password)
         # AES-GCM is the recommended AEAD cipher
-        self.aesgcm = AESGCM(self._key)
+        self.aesgcm = AESGCM(self.key)
+        # Define nonce size for AES-GCM
+        self.nonce_size = 12
 
     def encrypt(self, plaintext: bytes) -> bytes:
-        return self.f.encrypt(plaintext)
+        """
+        Encrypts and authenticates plaintext using AES-256-GCM.
 
-    def decrypt(self, ciphertext) -> bytes:
+        Args:
+            plaintext: The data to encrypt.
+
+        Returns:
+            A self-contained ciphertext blob in the format:
+            nonce + encrypted_data_and_tag.
+        """
+        # Generate a random nonce. It must be unique for each encryption.
+        nonce = os.urandom(self.nonce_size)
+        # Encrypt the data. The result includes the authentication tag.
+        ciphertext = self.aesgcm.encrypt(nonce, plaintext, None)
+        # Prepend the nonce to the ciphertext for use during decryption
+        return nonce + ciphertext
+
+    def decrypt(self, ciphertext: bytes) -> bytes:
         return self.f.decrypt(ciphertext)
