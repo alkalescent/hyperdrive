@@ -82,11 +82,11 @@ class Cryptographer:
             ciphertext_blob: The combined nonce and ciphertext.
 
         Returns:
-            The original plaintext 
+            The original plaintext
                 if decryption and authentication are successful.
 
         Raises:
-            cryptography.exceptions.InvalidTag: 
+            cryptography.exceptions.InvalidTag:
                 If the ciphertext has been tampered with.
         """
         # Extract the nonce
