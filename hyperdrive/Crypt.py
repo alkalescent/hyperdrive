@@ -1,7 +1,6 @@
 import os
-import base64
-from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
 class Cryptographer:
@@ -29,8 +28,10 @@ class Cryptographer:
             r=8,
             p=2,
         )
-        key = base64.urlsafe_b64encode(kdf.derive(password))
-        self.f = Fernet(key)
+        # Store the key for encryption/decryption operations
+        self.key = kdf.derive(password)
+        # AES-GCM is the recommended AEAD cipher
+        self.aesgcm = AESGCM(self._key)
 
     def encrypt(self, plaintext: bytes) -> bytes:
         return self.f.encrypt(plaintext)
