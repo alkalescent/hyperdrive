@@ -14,6 +14,13 @@ class Cryptographer:
     """
 
     def __init__(self, password, salt):
+        """
+        Derives a 256-bit (32-byte) key from the password and salt.
+
+        Args:
+            password: The password to use for key derivation.
+            salt: A random salt, which should be stored and reused for decryption.
+        """
         kdf = Scrypt(
             salt=salt,
             length=32,
