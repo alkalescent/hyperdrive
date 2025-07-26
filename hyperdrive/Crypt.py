@@ -96,8 +96,7 @@ class Cryptographer:
         # Decrypt the data. The tag is verified automatically.
         plaintext = self.aesgcm.decrypt(nonce, ciphertext, None)
         try:
-            return plaintext.decode('UTF-8')
+            plaintext = plaintext.decode('UTF-8')
         except UnicodeDecodeError:
-            return plaintext
-        except Exception as e:
-            raise Exception(f"Decryption failed: {str(e)}")
+            pass
+        return plaintext
