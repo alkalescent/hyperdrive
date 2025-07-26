@@ -1,4 +1,5 @@
 import sys
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 sys.path.append('hyperdrive')
 from Crypt import Cryptographer  # noqa autopep8
 
@@ -6,23 +7,18 @@ from Crypt import Cryptographer  # noqa autopep8
 crypt = Cryptographer('password', 'salt')
 
 
-class TestCryptographer():
-    def test_encrypt_decrypt(self):
-        plaintext = b'This is a secret message.'
-        ciphertext = crypt.encrypt(plaintext)
+class TestCryptographer:
+    def test_init(self):
+        assert hasattr(crypt, 'key')
+        assert isinstance(crypt.key, bytes)
+        assert hasattr(crypt, 'aesgcm')
+        assert isinstance(crypt.aesgcm, AESGCM)
+        assert hasattr(crypt, 'nonce_size')
+        assert isinstance(crypt.nonce_size, int)
 
-        decrypted_text = crypt.decrypt(ciphertext)
-
-        assert decrypted_text == plaintext, (
-            "Decrypted text does not match original plaintext.")
-
-    def test_invalid_decryption(self):
-        invalid_ciphertext = b'invaliddata'
-
-        try:
-            crypt.decrypt(invalid_ciphertext)
-            assert False, (
-                "Expected decryption to fail with invalid ciphertext.")
-        except Exception as e:
-            assert isinstance(
-                e, Exception), "Expected an exception for invalid decryption."
+    def test_encrypt_and_decrypt(self):
+        secret = 'secret'
+        ciphertext = crypt.encrypt(secret)
+        assert ciphertext != secret
+        plaintext = crypt.decrypt(ciphertext)
+        assert plaintext == secret
