@@ -7,13 +7,13 @@ from Crypt import Cryptographer  # noqa autopep8
 
 load_dotenv(find_dotenv('config.env'))
 
-password = os.environ['RH_PASSWORD'].encode('UTF-8')
-salt = os.environ['SALT'].encode('UTF-8')
+password = os.environ['RH_PASSWORD']
+salt = os.environ['SALT']
 filename = os.environ.get('FILE') or sys.argv[1]
 
 cryptographer = Cryptographer(password, salt)
 with open(filename, 'r') as file:
-    ciphertext = cryptographer.encrypt(file.read().encode('UTF-8'))
+    ciphertext = cryptographer.encrypt(file.read())
 
 with open(f'{filename}.encrypted', 'wb') as file:
     file.write(ciphertext)

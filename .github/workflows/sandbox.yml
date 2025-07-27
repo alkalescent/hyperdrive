@@ -55,27 +55,31 @@ jobs:
         # pip install flake8-annotations
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest coverage interrogate mypy pydoclint[flake8]
+          pip install flake8 pytest coverage interrogate mypy pydoclint[flake8] 
+          # If tests run >= 30 min, try this with pytest: pytest-xdist[psutil]
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Lint with flake8
         run: |
           # Lint with flake8
           flake8 --style=google
-          # Check for minimum docstring coverage
-          DOC_MIN_COVERAGE=2.6
+          # Check for minimum docstring coverage (higher is better)
+          DOC_MIN_COVERAGE=3.4
           interrogate --fail-under="${DOC_MIN_COVERAGE}"
-          # Check type annotation coverage
-          TYPE_MIN_COVERAGE=60
+          # Check type annotation coverage (lower is better)
+          TYPE_MIN_COVERAGE=24
           mypy . --txt-report . | :
           pct=$(grep -oE "[0-9]+\.[0-9]+%" index.txt | tail -n 1 | sed 's/%//'); awk -v p="${pct}" -v min="${TYPE_MIN_COVERAGE}" 'BEGIN { exit !(p < min) }'
+          echo "${pct}%"
 
       - uses: browser-actions/setup-chrome@v1
         with:
           chrome-version: stable
       
       - name: Run all unit tests
-        run: coverage run -m pytest -vv -s
+      # If tests run >= 30 min, try this with pytest-xdist:
+      # coverage run -m pytest -vv -n auto --dist=loadfile
+        run: coverage run -m pytest -vv
 
       - name: Generate test coverage report
         run: coverage report -m -i --fail-under=95
