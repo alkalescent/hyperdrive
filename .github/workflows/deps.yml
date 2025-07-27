@@ -67,7 +67,7 @@ jobs:
         # pip install flake8-annotations
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest coverage interrogate mypy pydoclint[flake8]
+          pip install flake8 pytest coverage interrogate mypy pydoclint[flake8] pytest-xdist[psutil]
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Lint with flake8
@@ -88,7 +88,7 @@ jobs:
           chrome-version: stable
 
       - name: Run all unit tests
-        run: coverage run -m pytest -vv -s
+        run: coverage run -m pytest -vv -n auto --dist=loadfile
 
       - name: Generate test coverage report
         run: coverage report -m -i --fail-under=95
