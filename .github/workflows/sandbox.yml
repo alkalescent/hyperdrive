@@ -76,7 +76,7 @@ jobs:
           chrome-version: stable
       
       - name: Run all unit tests
-        run: coverage run -m pytest -vv -s
+        run: coverage run -m pytest -vv -n auto --dist=loadfile
 
       - name: Generate test coverage report
         run: coverage report -m -i --fail-under=95
