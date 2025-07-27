@@ -7,11 +7,8 @@ from Constants import PathFinder
 import Constants as C
 from FileOps import FileReader, FileWriter
 
-# broker has subclasses robinhood, td ameritrade, ibkr
-
 
 class Robinhood:
-    # broker operation
     def __init__(self, usr=None, pwd=None, mfa=None):
         # Authentication
         load_dotenv(find_dotenv('config.env'))
