@@ -1,5 +1,4 @@
 import os
-import base64
 from typing import Union
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -36,7 +35,7 @@ class Cryptographer:
             p=2,
         )
         # Store the key for encryption/decryption operations
-        self.key = base64.urlsafe_b64encode(kdf.derive(password))
+        self.key = kdf.derive(password)
         # AES-GCM is the recommended AEAD cipher
         self.aesgcm = AESGCM(self.key)
         # Define nonce size for AES-GCM
