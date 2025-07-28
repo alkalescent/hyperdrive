@@ -49,8 +49,8 @@ class Historian:
             init_cash: float,
             **kwargs: dict[str, any]
     ) -> vbt.Portfolio:
-        if C.CLOSE in close.columns:
-            close = close.set_index(C.CLOSE)
+        if C.TIME in close.columns:
+            close = close.set_index(C.TIME)
         signals = close.apply(indicator, **kwargs)
         close = close.dropna()
         positions = pd.DataFrame(
