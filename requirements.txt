@@ -4,7 +4,7 @@ robin-stocks == 3.4.0
 boto3 == 1.38.13
 polygon-api-client == 1.11.0
 pytz == 2025.2
-vectorbt == 0.27.3
+vectorbt == 0.28.0
 scipy == 1.15.3
 scikit-learn == 1.6.1
 cryptography == 44.0.3
