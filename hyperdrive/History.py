@@ -63,6 +63,7 @@ class Historian:
             # if is first of the period
             if prev_period != curr_period:
                 # Rank symbols by indicator and select top_n
+                # filter signals by include/exclude param for each period
                 top_symbols = set(signals.loc[day].nlargest(top_n).index)
                 minus, plus = self.calc.get_difference(
                     prev_symbols, top_symbols)
