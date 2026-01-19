@@ -16,4 +16,10 @@ numpy == 1.26.4
 beautifulsoup4 == 4.13.4
 lxml == 5.4.0
 autogluon == 1.3.0
-selenium
+selenium == 4.27.1
+
+# Test dependencies
+moto == 5.0.27
+pytest-mock == 3.14.0
+responses == 0.25.3
+freezegun == 1.4.0

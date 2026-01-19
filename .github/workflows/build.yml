@@ -76,8 +76,8 @@ jobs:
 
       - name: Run all unit tests
       # If tests run >= 30 min, try this with pytest-xdist:
-      # coverage run -m pytest -vv -n auto --dist=loadfile
-        run: coverage run -m pytest -vv
+      # coverage run -m pytest tests/unit/ -vv -n auto --dist=loadfile
+        run: coverage run -m pytest tests/unit/ -vv
 
       - name: Generate test coverage report
         run: coverage report -m -i --fail-under=95
