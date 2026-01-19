@@ -1,10 +1,11 @@
-import Constants as C
 import numpy as np
 import pandas as pd
 from autogluon.tabular import TabularDataset, TabularPredictor
-from Calculus import Calculator
-from FileOps import FileReader, FileWriter
 from sklearn.decomposition import PCA
+
+from . import Constants as C
+from .Calculus import Calculator
+from .FileOps import FileReader, FileWriter
 
 
 class Oracle:

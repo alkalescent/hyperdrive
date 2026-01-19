@@ -7,18 +7,13 @@ This module provides:
 - Common test utilities
 """
 
-import os
-import sys
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
-# Add hyperdrive to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "hyperdrive"))
-
-import Constants as C  # noqa: E402
+from hyperdrive import Constants as C
 
 # ============================================================
 # Pytest Configuration

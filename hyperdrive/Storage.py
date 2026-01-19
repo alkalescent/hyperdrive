@@ -3,10 +3,11 @@ from datetime import datetime, timedelta
 from multiprocessing import Pool
 
 import boto3
-import Constants as C
 from botocore.exceptions import ClientError
-from Constants import PathFinder
 from dotenv import find_dotenv, load_dotenv
+
+from . import Constants as C
+from .Constants import PathFinder
 
 # from typing import Optional
 

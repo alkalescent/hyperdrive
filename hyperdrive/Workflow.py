@@ -1,8 +1,8 @@
 import re
 from datetime import datetime, timedelta
 
-from Constants import FEW, POLY_CRYPTO_SYMBOLS, POLY_FREE_DELAY
-from DataSource import MarketData
+from .Constants import FEW, POLY_CRYPTO_SYMBOLS, POLY_FREE_DELAY
+from .DataSource import MarketData
 
 
 class Flow:

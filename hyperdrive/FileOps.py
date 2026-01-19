@@ -5,9 +5,10 @@ import time
 from datetime import datetime
 
 import pandas as pd
-from Constants import TZ
-from Storage import Store
-from TimeMachine import TimeTraveller
+
+from .Constants import TZ
+from .Storage import Store
+from .TimeMachine import TimeTraveller
 
 # consider combining fileoperations into one class
 

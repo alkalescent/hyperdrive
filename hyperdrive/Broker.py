@@ -1,12 +1,13 @@
 import os
 
-import Constants as C
 import pandas as pd
 import pyotp
 import robin_stocks.robinhood as rh
-from Constants import PathFinder
 from dotenv import find_dotenv, load_dotenv
-from FileOps import FileReader, FileWriter
+
+from . import Constants as C
+from .Constants import PathFinder
+from .FileOps import FileReader, FileWriter
 
 
 class Robinhood:

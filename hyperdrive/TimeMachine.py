@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, tzinfo
 from time import sleep
 
-from Constants import DATE_FMT, PRECISE_TIME_FMT, TIME_FMT, TZ, UTC
+from .Constants import DATE_FMT, PRECISE_TIME_FMT, TIME_FMT, TZ, UTC
 
 FlexibleDate = datetime | str
 

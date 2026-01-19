@@ -7,11 +7,12 @@ import urllib.parse
 from collections.abc import Iterable
 from time import sleep
 
-import Constants as C
 import requests
 from binance import Client
 from binance.helpers import round_step_size
 from dotenv import find_dotenv, load_dotenv
+
+from . import Constants as C
 
 load_dotenv(find_dotenv("config.env"))
 

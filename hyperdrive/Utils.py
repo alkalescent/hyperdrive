@@ -1,6 +1,6 @@
 import os
 
-import Constants as C  # noqa autopep8
+from . import Constants as C
 
 
 class SwissArmyKnife:

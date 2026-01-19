@@ -4,14 +4,10 @@ from datetime import datetime
 from random import random
 from time import sleep, time
 
-import Constants as C
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from Calculus import Calculator
-from Constants import PathFinder
 from dotenv import find_dotenv, load_dotenv
-from FileOps import FileReader, FileWriter
 from polygon import RESTClient, exceptions
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
@@ -19,7 +15,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from TimeMachine import TimeTraveller
+
+from . import Constants as C
+from .Calculus import Calculator
+from .Constants import PathFinder
+from .FileOps import FileReader, FileWriter
+from .TimeMachine import TimeTraveller
 
 
 class MarketData:

@@ -1,8 +1,6 @@
-import Constants as C
 import numpy as np
 import pandas as pd
 import vectorbt as vbt
-from Calculus import Calculator
 from imblearn.over_sampling import SMOTE
 from scipy.signal import argrelextrema
 from sklearn.decomposition import PCA
@@ -18,6 +16,9 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+
+from . import Constants as C
+from .Calculus import Calculator
 
 
 class Historian:
