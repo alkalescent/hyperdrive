@@ -35,7 +35,7 @@ test:
 	uv run python -m pytest
 
 cov:
-	uv run python -m pytest --cov --cov-report=term-missing
+	uv run python -m pytest --cov
 
 clean:
 	rm -rf dist/ build/ *.egg-info/ .coverage coverage.xml

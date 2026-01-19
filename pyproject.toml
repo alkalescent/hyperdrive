@@ -95,3 +95,6 @@ omit = ["tests/*", ".venv/*", "build/*", "scripts/*"]
 [tool.coverage.report]
 fail_under = 90
 show_missing = true
+
+[tool.coverage.term]
+skip_covered = false
