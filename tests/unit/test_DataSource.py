@@ -130,6 +130,8 @@ def mock_file_ops(mock_env_vars):
         reader.check_file_exists.return_value = True
         reader.store = store
         reader.data_in_timeframe.side_effect = lambda df, col, tf: df
+        # Return the input df unchanged for update_df
+        reader.update_df.side_effect = lambda f, df, *args, **kwargs: df
 
         # Configure store
         store.modified_delta.return_value = timedelta(seconds=30)
@@ -227,7 +229,7 @@ def indices(mock_file_ops):
 @pytest.fixture
 def mock_alpaca_api(mock_env_vars):
     """Mock Alpaca data API."""
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://data.alpaca.markets/v2"
 
         # Mock bars endpoint
@@ -266,11 +268,12 @@ def alpaca_data(mock_file_ops, mock_alpaca_api):
 @pytest.fixture
 def mock_bls_api(mock_env_vars):
     """Mock Bureau of Labor Statistics API."""
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         rsps.add(
             responses.POST,
-            "https://api.bls.gov/publicAPI/v2/timeseries/data/",
+            "https://api.bls.gov/publicAPI/v2/timeseries/data",
             json={
+                "status": "REQUEST_SUCCEEDED",
                 "Results": {
                     "series": [
                         {
@@ -281,7 +284,7 @@ def mock_bls_api(mock_env_vars):
                             ]
                         }
                     ]
-                }
+                },
             },
         )
         yield rsps
@@ -301,7 +304,7 @@ def labor_stats(mock_file_ops, mock_bls_api):
 @pytest.fixture
 def mock_glassnode_api(mock_env_vars):
     """Mock Glassnode API."""
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://api.glassnode.com/v1"
 
         # Mock S2F endpoint

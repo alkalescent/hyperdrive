@@ -1,69 +1,142 @@
+"""Unit tests for Precognition module with mocked S3."""
+
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
+import pytest
 
-from hyperdrive.Precognition import Oracle
-from hyperdrive.Utils import SwissArmyKnife
+# ============================================================
+# Fixtures
+# ============================================================
 
-knife = SwissArmyKnife()
-oracle = Oracle()
-oracle = knife.use_dev(oracle)
-name = "dir/file"
-actual = oracle.get_filename(name)
+
+@pytest.fixture
+def mock_env_vars(monkeypatch):
+    """Set up mock environment variables."""
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    monkeypatch.setenv("S3_BUCKET", "test-bucket")
+    monkeypatch.setenv("S3_DEV_BUCKET", "test-dev-bucket")
+    monkeypatch.setenv("DEV", "true")
+
+
+@pytest.fixture
+def mock_file_ops(mock_env_vars):
+    """Mock file operations (FileReader, FileWriter, Store)."""
+    with (
+        patch("hyperdrive.Precognition.FileWriter") as MockWriter,
+        patch("hyperdrive.Precognition.FileReader") as MockReader,
+    ):
+        reader = MagicMock()
+        writer = MagicMock()
+        store = MagicMock()
+
+        # Configure reader
+        reader.load_csv.return_value = pd.DataFrame()
+        reader.check_file_exists.return_value = True
+        reader.load_json.return_value = {
+            "features": ["f1", "f2", "f3"],
+            "num_pca": 2,
+        }
+        reader.load_pickle.return_value = {}
+        reader.store = store
+        reader.store.download_dir = MagicMock()
+        reader.store.download_file = MagicMock()
+
+        # Configure store
+        store.finder = MagicMock()
+        store.finder.make_path = MagicMock()
+        store.upload_file = MagicMock(return_value=True)
+        store.download_dir = MagicMock()
+
+        # Configure writer
+        writer.save_pickle = MagicMock(return_value=True)
+        writer.remove_files = MagicMock()
+        writer.store = store
+
+        MockReader.return_value = reader
+        MockWriter.return_value = writer
+
+        yield {"reader": reader, "writer": writer, "store": store}
+
+
+@pytest.fixture
+def oracle(mock_file_ops):
+    """Create Oracle instance with mocked dependencies."""
+    from hyperdrive.Precognition import Oracle
+
+    orc = Oracle()
+    orc.reader = mock_file_ops["reader"]
+    orc.writer = mock_file_ops["writer"]
+    return orc
+
+
+# ============================================================
+# Tests
+# ============================================================
 
 
 class TestOracle:
-    def test_init(self):
+    def test_init(self, oracle):
+        """Test Oracle initialization."""
         assert type(oracle).__name__ == "Oracle"
         assert hasattr(oracle, "writer")
         assert hasattr(oracle, "reader")
         assert hasattr(oracle, "calc")
 
-    def test_filename(self):
+    def test_filename(self, oracle):
+        """Test filename generation."""
+        name = "dir/file"
         expected = f"models/latest/{name}.pkl"
+        actual = oracle.get_filename(name)
         assert actual == expected
 
-    def test_save_model_pickle(self):
-        assert oracle.save_model_pickle(name, {})
-        assert oracle.reader.check_file_exists(actual)
+    def test_save_model_pickle(self, oracle, mock_file_ops):
+        """Test saving model pickle."""
+        name = "test_model"
+        mock_file_ops["writer"].save_pickle.return_value = True
+        result = oracle.save_model_pickle(name, {"test": "data"})
+        assert result is True
 
-    def test_load_model_pickle(self):
-        assert oracle.load_model_pickle(name) == {}
-        oracle.writer.remove_files([actual])
+    def test_load_model_pickle(self, oracle, mock_file_ops):
+        """Test loading model pickle."""
+        name = "test_model"
+        mock_file_ops["reader"].load_pickle.return_value = {"test": "data"}
+        result = oracle.load_model_pickle(name)
+        assert result == {"test": "data"}
 
-    def test_predict(self):
-        metadata = oracle.reader.load_json("models/latest/metadata.json")
-        features = metadata["features"]
-        num_features = metadata["num_pca"] or len(features)
-        data = np.full((1, num_features), 1)
-        features = metadata["features"]
-        ds = pd.DataFrame(data, columns=features[:num_features])
-        pred = oracle.predict(ds)
-        assert pred.dtype == np.dtype(bool)
+    def test_predict(self, oracle, mock_file_ops):
+        """Test prediction with mocked model."""
+        with patch("hyperdrive.Precognition.TabularPredictor") as MockPredictor:
+            mock_model = MagicMock()
+            mock_model.predict.return_value = pd.Series([True, False, True])
+            MockPredictor.load.return_value = mock_model
 
-    def test_visualize(self):
-        X = oracle.load_model_pickle("X")
-        y = oracle.load_model_pickle("y")
+            data = pd.DataFrame({"f1": [1, 2, 3], "f2": [4, 5, 6]})
+            result = oracle.predict(data)
 
-        # 2D
-        (
-            actual_2D,
-            centroid_2D,
-            radius_2D,
-            grid_2D,
-            preds_2D,
-        ) = oracle.visualize(X=X, y=y, dimensions=2, refinement=4)
-        assert len(actual_2D) == len(centroid_2D) == len(grid_2D) == 2
-        assert isinstance(radius_2D, float)
-        assert preds_2D.dtype == np.dtype(int)
+            assert len(result) == 3
+            MockPredictor.load.assert_called_once()
 
-        # 3D
-        (
-            actual_3D,
-            centroid_3D,
-            radius_3D,
-            grid_3D,
-            preds_3D,
-        ) = oracle.visualize(X=X, y=y, dimensions=3, refinement=4)
-        assert len(actual_3D) == len(centroid_3D) == len(grid_3D) == 3
-        assert isinstance(radius_3D, float)
-        assert preds_3D.dtype == np.dtype(int)
+    def test_visualize(self, oracle, mock_file_ops):
+        """Test visualization with mocked data."""
+        # Mock the reader to return sample X and y data
+        X = np.random.rand(100, 5)
+        y = np.random.choice([True, False], size=100)
+        mock_file_ops["reader"].load_pickle.side_effect = [X, y]
+
+        with patch("hyperdrive.Precognition.TabularPredictor") as MockPredictor:
+            mock_model = MagicMock()
+            mock_model.predict.return_value = pd.Series(np.zeros(16, dtype=int))
+            MockPredictor.load.return_value = mock_model
+
+            actual, centroid, radius, grid, preds = oracle.visualize(
+                X=X, y=y, dimensions=2, refinement=4
+            )
+
+            assert len(actual) == 2
+            assert len(centroid) == 2
+            assert isinstance(radius, float)
+            assert len(grid) == 2

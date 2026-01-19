@@ -54,8 +54,13 @@ class TestHistorian:
         assert np.array_equal(nfill, test_nfill)
 
     def test_unfill(self):
-        assert hist.unfill(fs) == unfilled_fs
-        assert hist.unfill(ns) == unfilled_ns
+        result_fs = hist.unfill(fs)
+        result_ns = hist.unfill(ns)
+        # Compare values, handling numpy bool vs Python bool
+        for r, e in zip(result_fs, unfilled_fs, strict=True):
+            assert r == e or (r is None and e is None)
+        for r, e in zip(result_ns, unfilled_ns, strict=True):
+            assert r == e or (r is None and e is None)
 
     def test_get_optimal_signals(self):
         f_signals = hist.get_optimal_signals(close, n=2, method="ffill")

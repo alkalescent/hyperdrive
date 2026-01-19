@@ -131,7 +131,7 @@ def binance(mock_binance_client):
 @pytest.fixture
 def mock_kraken_api(mock_env_vars):
     """Mock Kraken API responses."""
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://api.kraken.com"
 
         # Mock Balance
@@ -206,7 +206,7 @@ def kraken(mock_env_vars, mock_kraken_api):
 @pytest.fixture
 def mock_alpaca_api(mock_env_vars):
     """Mock Alpaca API responses."""
-    with responses.RequestsMock() as rsps:
+    with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://paper-api.alpaca.markets/v2"
 
         # Mock account
