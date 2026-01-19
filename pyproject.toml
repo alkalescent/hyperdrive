@@ -28,15 +28,15 @@ dependencies = [
     "selenium>=4.27.1",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-cov>=4.0.0",
-    "ruff>=0.8.0",
-    "moto>=5.0.27",
-    "pytest-mock>=3.14.0",
-    "responses>=0.25.3",
-    "freezegun>=1.4.0",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "moto",
+    "pytest-mock",
+    "responses",
+    "freezegun",
 ]
 
 [project.urls]
@@ -56,7 +56,7 @@ version-file = "hyperdrive/_version.py"
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
