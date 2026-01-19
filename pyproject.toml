@@ -3,7 +3,7 @@ name = "hyperdrive"
 dynamic = ["version"]
 description = "An algorithmic trading platform"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = "==3.11.*"
 license = "MIT"
 authors = [{ name = "Krish Suchak", email = "suchak.krish@gmail.com" }]
 dependencies = [
