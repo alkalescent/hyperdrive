@@ -322,3 +322,124 @@ class TestFileReader:
 
         result = reader.should_be_updated(str(test_file))
         assert result is False
+
+    def test_load_csv_empty_data_error(self, reader, tmp_path):
+        """Test load_csv raises EmptyDataError for empty CSV."""
+        reader.store.download_file = MagicMock()
+
+        # Create an empty CSV file
+        empty_csv = tmp_path / "empty.csv"
+        empty_csv.write_text("")
+
+        with pytest.raises(pd.errors.EmptyDataError):
+            reader.load_csv(str(empty_csv))
+
+    def test_load_csv_file_not_found(self, reader):
+        """Test load_csv raises FileNotFoundError for missing file."""
+        reader.store.download_file = MagicMock()
+
+        with pytest.raises(FileNotFoundError):
+            reader.load_csv("nonexistent_file.csv")
+
+    def test_update_df(self, reader, writer, tmp_path, test_dataframes):
+        """Test update_df merges new data with existing."""
+        writer.store.upload_file = MagicMock()
+        reader.store.download_file = MagicMock()
+
+        # Save initial data
+        csv_path = str(tmp_path / "update_test.csv")
+        writer.save_csv(csv_path, test_dataframes["test_df"])
+
+        # Create new data with date column
+        new_data = pd.DataFrame([
+            {"symbol": "GOOG", "open": 1500.00, "volume": 300000, "date": "2021-01-01"},
+        ])
+
+        # Update - should merge old and new
+        result = reader.update_df(csv_path, new_data, "date")
+
+        # Should contain data from both old and new
+        assert len(result) >= len(new_data)
+
+    def test_update_df_empty_old(self, reader, writer, tmp_path):
+        """Test update_df with empty existing data returns new data."""
+        reader.store.download_file = MagicMock()
+
+        # Create CSV with just headers
+        csv_path = str(tmp_path / "empty_update.csv")
+        empty_df = pd.DataFrame(columns=["symbol", "open", "volume", "date"])
+        empty_df.to_csv(csv_path, index=False)
+
+        new_data = pd.DataFrame([
+            {"symbol": "GOOG", "open": 1500.00, "volume": 300000, "date": "2021-01-01"},
+        ])
+
+        result = reader.update_df(csv_path, new_data, "date")
+        assert len(result) >= 1
+
+    def test_data_in_timeframe(self, reader):
+        """Test data_in_timeframe filters data correctly."""
+        from hyperdrive.Constants import TZ
+
+        # Create test data with dates
+        df = pd.DataFrame({
+            "date": pd.date_range("2020-01-01", periods=365, freq="D"),
+            "value": range(365),
+        })
+
+        # Filter to last 30 days (1m)
+        result = reader.data_in_timeframe(df, "date", "1m")
+
+        # Should have fewer rows than original
+        assert len(result) <= 31
+        assert "date" in result.columns
+
+    def test_data_in_timeframe_no_column(self, reader):
+        """Test data_in_timeframe returns unchanged df when column doesn't exist."""
+        df = pd.DataFrame({
+            "value": [1, 2, 3],
+        })
+
+        result = reader.data_in_timeframe(df, "nonexistent_col", "1m")
+
+        # Should return unchanged since column doesn't exist
+        pd.testing.assert_frame_equal(result, df)
+
+    def test_data_in_timeframe_max(self, reader):
+        """Test data_in_timeframe with max timeframe."""
+        df = pd.DataFrame({
+            "date": pd.date_range("2020-01-01", periods=30, freq="D"),
+            "value": range(30),
+        })
+
+        result = reader.data_in_timeframe(df, "date", "max")
+        assert len(result) == 30
+
+    def test_load_pickle(self, reader, writer, tmp_path):
+        """Test loading pickle file."""
+        reader.store.download_file = MagicMock()
+        writer.store.upload_file = MagicMock()
+
+        pickle_path = str(tmp_path / "test.pkl")
+        test_data = {"key": "value", "list": [1, 2, 3]}
+
+        # Save first
+        writer.save_pickle(pickle_path, test_data)
+
+        # Load it
+        result = reader.load_pickle(pickle_path)
+
+        assert result == test_data
+
+    def test_save_pickle(self, writer, tmp_path):
+        """Test saving pickle file."""
+        writer.store.upload_file = MagicMock()
+
+        pickle_path = str(tmp_path / "test_save.pkl")
+        test_data = {"key": "value", "list": [1, 2, 3]}
+
+        result = writer.save_pickle(pickle_path, test_data)
+
+        assert result is True
+        assert os.path.exists(pickle_path)
+

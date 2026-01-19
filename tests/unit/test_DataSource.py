@@ -324,7 +324,7 @@ def mock_glassnode_api(mock_env_vars):
         # Mock difficulty ribbon
         rsps.add(
             responses.GET,
-            f"{base}/metrics/mining/difficulty_ribbon",
+            f"{base}/metrics/indicators/difficulty_ribbon",
             json=[{"t": 1609459200, "o": dict.fromkeys(C.MAs, 100.0)}] * 100,
         )
 
@@ -573,6 +573,167 @@ class TestLaborStats:
         assert {C.TIME, C.UN_RATE}.issubset(df.columns)
 
 
+class TestMarketDataSave:
+    """Unit tests for MarketData save methods."""
+
+    def test_save_dividends(self, market_data, mock_file_ops, tmp_path):
+        """Test saving dividend data."""
+        # Setup temp file path
+        div_path = tmp_path / "dividends.csv"
+        market_data.finder.get_dividends_path = lambda symbol, provider: str(div_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_DIVIDENDS.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_DIVIDENDS.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_dividends(symbol="AAPL")
+        assert result == str(div_path)
+        assert div_path.exists()
+
+    def test_save_splits(self, market_data, mock_file_ops, tmp_path):
+        """Test saving splits data."""
+        splits_path = tmp_path / "splits.csv"
+        market_data.finder.get_splits_path = lambda symbol, provider: str(splits_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_SPLITS.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_SPLITS.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_splits(symbol="AAPL")
+        assert result == str(splits_path)
+        assert splits_path.exists()
+
+    def test_save_ohlc(self, market_data, mock_file_ops, tmp_path):
+        """Test saving OHLC data."""
+        ohlc_path = tmp_path / "ohlc.csv"
+        market_data.finder.get_ohlc_path = lambda symbol, provider: str(ohlc_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_OHLC.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_OHLC.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_ohlc(symbol="AAPL")
+        assert result == str(ohlc_path)
+        assert ohlc_path.exists()
+
+    def test_save_unemployment_rate(self, market_data, mock_file_ops, tmp_path):
+        """Test saving unemployment rate data."""
+        un_path = tmp_path / "unemployment.csv"
+        market_data.finder.get_unemployment_path = lambda: str(un_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_UNEMPLOYMENT.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_UNEMPLOYMENT.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_unemployment_rate()
+        assert result == str(un_path)
+        assert un_path.exists()
+
+    def test_save_s2f_ratio(self, market_data, mock_file_ops, tmp_path):
+        """Test saving S2F ratio data."""
+        s2f_path = tmp_path / "s2f.csv"
+        market_data.finder.get_s2f_path = lambda: str(s2f_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_S2F.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_S2F.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_s2f_ratio()
+        assert result == str(s2f_path)
+        assert s2f_path.exists()
+
+    def test_save_diff_ribbon(self, market_data, mock_file_ops, tmp_path):
+        """Test saving difficulty ribbon data."""
+        diff_path = tmp_path / "diff_ribbon.csv"
+        market_data.finder.get_diff_ribbon_path = lambda: str(diff_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_DIFF_RIBBON.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_DIFF_RIBBON.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_diff_ribbon()
+        assert result == str(diff_path)
+        assert diff_path.exists()
+
+    def test_save_sopr(self, market_data, mock_file_ops, tmp_path):
+        """Test saving SOPR data."""
+        sopr_path = tmp_path / "sopr.csv"
+        market_data.finder.get_sopr_path = lambda: str(sopr_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_SOPR.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_SOPR.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_sopr()
+        assert result == str(sopr_path)
+        assert sopr_path.exists()
+
+    def test_save_ndx(self, market_data, mock_file_ops, tmp_path):
+        """Test saving NDX data."""
+        ndx_path = tmp_path / "ndx.csv"
+        market_data.finder.get_ndx_path = lambda: str(ndx_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_NDX.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        # Mock get_latest_ndx to return sample data
+        with patch.object(market_data, "get_latest_ndx", return_value=SAMPLE_NDX.copy()):
+            result = market_data.save_ndx()
+            assert result == str(ndx_path)
+            assert ndx_path.exists()
+
+    def test_get_s2f_ratio(self, market_data, mock_file_ops):
+        """Test getting S2F ratio data."""
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_S2F.copy()
+        df = market_data.get_s2f_ratio()
+        assert {C.TIME, C.HALVING, C.RATIO}.issubset(df.columns)
+
+    def test_get_diff_ribbon(self, market_data, mock_file_ops):
+        """Test getting difficulty ribbon data."""
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_DIFF_RIBBON.copy()
+        df = market_data.get_diff_ribbon()
+        assert C.TIME in df.columns
+
+    def test_get_sopr(self, market_data, mock_file_ops):
+        """Test getting SOPR data."""
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_SOPR.copy()
+        df = market_data.get_sopr()
+        assert {C.TIME, C.SOPR}.issubset(df.columns)
+
+    def test_standardize_s2f_ratio(self, market_data):
+        """Test S2F ratio standardization."""
+        raw = pd.DataFrame(
+            {
+                "t": pd.date_range("2020-01-01", periods=3, freq="D"),
+                "o.daysTillHalving": [100, 99, 98],
+                "o.ratio": [50.0, 51.0, 52.0],
+            }
+        )
+        result = market_data.standardize_s2f_ratio(raw)
+        assert C.TIME in result.columns
+
+    def test_standardize_diff_ribbon(self, market_data):
+        """Test difficulty ribbon standardization."""
+        raw = pd.DataFrame(
+            {
+                "t": pd.date_range("2020-01-01", periods=3, freq="D"),
+                **{f"o.{ma.lower()}": [100.0] * 3 for ma in ["ma9", "ma14", "ma25", "ma40", "ma60", "ma90", "ma128", "ma200"]},
+            }
+        )
+        result = market_data.standardize_diff_ribbon(raw)
+        assert C.TIME in result.columns
+
+    def test_standardize_sopr(self, market_data):
+        """Test SOPR standardization."""
+        raw = pd.DataFrame(
+            {
+                "t": pd.date_range("2020-01-01", periods=3, freq="D"),
+                "v": [1.0, 1.1, 0.9],
+            }
+        )
+        result = market_data.standardize_sopr(raw)
+        assert C.TIME in result.columns
+        assert C.SOPR in result.columns
+
+    def test_get_saved_ndx(self, market_data, mock_file_ops):
+        """Test getting saved NDX data."""
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_NDX.copy()
+        df = market_data.get_saved_ndx()
+        assert not df.empty
+
+
 class TestGlassnode:
     """Unit tests for Glassnode class."""
 
@@ -582,3 +743,84 @@ class TestGlassnode:
         assert hasattr(glassnode, "version")
         assert hasattr(glassnode, "token")
         assert hasattr(glassnode, "provider")
+
+    def test_make_request(self, glassnode, mock_glassnode_api):
+        """Test making API request."""
+        url = "https://api.glassnode.com/v1/metrics/indicators/stock_to_flow_ratio"
+        response = glassnode.make_request(url)
+        assert response.ok
+
+    def test_get_s2f_ratio(self, glassnode, mock_glassnode_api, mock_file_ops):
+        """Test getting S2F ratio from Glassnode API."""
+        mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
+        df = glassnode.get_s2f_ratio(timeframe="1y")
+        # Returns data from the mock
+        assert df is not None
+
+    def test_get_diff_ribbon(self, glassnode, mock_glassnode_api, mock_file_ops):
+        """Test getting difficulty ribbon from Glassnode API."""
+        mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
+        df = glassnode.get_diff_ribbon(timeframe="1y")
+        assert df is not None
+
+    def test_get_sopr(self, glassnode, mock_glassnode_api, mock_file_ops):
+        """Test getting SOPR from Glassnode API."""
+        mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
+        df = glassnode.get_sopr(timeframe="1y")
+        assert df is not None
+
+
+class TestPolygonIntraday:
+    """Unit tests for Polygon intraday methods."""
+
+    def test_paginate(self, polygon):
+        """Test pagination helper."""
+
+        def gen():
+            yield 1
+            yield 2
+            yield 3
+
+        result = polygon.paginate(gen(), lambda x: x * 2)
+        assert result == [2, 4, 6]
+
+    def test_obey_free_limit(self, polygon):
+        """Test free tier rate limiting."""
+        from time import time
+
+        polygon.free = True
+        polygon.last_api_call_time = time() - 100  # 100 seconds ago
+        # Should not delay since enough time has passed
+        polygon.obey_free_limit(C.POLY_FREE_DELAY)
+
+
+class TestAlpacaDataOHLC:
+    """Unit tests for AlpacaData OHLC methods."""
+
+    def test_get_ohlc(self, alpaca_data, mock_alpaca_api, mock_file_ops):
+        """Test getting OHLC data from Alpaca."""
+        # Add the actual bars endpoint mock with proper response
+        mock_alpaca_api.add(
+            responses.GET,
+            "https://data.alpaca.markets/v2/stocks/bars",
+            json={
+                "bars": {
+                    "AAPL": [
+                        {
+                            "t": "2024-01-01T00:00:00Z",
+                            "o": 100.0,
+                            "h": 105.0,
+                            "l": 99.0,
+                            "c": 103.0,
+                            "v": 1000000,
+                            "vw": 102.0,
+                            "n": 1000,
+                        }
+                    ]
+                },
+                "next_page_token": None,
+            },
+        )
+        mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
+        df = alpaca_data.get_ohlc(symbol="AAPL", timeframe="1m")
+        assert C.TIME in df.columns

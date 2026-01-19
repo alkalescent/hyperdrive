@@ -435,3 +435,108 @@ class TestKraken:
         assert std_order["type"] == "MARKET"
         assert std_order["side"] == "SELL"
         assert len(std_order["fills"]) == 1
+
+    def test_get_order(self, kraken):
+        """Test getting order by ID (returns order with order_id added)."""
+        # Use the existing fixture mock that already has the right response
+        order = kraken.get_order("OD74VW-UPIQ7-A47XCN")
+        assert order["order_id"] == "OD74VW-UPIQ7-A47XCN"
+        assert "status" in order
+
+    def test_get_trades(self, kraken):
+        """Test getting trades by IDs."""
+        trades = kraken.get_trades(["TZX2YO-WCZN5-6GIH3E"])
+        assert len(trades) == 1
+        assert trades[0]["trade_id"] == "TZX2YO-WCZN5-6GIH3E"
+
+    def test_get_fee(self, kraken, mock_kraken_api):
+        """Test getting trading fees."""
+        mock_kraken_api.add(
+            responses.POST,
+            "https://api.kraken.com/0/private/TradeVolume",
+            json={"result": {"fees": {"XXBTZUSD": {"fee": "0.26"}}}, "error": []},
+        )
+        fee = kraken.get_fee("XXBTZUSD")
+        assert fee == 0.26
+
+    def test_get_ticker(self, kraken, mock_kraken_api):
+        """Test getting ticker data."""
+        mock_kraken_api.add(
+            responses.POST,
+            "https://api.kraken.com/0/public/Ticker",
+            json={"result": {"XXBTZUSD": {"c": ["50000.00"]}}, "error": []},
+        )
+        ticker = kraken.get_ticker("XXBTZUSD")
+        assert "XXBTZUSD" in ticker
+
+    def test_get_price(self, kraken, mock_kraken_api):
+        """Test getting asset price."""
+        mock_kraken_api.add(
+            responses.POST,
+            "https://api.kraken.com/0/public/Ticker",
+            json={"result": {"XXBTZUSD": {"c": ["50000.00"]}}, "error": []},
+        )
+        price = kraken.get_price("XXBTZUSD")
+        assert price == 50000.0
+
+    def test_order_buy(self, kraken, mock_kraken_api):
+        """Test buy order."""
+        mock_kraken_api.add(
+            responses.POST,
+            "https://api.kraken.com/0/private/AddOrder",
+            json={"result": {"txid": ["BUY123"]}, "error": []},
+        )
+        result = kraken.order("XXBT", "ZUSD", "buy", 0.01, test=True)
+        assert "txid" in result
+
+    def test_get_test_side(self, kraken):
+        """Test getting test order side (opposite for testing)."""
+        side = kraken.get_test_side("XXBT", "ZUSD")
+        assert side in ["buy", "sell"]
+
+    def test_handle_response_with_error(self, kraken):
+        """Test handling response with API error."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": {}, "error": ["Test error"]}
+
+        with pytest.raises(Exception, match="Test error"):
+            kraken.handle_response(mock_response)
+
+    def test_make_auth_req(self, kraken, mock_kraken_api):
+        """Test making authenticated request."""
+        mock_kraken_api.add(
+            responses.POST,
+            "https://api.kraken.com/0/private/Balance",
+            json={"result": {"XXBT": "1.0"}, "error": []},
+        )
+        result = kraken.make_auth_req("/0/private/Balance")
+        assert result is not None
+
+
+class TestAlpacaExEdgeCases:
+    """Edge case tests for AlpacaEx class."""
+
+    def test_fill_orders_empty(self, alpaca):
+        """Test fill_orders with empty symbols list."""
+        orders = alpaca.fill_orders([], alpaca.create_order, side="buy", notional=10)
+        assert orders == []
+
+    def test_create_pair(self, alpaca):
+        """Test pair creation - CEX base class uses no separator."""
+        # CEX.create_pair returns base+quote without separator
+        assert alpaca.create_pair("BTC", "USD") == "BTCUSD"
+        assert alpaca.create_pair("ETH", "USDT") == "ETHUSDT"
+
+
+class TestBinanceEdgeCases:
+    """Edge case tests for Binance class."""
+
+    def test_order_real_mode(self, binance, mock_binance_client):
+        """Test order in real mode (not test)."""
+        mock_binance_client.create_order.return_value = SAMPLE_BINANCE_ORDER.copy()
+
+        result = binance.order("BTC", "USD", "buy", 0.01, test=False)
+
+        mock_binance_client.create_order.assert_called_once()
+        assert "orderId" in result
+
