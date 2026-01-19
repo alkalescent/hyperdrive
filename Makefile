@@ -32,10 +32,10 @@ format:
 	uv run ruff format .
 
 test:
-	uv run python -m pytest -m "not integration"
+	uv run python -m pytest
 
 cov:
-	uv run python -m pytest -m "not integration" --cov --cov-report=term-missing
+	uv run python -m pytest --cov --cov-report=term-missing
 
 clean:
 	rm -rf dist/ build/ *.egg-info/ .coverage coverage.xml

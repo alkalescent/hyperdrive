@@ -55,15 +55,41 @@ source = "vcs"
 version-file = "hyperdrive/_version.py"
 
 [tool.ruff]
-line-length = 88
 target-version = "py311"
+line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W"]
-ignore = ["E501"]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN", "D"]  # Don't require annotations/docstrings in tests
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [tool.pytest.ini_options]
+addopts = "-m 'not integration'"
 testpaths = ["tests"]
 markers = [
     "integration: marks tests as integration tests (require real API calls)",
 ]
+
+[tool.coverage.run]
+source = ["hyperdrive"]
+omit = ["tests/*", ".venv/*", "build/*", "scripts/*"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
