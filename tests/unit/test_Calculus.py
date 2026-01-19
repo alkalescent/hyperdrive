@@ -116,3 +116,50 @@ class TestCalculator:
         assert num_pts == 360
         assert np.isclose(circle.T[0], p1).all()
         assert np.isclose(circle.T[int(num_pts / 2)], -p1, atol=0.02).all()
+
+    def test_derive_with_series_x(self):
+        """Test derive with pd.Series for x (line 41)."""
+        y = np.array([0, 1, 4, 9, 16])  # x^2
+        x = pd.Series([0, 1, 2, 3, 4])
+        derived = calc.derive(y, x)
+        # Derivative of x^2 is 2x
+        assert len(derived) == 5
+
+    def test_cv_numpy_array(self):
+        """Test cv with 2D numpy array (line 50)."""
+        arr = np.array([[2, 4, 6], [1, 2, 3]])
+        cvd = calc.cv(x=arr, ddof=0)
+        assert len(cvd) == 2  # One cv per row
+
+    def test_fib_edge_cases(self):
+        """Test fib with edge cases (lines 54-56)."""
+        assert calc.fib(0) == [0]  # n < 1
+        assert calc.fib(1) == [0]  # n <= 1
+        assert calc.fib(2) == [0, 1]  # n == 2
+
+    def test_find_centroid_minmax(self):
+        """Test find_centroid with method != mean (line 18)."""
+        points = np.array([[0, 0, 0], [2, 4, 6], [1, 2, 3]])
+        centroid = calc.find_centroid(points, method="minmax")
+        # Should use min/max instead of mean
+        assert len(centroid) == 3
+
+    def test_get_difference(self):
+        """Test get_difference between sets."""
+        old = {"a", "b", "c"}
+        new = {"b", "c", "d"}
+        minus, plus = calc.get_difference(old, new)
+        assert minus == {"a"}
+        assert plus == {"d"}
+
+    def test_generate_icosphere(self):
+        """Test generate_icosphere."""
+        vertices, faces = calc.generate_icosphere(1.0, np.array([0, 0, 0]), 1)
+        assert len(vertices) > 0
+        assert len(faces) > 0
+
+    def test_generate_octahedron(self):
+        """Test generate_octahedron."""
+        vertices = calc.generate_octahedron(2.0, np.array([1, 1, 1]))
+        assert len(vertices) == 6
+

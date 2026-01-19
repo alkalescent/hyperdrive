@@ -235,3 +235,36 @@ class TestStore:
         assert hasattr(delta, "total_seconds")
         # File was just created, so delta should be small
         assert delta.total_seconds() < 10
+
+    def test_key_exists_with_download(self, store, s3_bucket):
+        """Test key_exists with download=True (line 58)."""
+        # Key exists and should download
+        result = store.key_exists("data/symbols.csv", download=True)
+        assert result is True
+
+    def test_key_exists_download_not_found(self, store, s3_bucket):
+        """Test key_exists with download=True for non-existent file."""
+        result = store.key_exists("non_existent.txt", download=True)
+        assert result is False
+
+    def test_download_dir(self, store, s3_bucket):
+        """Test downloading a directory from S3 (lines 80-82)."""
+        from unittest.mock import patch
+
+        # Mock Pool to avoid multiprocessing issues
+        class MockPool:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def starmap(self, func, iterable):
+                for args in iterable:
+                    func(*args)
+                return []
+
+        with patch("hyperdrive.Storage.Pool", MockPool):
+            # Should not raise
+            store.download_dir("data/")
+

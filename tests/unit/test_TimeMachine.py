@@ -64,3 +64,56 @@ class TestTimeTraveller:
         traveller.sleep_until(sched.strftime(PRECISE_TIME_FMT))
         end = time()
         assert (end - start) < num_sec
+
+    def test_get_delta_with_datetime(self):
+        """Test get_delta with datetime objects instead of strings."""
+        d1 = datetime(2020, 1, 1)
+        d2 = datetime(2020, 1, 5)
+        assert traveller.get_delta(d1, d2) == timedelta(days=4)
+
+    def test_get_delta_no_d2(self):
+        """Test get_delta with d2 defaulting to now."""
+        d1 = datetime.now() - timedelta(days=10)
+        delta = traveller.get_delta(d1)
+        # Should be approximately 10 days
+        assert delta.days >= 9 and delta.days <= 11
+
+    def test_convert_timeframe(self):
+        """Test convert_timeframe returns days string."""
+        d1 = "2020-01-01"
+        d2 = "2020-01-10"
+        result = traveller.convert_timeframe(d1, d2)
+        assert result == "9d"
+
+    def test_get_time(self):
+        """Test get_time parsing."""
+        time_obj = traveller.get_time("14:30")
+        assert time_obj.hour == 14
+        assert time_obj.minute == 30
+
+    def test_get_time_precise(self):
+        """Test get_time with seconds."""
+        time_obj = traveller.get_time("14:30:45")
+        assert time_obj.hour == 14
+        assert time_obj.minute == 30
+        assert time_obj.second == 45
+
+    def test_get_diff(self):
+        """Test get_diff between two datetimes."""
+        t1 = datetime(2020, 1, 1, 0, 0, 0)
+        t2 = datetime(2020, 1, 1, 0, 1, 0)  # 1 minute later
+        diff = traveller.get_diff(t1, t2)
+        assert diff == 60.0  # 60 seconds
+
+    def test_convert_date_string(self):
+        """Test convert_date with string input."""
+        date_str = "2020-01-01"
+        result = traveller.convert_date(date_str)
+        assert result == "2020-01-01"
+
+    def test_convert_date_datetime(self):
+        """Test convert_date with datetime input."""
+        date_obj = datetime(2020, 1, 15)
+        result = traveller.convert_date(date_obj)
+        assert result == "2020-01-15"
+
