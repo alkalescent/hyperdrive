@@ -5,7 +5,7 @@ description = "An algorithmic trading platform"
 readme = "README.md"
 requires-python = "==3.11.*"
 license = "MIT"
-authors = [{ name = "Krish Suchak", email = "suchak.krish@gmail.com" }]
+authors = [{ name = "Krish Suchak" }]
 dependencies = [
     "python-dotenv>=1.1.0",
     "pandas>=2.2.3",
