@@ -32,6 +32,8 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-cov",
+    "pytest-xdist",
+    "ordered-set",
     "ruff",
     "moto",
     "pytest-mock",
@@ -80,7 +82,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-addopts = "-m 'not integration'"
+addopts = "-n auto -m 'not integration'"
 testpaths = ["tests"]
 markers = [
     "integration: marks tests as integration tests (require real API calls)",
