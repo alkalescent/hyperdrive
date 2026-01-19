@@ -98,14 +98,27 @@ class TestStore:
 
     def test_upload_dir(self, store, tmp_path):
         """Test uploading a directory to S3."""
+        from unittest.mock import patch
+
         # Create test directory with files
         test_dir = tmp_path / "test_dir"
         test_dir.mkdir()
         (test_dir / "file1.txt").write_text("content1")
         (test_dir / "file2.txt").write_text("content2")
 
-        # Upload directory
-        store.upload_dir(path=str(test_dir))
+        # Patch Pool to run sequentially (multiprocessing breaks moto)
+        class MockPool:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def map(self, func, iterable):
+                return [func(item) for item in iterable]
+
+        with patch("hyperdrive.Storage.Pool", MockPool):
+            store.upload_dir(path=str(test_dir))
 
         # Verify files were uploaded
         keys = store.get_keys(str(test_dir))

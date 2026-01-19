@@ -56,7 +56,7 @@ SAMPLE_SPLITS = pd.DataFrame(
     {
         C.EX: ["2022-07-18", "2020-08-31"],
         C.DEC: ["2022-07-01", "2020-08-01"],
-        C.RATIO: ["4:1", "5:1"],
+        C.RATIO: [0.25, 0.2],  # 4:1 split = 0.25, 5:1 split = 0.2
     }
 )
 
@@ -177,7 +177,7 @@ def mock_polygon_client(mock_env_vars):
             split = MagicMock()
             split.execution_date = row[C.EX]
             split.split_from = 1
-            split.split_to = int(row[C.RATIO].split(":")[0])
+            split.split_to = int(1 / row[C.RATIO])  # ratio 0.25 -> 4:1 split
             split_results.append(split)
         client.list_splits.return_value = split_results
 
@@ -416,7 +416,7 @@ class TestMarketData:
         """Test getting splits data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_SPLITS.copy()
         df = market_data.get_splits("AAPL")
-        assert {C.EX, C.DEC, C.RATIO}.issubset(df.columns)
+        assert {C.EX, C.RATIO}.issubset(df.columns)  # Polygon only returns EX and RATIO
 
     def test_standardize_splits(self, market_data):
         """Test splits data standardization."""
@@ -425,7 +425,7 @@ class TestMarketData:
                 "exDate": ["2022-07-18"],
                 "paymentDate": ["2022-07-18"],
                 "declaredDate": ["2022-07-01"],
-                "ratio": ["4:1"],
+                "ratio": [0.25],  # 4:1 split,
             }
         )
         result = market_data.standardize_splits("AAPL", raw)
@@ -529,7 +529,7 @@ class TestPolygon:
     def test_get_splits(self, polygon, mock_polygon_client):
         """Test getting splits data from Polygon."""
         df = polygon.get_splits(symbol="AAPL")
-        assert {C.EX, C.DEC, C.RATIO}.issubset(df.columns)
+        assert {C.EX, C.RATIO}.issubset(df.columns)  # Polygon only returns EX and RATIO
         mock_polygon_client.list_splits.assert_called()
 
     def test_get_ohlc(self, polygon, mock_polygon_client):

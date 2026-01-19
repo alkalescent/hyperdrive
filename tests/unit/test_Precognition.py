@@ -37,7 +37,7 @@ def mock_file_ops(mock_env_vars):
         reader.load_csv.return_value = pd.DataFrame()
         reader.check_file_exists.return_value = True
         reader.load_json.return_value = {
-            "features": ["f1", "f2", "f3"],
+            "features": ["f1", "f2", "f3", "f4", "f5"],
             "num_pca": 2,
         }
         reader.load_pickle.return_value = {}
@@ -109,10 +109,13 @@ class TestOracle:
 
     def test_predict(self, oracle, mock_file_ops):
         """Test prediction with mocked model."""
-        # Ensure store.download_dir is mocked on the oracle's reader
         oracle.reader.store.download_dir = MagicMock()
 
-        with patch("hyperdrive.Precognition.TabularPredictor") as MockPredictor:
+        with (
+            patch("hyperdrive.Precognition.TabularPredictor") as MockPredictor,
+            patch("hyperdrive.Precognition.TabularDataset"),
+            patch("hyperdrive.Precognition.isinstance", return_value=False),
+        ):
             mock_model = MagicMock()
             mock_model.predict.return_value = pd.Series([True, False, True])
             MockPredictor.load.return_value = mock_model
@@ -125,15 +128,16 @@ class TestOracle:
 
     def test_visualize(self, oracle, mock_file_ops):
         """Test visualization with mocked data."""
-        # Mock the reader to return sample X and y data
         X = np.random.rand(100, 5)
         y = np.random.choice([True, False], size=100)
         mock_file_ops["reader"].load_pickle.side_effect = [X, y]
-
-        # Ensure store.download_dir is mocked on the oracle's reader
         oracle.reader.store.download_dir = MagicMock()
 
-        with patch("hyperdrive.Precognition.TabularPredictor") as MockPredictor:
+        with (
+            patch("hyperdrive.Precognition.TabularPredictor") as MockPredictor,
+            patch("hyperdrive.Precognition.TabularDataset"),
+            patch("hyperdrive.Precognition.isinstance", return_value=False),
+        ):
             mock_model = MagicMock()
             mock_model.predict.return_value = pd.Series(np.zeros(16, dtype=int))
             MockPredictor.load.return_value = mock_model
