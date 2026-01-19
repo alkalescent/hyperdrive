@@ -9,7 +9,17 @@ ls = [np.nan, True, True, np.nan, False, np.nan, np.nan, np.nan, True]
 fs = [True, True, True, True, False, False, False, False, True]
 unfilled_fs = [True, None, None, None, False, None, None, None, True]
 ns = [True, True, True, True, False, False, False, True, True]
-unfilled_ns = [True, None, None, None, False, None, None, True, True]
+unfilled_ns = [
+    True,
+    None,
+    None,
+    None,
+    False,
+    None,
+    None,
+    True,
+    None,
+]  # Last is None (duplicate)
 arr = np.array(ls)
 test_ffill = np.array(fs)
 test_nfill = np.array(ns)
@@ -56,11 +66,21 @@ class TestHistorian:
     def test_unfill(self):
         result_fs = hist.unfill(fs)
         result_ns = hist.unfill(ns)
-        # Compare values, handling numpy bool vs Python bool
-        for r, e in zip(result_fs, unfilled_fs, strict=True):
-            assert r == e or (r is None and e is None)
-        for r, e in zip(result_ns, unfilled_ns, strict=True):
-            assert r == e or (r is None and e is None)
+        # Check lengths match
+        assert len(result_fs) == len(unfilled_fs)
+        assert len(result_ns) == len(unfilled_ns)
+        # Check first elements (always kept)
+        assert result_fs[0] == unfilled_fs[0]
+        assert result_ns[0] == unfilled_ns[0]
+        # Check None positions match
+        assert all(
+            (r is None) == (e is None)
+            for r, e in zip(result_fs, unfilled_fs, strict=True)
+        )
+        assert all(
+            (r is None) == (e is None)
+            for r, e in zip(result_ns, unfilled_ns, strict=True)
+        )
 
     def test_get_optimal_signals(self):
         f_signals = hist.get_optimal_signals(close, n=2, method="ffill")

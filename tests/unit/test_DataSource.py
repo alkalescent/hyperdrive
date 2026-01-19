@@ -24,6 +24,13 @@ SAMPLE_SYMBOLS = pd.DataFrame(
     }
 )
 
+# Timestamps in milliseconds for Polygon API mock
+SAMPLE_OHLC_TIMESTAMPS = [
+    1704067200000,  # 2024-01-01 00:00:00 UTC
+    1704153600000,  # 2024-01-02 00:00:00 UTC
+    1704240000000,  # 2024-01-03 00:00:00 UTC
+]
+
 SAMPLE_OHLC = pd.DataFrame(
     {
         C.TIME: ["2024-01-01", "2024-01-02", "2024-01-03"],
@@ -174,11 +181,11 @@ def mock_polygon_client(mock_env_vars):
             split_results.append(split)
         client.list_splits.return_value = split_results
 
-        # Mock get_aggs (OHLC)
+        # Mock get_aggs (OHLC) - use millisecond timestamps like real Polygon API
         agg_results = []
-        for _, row in SAMPLE_OHLC.iterrows():
+        for i, (_, row) in enumerate(SAMPLE_OHLC.iterrows()):
             agg = MagicMock()
-            agg.timestamp = row[C.TIME]
+            agg.timestamp = SAMPLE_OHLC_TIMESTAMPS[i]
             agg.open = row[C.OPEN]
             agg.high = row[C.HIGH]
             agg.low = row[C.LOW]

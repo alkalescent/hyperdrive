@@ -109,6 +109,9 @@ class TestOracle:
 
     def test_predict(self, oracle, mock_file_ops):
         """Test prediction with mocked model."""
+        # Ensure store.download_dir is mocked on the oracle's reader
+        oracle.reader.store.download_dir = MagicMock()
+
         with patch("hyperdrive.Precognition.TabularPredictor") as MockPredictor:
             mock_model = MagicMock()
             mock_model.predict.return_value = pd.Series([True, False, True])
@@ -126,6 +129,9 @@ class TestOracle:
         X = np.random.rand(100, 5)
         y = np.random.choice([True, False], size=100)
         mock_file_ops["reader"].load_pickle.side_effect = [X, y]
+
+        # Ensure store.download_dir is mocked on the oracle's reader
+        oracle.reader.store.download_dir = MagicMock()
 
         with patch("hyperdrive.Precognition.TabularPredictor") as MockPredictor:
             mock_model = MagicMock()
