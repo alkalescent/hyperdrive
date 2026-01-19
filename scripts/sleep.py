@@ -1,6 +1,6 @@
 import sys
-sys.path.append('hyperdrive')
-from TimeMachine import TimeTraveller  # noqa autopep8
+
+from hyperdrive.TimeMachine import TimeTraveller
 
 time = sys.argv[1] or "00:00"
 traveller = TimeTraveller()

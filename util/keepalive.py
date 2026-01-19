@@ -1,11 +1,12 @@
 import os
-from dotenv import load_dotenv, find_dotenv
-from github import Github, Auth
 
-load_dotenv(find_dotenv('config.env'))
+from dotenv import find_dotenv, load_dotenv
+from github import Auth, Github
 
-token = os.environ.get('GITHUB')
-repo_name = os.environ.get('GITHUB_REPOSITORY')
+load_dotenv(find_dotenv("config.env"))
+
+token = os.environ.get("GITHUB")
+repo_name = os.environ.get("GITHUB_REPOSITORY")
 auth = Auth.Token(token)
 git = Github(auth=auth)
 repo = git.get_repo(repo_name)

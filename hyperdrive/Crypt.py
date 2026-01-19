@@ -1,10 +1,9 @@
 import os
-from typing import Union
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
-
-FlexibleBytes = Union[str, bytes]
+FlexibleBytes = str | bytes
 
 
 class Cryptographer:
@@ -52,7 +51,7 @@ class Cryptographer:
             bytes: The converted value.
         """
         if isinstance(value, str):
-            return value.encode('UTF-8')
+            return value.encode("UTF-8")
         return value
 
     def encrypt(self, plaintext: FlexibleBytes) -> bytes:
@@ -86,13 +85,13 @@ class Cryptographer:
                 if decryption and authentication are successful.
         """
         # Extract the nonce
-        nonce = ciphertext[:self.nonce_size]
+        nonce = ciphertext[: self.nonce_size]
         # Extract the actual ciphertext (without the nonce)
-        ciphertext = ciphertext[self.nonce_size:]
+        ciphertext = ciphertext[self.nonce_size :]
         # Decrypt the data. The tag is verified automatically.
         plaintext = self.aesgcm.decrypt(nonce, ciphertext, None)
         try:
-            plaintext = plaintext.decode('UTF-8')
+            plaintext = plaintext.decode("UTF-8")
         except UnicodeDecodeError:
             pass
         return plaintext

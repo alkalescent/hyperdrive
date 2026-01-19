@@ -1,5 +1,6 @@
-import os
-import sys
+# hyperdrive package
+"""Algorithmic trading platform."""
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(dir_path)
+from hyperdrive._version import __version__
+
+__all__ = ["__version__"]

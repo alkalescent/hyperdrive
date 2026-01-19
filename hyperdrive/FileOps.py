@@ -1,12 +1,14 @@
-import os
 import json
-import time
+import os
 import pickle
+import time
 from datetime import datetime
+
 import pandas as pd
-from Storage import Store
 from Constants import TZ
+from Storage import Store
 from TimeMachine import TimeTraveller
+
 # consider combining fileoperations into one class
 
 
@@ -31,7 +33,7 @@ class FileReader:
         # loads json file as dictionary data
         if self.should_be_updated(filename):
             self.store.download_file(filename)
-        with open(filename, 'r') as file:
+        with open(filename) as file:
             return json.load(file)
 
     def load_csv(self, filename):
@@ -41,10 +43,10 @@ class FileReader:
                 self.store.download_file(filename)
             df = pd.read_csv(filename).round(10)
         except pd.errors.EmptyDataError:
-            print(f'{filename} is an empty csv file.')
+            print(f"{filename} is an empty csv file.")
             raise
         except FileNotFoundError:
-            print(f'{filename} does not exist locally.')
+            print(f"{filename} does not exist locally.")
             raise
         except Exception:
             df = pd.DataFrame()
@@ -70,16 +72,17 @@ class FileReader:
     def check_file_exists(self, filename):
         return os.path.exists(filename) and self.store.key_exists(filename)
 
-    def data_in_timeframe(self, df, col, timeframe='max'):  # noqa , tolerance='0d'):
+    def data_in_timeframe(self, df, col, timeframe="max"):  # noqa , tolerance='0d'):
         if col not in df:
             return df
         delta = self.traveller.convert_delta(timeframe)
         # tol = self.traveller.convert_delta(tolerance)
         df[col] = pd.to_datetime(df[col]).dt.tz_localize(TZ)
         today = datetime.now(TZ)
-        filtered = df[df[col].apply(
-            lambda date: date.strftime('%Y-%m-%d')) >= pd.to_datetime(
-                today - delta).strftime('%Y-%m-%d')].copy(deep=True)
+        filtered = df[
+            df[col].apply(lambda date: date.strftime("%Y-%m-%d"))
+            >= pd.to_datetime(today - delta).strftime("%Y-%m-%d")
+        ].copy(deep=True)
         # if filtered.empty:
         #     filtered = df[df[col] > pd.to_datetime(today - (delta + tol))]
         filtered[col] = filtered[col].dt.tz_localize(None)
@@ -88,7 +91,7 @@ class FileReader:
     def load_pickle(self, filename):
         if self.should_be_updated(filename):
             self.store.download_file(filename)
-        with open(filename, 'rb') as file:
+        with open(filename, "rb") as file:
             return pickle.load(file)
 
 
@@ -100,7 +103,7 @@ class FileWriter:
     def save_json(self, filename, data):
         # saves data as json file with provided filename
         self.store.finder.make_path(filename)
-        with open(filename, 'w') as file:
+        with open(filename, "w") as file:
             json.dump(data, file, indent=4)
         self.store.upload_file(filename)
         return True
@@ -111,7 +114,7 @@ class FileWriter:
             return False
         else:
             self.store.finder.make_path(filename)
-            with open(filename, 'w') as f:
+            with open(filename, "w") as f:
                 data.to_csv(f, index=False)
             self.store.upload_file(filename)
             return True
@@ -131,7 +134,7 @@ class FileWriter:
 
     def save_pickle(self, filename, data):
         self.store.finder.make_path(filename)
-        with open(filename, 'wb') as file:
+        with open(filename, "wb") as file:
             pickle.dump(data, file)
         self.store.upload_file(filename)
         return True

@@ -1,10 +1,10 @@
-
 import math
+from itertools import permutations
+
 import numpy as np
 import pandas as pd
-from numpy.linalg import norm
 from icosphere import icosphere
-from itertools import permutations
+from numpy.linalg import norm
 from scipy.signal import savgol_filter
 
 
@@ -12,16 +12,10 @@ class Calculator:
     def avg(self, xs):
         return np.mean(xs)
 
-    def find_centroid(self, points, method='mean'):
+    def find_centroid(self, points, method="mean"):
         components = points.T
-        if method != 'mean':
-            components = [
-                [
-                    min(component),
-                    max(component)
-                ]
-                for component in components
-            ]
+        if method != "mean":
+            components = [[min(component), max(component)] for component in components]
         return [self.avg(component) for component in components]
 
     def delta(self, series, window=1):
@@ -32,9 +26,7 @@ class Calculator:
 
     def smooth(self, series, window, order):
         return savgol_filter(
-            series,
-            window + 1 if window % 2 == 0 else window + 2,
-            order
+            series, window + 1 if window % 2 == 0 else window + 2, order
         )
 
     def get_difference(self, old: set, new: set) -> tuple[set, set]:
@@ -42,11 +34,13 @@ class Calculator:
         plus = new.difference(old)
         return minus, plus
 
-    def derive(self, y, x=np.array([0, 1])):
+    def derive(self, y, x=None):
+        if x is None:
+            x = np.array([0, 1])
         if isinstance(x, pd.Series):
             x = x.to_numpy()
-        x = x.astype('float64')
-        x_delta = (x[1] - x[0])
+        x = x.astype("float64")
+        x_delta = x[1] - x[0]
         return np.gradient(y, x_delta)
 
     def cv(self, x, ddof=0):
@@ -66,9 +60,7 @@ class Calculator:
             return self.fib(n - 1) + [lst[-1] + lst[-2]]
 
     def find_plane(self, pt1, pt2, pt3):
-        pt1, pt2, pt3 = [
-            np.array(pt) for pt in [pt1, pt2, pt3]
-        ]
+        pt1, pt2, pt3 = [np.array(pt) for pt in [pt1, pt2, pt3]]
         u = pt2 - pt1
         v = pt3 - pt1
 
@@ -92,10 +84,7 @@ class Calculator:
     def same_plane_side(self, pt1, pt2, plane):
         pt1_side = self.eval_plane(pt1, plane)
         pt2_side = self.eval_plane(pt2, plane)
-        plane_side = (
-            pt1_side == abs(pt1_side)) == (
-            pt2_side == abs(pt2_side)
-        )
+        plane_side = (pt1_side == abs(pt1_side)) == (pt2_side == abs(pt2_side))
         return plane_side
 
     def get_plane_pts(self, points):
@@ -121,7 +110,7 @@ class Calculator:
                     if is_planar_set:
                         plane_set = (pt1, pt2, pt3)
                         perms = permutations(plane_set)
-                        if any([perm in plane_sets for perm in perms]):
+                        if any(perm in plane_sets for perm in perms):
                             continue
                         plane_sets.add(plane_set)
 
@@ -144,17 +133,13 @@ class Calculator:
         return vertices, faces
 
     def generate_octahedron(self, radius, center):
-        vertices = np.array([
-            (0, 0, -1),
-            (0, +1, 0),
-            (0, 0, +1),
-            (0, -1, 0),
-            (-1, 0, 0),
-            (+1, 0, 0)
-        ]).astype(float)
+        vertices = np.array(
+            [(0, 0, -1), (0, +1, 0), (0, 0, +1), (0, -1, 0), (-1, 0, 0), (+1, 0, 0)]
+        ).astype(float)
         vertices *= radius
         vertices += center
         return vertices
+
     # 4 more!
 
     def get_3D_circle(self, center, pt1, pt2, refinement=360):
@@ -177,14 +162,12 @@ class Calculator:
 
         def convert_to_xyz(theta, idx):
             return (
-                center[idx] +
-                radius * math.cos(theta) * q1[idx] +
-                radius * math.sin(theta) * q2[idx]
+                center[idx]
+                + radius * math.cos(theta) * q1[idx]
+                + radius * math.sin(theta) * q2[idx]
             )
 
-        circle = np.array([
-            [convert_to_xyz(theta, idx)
-             for theta in angles]
-            for idx in [0, 1, 2]
-        ])
+        circle = np.array(
+            [[convert_to_xyz(theta, idx) for theta in angles] for idx in [0, 1, 2]]
+        )
         return circle

@@ -1,9 +1,9 @@
-from time import sleep
-from typing import Union
 from datetime import datetime, timedelta, tzinfo
-from Constants import TZ, UTC, DATE_FMT, TIME_FMT, PRECISE_TIME_FMT
+from time import sleep
 
-FlexibleDate = Union[datetime, str]
+from Constants import DATE_FMT, PRECISE_TIME_FMT, TIME_FMT, TZ, UTC
+
+FlexibleDate = datetime | str
 
 
 class TimeTraveller:
@@ -13,10 +13,7 @@ class TimeTraveller:
     """
 
     def get_delta(
-        self,
-        d1: FlexibleDate,
-        d2: FlexibleDate = datetime.now(),
-        format: str = DATE_FMT
+        self, d1: FlexibleDate, d2: FlexibleDate = None, format: str = DATE_FMT
     ) -> timedelta:
         """
         Calculate the difference between two dates.
@@ -32,6 +29,8 @@ class TimeTraveller:
         Returns:
             timedelta: The absolute difference between the two dates.
         """
+        if d2 is None:
+            d2 = datetime.now()
         if isinstance(d1, str):
             d1 = datetime.strptime(d1, format)
         if isinstance(d2, str):
@@ -55,7 +54,7 @@ class TimeTraveller:
         """
         delta = self.get_delta(d1, d2)
         days = delta.days
-        return f'{days}d'
+        return f"{days}d"
 
     def convert_delta(self, timeframe: str) -> timedelta:
         """
@@ -72,11 +71,11 @@ class TimeTraveller:
         Raises:
             ValueError: If the timeframe string is not in a supported format.
         """
-        if timeframe == 'max':
+        if timeframe == "max":
             return timedelta(days=36500)
 
-        periods = {'y': 365, 'm': 30, 'w': 7, 'd': 1}
-        period = 'y'
+        periods = {"y": 365, "m": 30, "w": 7, "d": 1}
+        period = "y"
         idx = -1
 
         for curr_period in periods:
@@ -86,8 +85,8 @@ class TimeTraveller:
                 break
 
         if idx == -1:
-            supported = ', '.join(list(periods))
-            error_msg = f'Only certain suffixes ({supported}) are supported.'
+            supported = ", ".join(list(periods))
+            error_msg = f"Only certain suffixes ({supported}) are supported."
             raise ValueError(error_msg)
 
         num = int(timeframe[:idx])
@@ -97,9 +96,7 @@ class TimeTraveller:
         return delta
 
     def convert_dates(
-        self,
-        timeframe: str,
-        format: str = DATE_FMT
+        self, timeframe: str, format: str = DATE_FMT
     ) -> tuple[FlexibleDate, FlexibleDate]:
         """
         Convert a timeframe to a start and end date.
@@ -116,16 +113,17 @@ class TimeTraveller:
                 A tuple containing the start and end dates as strings.
         """
         # if timeframe='max': timeframe = '25y'
-        end = datetime.now(TZ) - self.convert_delta('1d')
-        delta = self.convert_delta(timeframe) - self.convert_delta('1d')
+        end = datetime.now(TZ) - self.convert_delta("1d")
+        delta = self.convert_delta(timeframe) - self.convert_delta("1d")
         start = end - delta
         if format:
             start = start.strftime(format)
             end = end.strftime(format)
         return start, end
 
-    def dates_in_range(self, timeframe: str, format: str = DATE_FMT
-                       ) -> list[FlexibleDate]:
+    def dates_in_range(
+        self, timeframe: str, format: str = DATE_FMT
+    ) -> list[FlexibleDate]:
         """
         Get a list of dates in the specified timeframe.
         Args:
@@ -139,8 +137,7 @@ class TimeTraveller:
             list[FlexibleDate]: A list of dates in the specified timeframe.
         """
         start, end = self.convert_dates(timeframe, None)
-        dates = [start + timedelta(days=x)
-                 for x in range(0, (end - start).days + 1)]
+        dates = [start + timedelta(days=x) for x in range(0, (end - start).days + 1)]
         if format:
             dates = [date.strftime(format) for date in dates]
         return dates
@@ -157,7 +154,7 @@ class TimeTraveller:
             datetime.time: A time object representing the specified time.
         """
         return datetime.strptime(
-            time, TIME_FMT if len(time.split(':')) == 2 else PRECISE_TIME_FMT
+            time, TIME_FMT if len(time.split(":")) == 2 else PRECISE_TIME_FMT
         ).time()
 
     def combine_date_time(self, date: str, time: str) -> datetime:

@@ -1,25 +1,28 @@
 import re
 from datetime import datetime, timedelta
+
+from Constants import FEW, POLY_CRYPTO_SYMBOLS, POLY_FREE_DELAY
 from DataSource import MarketData
-from Constants import POLY_FREE_DELAY, FEW, POLY_CRYPTO_SYMBOLS
 
 
 class Flow:
     def get_workflow_start_time(self, workflow_name):
-        with open(f'.github/workflows/{workflow_name}.yml') as file:
+        with open(f".github/workflows/{workflow_name}.yml") as file:
             workflow_content = file.read()
         line_pattern = '- cron: "(.*)"'
         try:
             cron_line = re.search(line_pattern, workflow_content).group(1)
         except AttributeError:
             raise AttributeError(
-                f"{workflow_name}.yml doesn't have a scheduled cron job")
+                f"{workflow_name}.yml doesn't have a scheduled cron job"
+            ) from None
 
         now = datetime.utcnow()
         default_times = [now.minute, now.hour, now.day, now.month]
-        times = [default_times[idx] if time ==
-                 '*' else int(time) for idx, time in enumerate(
-                     cron_line.split(' ')[:-1])]
+        times = [
+            default_times[idx] if time == "*" else int(time)
+            for idx, time in enumerate(cron_line.split(" ")[:-1])
+        ]
 
         minute, hour, day, month = times
         return datetime(now.year, month, day, hour, minute)
@@ -32,18 +35,16 @@ class Flow:
         duration = timedelta(seconds=POLY_FREE_DELAY)
         now = datetime.utcnow()
 
-        if workflow_name in {'ohlc', 'intraday'}:
+        if workflow_name in {"ohlc", "intraday"}:
             duration *= (num_stock + num_crypto) * FEW
-        elif workflow_name in {'dividends', 'splits'}:
+        elif workflow_name in {"dividends", "splits"}:
             duration *= num_stock
         else:
             return False
 
         buffer = timedelta(minutes=buffer_min)
-        return (now < start_time + duration + buffer and
-                now > start_time - buffer)
+        return now < start_time + duration + buffer and now > start_time - buffer
 
     def is_any_workflow_running(self):
-        workflows = ['ohlc', 'intraday', 'dividends', 'splits']
-        return any(
-            [self.is_workflow_running(workflow) for workflow in workflows])
+        workflows = ["ohlc", "intraday", "dividends", "splits"]
+        return any(self.is_workflow_running(workflow) for workflow in workflows)

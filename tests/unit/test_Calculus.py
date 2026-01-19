@@ -1,8 +1,7 @@
-import sys
 import numpy as np
 import pandas as pd
-sys.path.append('hyperdrive')
-from Calculus import Calculator  # noqa autopep8
+
+from hyperdrive.Calculus import Calculator
 
 calc = Calculator()
 
@@ -53,8 +52,7 @@ class TestCalculator:
         pt2 = (0, 0, 1)
         pt3 = (0, 1, 0)
         plane = calc.find_plane(pt1, pt2, pt3)
-        assert (abs(np.array(plane)) == (
-            1, 0, 0, 0)).all()
+        assert (abs(np.array(plane)) == (1, 0, 0, 0)).all()
 
         # y = z
         # -y - z = 0
@@ -75,8 +73,8 @@ class TestCalculator:
     def test_eval_plane(self):
         pt = (1, 2, 3)
         coeffs = (4, 5, 6, 7)
-        eval = calc.eval_plane(pt, coeffs)
-        assert eval == 39
+        result = calc.eval_plane(pt, coeffs)
+        assert result == 39
 
     def test_find_shortest_dist(self):
         pts = [(0, 0, 0), (0, 0, 1), (1, 1, 1)]

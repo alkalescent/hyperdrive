@@ -1,14 +1,13 @@
 import os
-import sys
 from multiprocessing import Process, Value
-sys.path.append('hyperdrive')
-from DataSource import Polygon, AlpacaData  # noqa autopep8
-from Constants import PathFinder  # noqa autopep8
-import Constants as C  # noqa autopep8
 
-counter = Value('i', 0)
+from hyperdrive import Constants as C
+from hyperdrive.Constants import PathFinder
+from hyperdrive.DataSource import AlpacaData, Polygon
+
+counter = Value("i", 0)
 alpc = AlpacaData(paper=C.TEST)
-poly = Polygon(os.environ['POLYGON'])
+poly = Polygon(os.environ["POLYGON"])
 stock_symbols = poly.get_symbols()
 poly_symbols = stock_symbols + C.POLY_CRYPTO_SYMBOLS
 alpc_symbols = set(alpc.get_ndx()[C.SYMBOL]).union(stock_symbols)
@@ -19,15 +18,15 @@ def update_poly_ohlc():
         try:
             if not C.TEST:
                 filename = poly.save_ohlc(
-                    symbol=symbol, timeframe=C.FEW_DAYS, retries=1)
+                    symbol=symbol, timeframe=C.FEW_DAYS, retries=1
+                )
             with counter.get_lock():
                 counter.value += 1
         except Exception as e:
-            print(f'Polygon.io OHLC update failed for {symbol}.')
+            print(f"Polygon.io OHLC update failed for {symbol}.")
             print(e)
         finally:
-            filename = PathFinder().get_ohlc_path(
-                symbol=symbol, provider=poly.provider)
+            filename = PathFinder().get_ohlc_path(symbol=symbol, provider=poly.provider)
             if C.CI and os.path.exists(filename):
                 os.remove(filename)
 
@@ -35,16 +34,14 @@ def update_poly_ohlc():
 def update_alpc_ohlc():
     for symbol in alpc_symbols:
         try:
-            filename = alpc.save_ohlc(
-                symbol=symbol, timeframe=C.FEW_DAYS, retries=1)
+            filename = alpc.save_ohlc(symbol=symbol, timeframe=C.FEW_DAYS, retries=1)
             with counter.get_lock():
                 counter.value += 1
         except Exception as e:
-            print(f'Alpaca OHLC update failed for {symbol}.')
+            print(f"Alpaca OHLC update failed for {symbol}.")
             print(e)
         finally:
-            filename = PathFinder().get_ohlc_path(
-                symbol=symbol, provider=alpc.provider)
+            filename = PathFinder().get_ohlc_path(symbol=symbol, provider=alpc.provider)
             if C.CI and os.path.exists(filename):
                 os.remove(filename)
 

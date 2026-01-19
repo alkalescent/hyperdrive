@@ -1,14 +1,12 @@
-import sys
-sys.path.append('hyperdrive')
-from Precognition import Oracle  # noqa
+from hyperdrive.Precognition import Oracle
 
 oracle = Oracle()
 
-metadata = oracle.reader.load_json('models/latest/metadata.json')
-features = metadata['features']
+metadata = oracle.reader.load_json("models/latest/metadata.json")
+features = metadata["features"]
 
-X = oracle.load_model_pickle('X')
-y = oracle.load_model_pickle('y')
+X = oracle.load_model_pickle("X")
+y = oracle.load_model_pickle("y")
 
 # 2D
 (
@@ -16,15 +14,15 @@ y = oracle.load_model_pickle('y')
     centroid_2D,
     radius_2D,
     grid_2D,
-    preds_2D
+    preds_2D,
 ) = oracle.visualize(X=X, y=y, dimensions=2, refinement=10)
 
 
-oracle.save_model_pickle('2D/actual', actual_2D)
-oracle.save_model_pickle('2D/centroid', centroid_2D)
-oracle.save_model_pickle('2D/radius', radius_2D)
-oracle.save_model_pickle('2D/grid', grid_2D)
-oracle.save_model_pickle('2D/preds', preds_2D)
+oracle.save_model_pickle("2D/actual", actual_2D)
+oracle.save_model_pickle("2D/centroid", centroid_2D)
+oracle.save_model_pickle("2D/radius", radius_2D)
+oracle.save_model_pickle("2D/grid", grid_2D)
+oracle.save_model_pickle("2D/preds", preds_2D)
 
 # 3D
 (
@@ -32,15 +30,15 @@ oracle.save_model_pickle('2D/preds', preds_2D)
     centroid_3D,
     radius_3D,
     grid_3D,
-    preds_3D
+    preds_3D,
 ) = oracle.visualize(X=X, y=y, dimensions=3, refinement=4)
 
 
-oracle.save_model_pickle('3D/actual', actual_3D)
-oracle.save_model_pickle('3D/centroid', centroid_3D)
-oracle.save_model_pickle('3D/radius', radius_3D)
-oracle.save_model_pickle('3D/grid', grid_3D)
-oracle.save_model_pickle('3D/preds', preds_3D)
+oracle.save_model_pickle("3D/actual", actual_3D)
+oracle.save_model_pickle("3D/centroid", centroid_3D)
+oracle.save_model_pickle("3D/radius", radius_3D)
+oracle.save_model_pickle("3D/grid", grid_3D)
+oracle.save_model_pickle("3D/preds", preds_3D)
 
 
 # Don't actually need to save the radius =>

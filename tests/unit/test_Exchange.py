@@ -1,74 +1,71 @@
-"""
-Unit tests for Exchange module with mocked API clients.
+"""Unit tests for Exchange module with mocked API clients.
 
 This test file mocks all external API calls to Binance, Kraken, and Alpaca
 for fast, deterministic, offline testing.
 """
-import sys
-import pytest
-import responses
-from collections import OrderedDict
+
 from unittest.mock import MagicMock, patch
 
-sys.path.append('hyperdrive')
-import Constants as C  # noqa: E402
-
+import pytest
+import responses
 
 # ============================================================
 # Sample Response Data
 # ============================================================
 
 SAMPLE_BINANCE_ORDER = {
-    'symbol': 'BTCUSD',
-    'orderId': 12345,
-    'orderListId': -1,
-    'clientOrderId': 'test123',
-    'transactTime': 1634612257816,
-    'price': '0.0000',
-    'origQty': '0.00080000',
-    'executedQty': '0.00080000',
-    'cummulativeQuoteQty': '49.4641',
-    'status': 'FILLED',
-    'timeInForce': 'GTC',
-    'type': 'MARKET',
-    'side': 'BUY',
-    'fills': [{
-        'price': '61830.1400',
-        'qty': '0.00080000',
-        'commission': '0.0500',
-        'commissionAsset': 'USD',
-        'tradeId': 24328534
-    }]
+    "symbol": "BTCUSD",
+    "orderId": 12345,
+    "orderListId": -1,
+    "clientOrderId": "test123",
+    "transactTime": 1634612257816,
+    "price": "0.0000",
+    "origQty": "0.00080000",
+    "executedQty": "0.00080000",
+    "cummulativeQuoteQty": "49.4641",
+    "status": "FILLED",
+    "timeInForce": "GTC",
+    "type": "MARKET",
+    "side": "BUY",
+    "fills": [
+        {
+            "price": "61830.1400",
+            "qty": "0.00080000",
+            "commission": "0.0500",
+            "commissionAsset": "USD",
+            "tradeId": 24328534,
+        }
+    ],
 }
 
 SAMPLE_KRAKEN_ORDER = {
-    'closetm': 1671356188.5147808,
-    'opentm': 1671356188.5141125,
-    'cost': '5.41340502',
-    'descr': {
-        'order': 'sell 5.41394641 USDCUSD @ market',
-        'ordertype': 'market',
-        'pair': 'USDCUSD',
-        'type': 'sell'
+    "closetm": 1671356188.5147808,
+    "opentm": 1671356188.5141125,
+    "cost": "5.41340502",
+    "descr": {
+        "order": "sell 5.41394641 USDCUSD @ market",
+        "ordertype": "market",
+        "pair": "USDCUSD",
+        "type": "sell",
     },
-    'fee': '0.01082681',
-    'price': '0.9999',
-    'status': 'closed',
-    'vol': '5.41394641',
-    'vol_exec': '5.41394641',
-    'trades': ['TZX2YO-WCZN5-6GIH3E'],
-    'order_id': 'OD74VW-UPIQ7-A47XCN'
+    "fee": "0.01082681",
+    "price": "0.9999",
+    "status": "closed",
+    "vol": "5.41394641",
+    "vol_exec": "5.41394641",
+    "trades": ["TZX2YO-WCZN5-6GIH3E"],
+    "order_id": "OD74VW-UPIQ7-A47XCN",
 }
 
 SAMPLE_KRAKEN_TRADE = {
-    'cost': '5.41340502',
-    'fee': '0.01082681',
-    'pair': 'USDCUSD',
-    'price': '0.99990000',
-    'time': 1671356188.5147705,
-    'type': 'sell',
-    'vol': '5.41394641',
-    'trade_id': 'TZX2YO-WCZN5-6GIH3E'
+    "cost": "5.41340502",
+    "fee": "0.01082681",
+    "pair": "USDCUSD",
+    "price": "0.99990000",
+    "time": 1671356188.5147705,
+    "type": "sell",
+    "vol": "5.41394641",
+    "trade_id": "TZX2YO-WCZN5-6GIH3E",
 }
 
 
@@ -76,43 +73,44 @@ SAMPLE_KRAKEN_TRADE = {
 # Fixtures
 # ============================================================
 
+
 @pytest.fixture
 def mock_env_vars(monkeypatch):
     """Set up mock environment variables."""
-    monkeypatch.setenv('BINANCE_TESTNET_KEY', 'test_key')
-    monkeypatch.setenv('BINANCE_TESTNET_SECRET', 'test_secret')
-    monkeypatch.setenv('KRAKEN_KEY', 'test_kraken_key')
-    monkeypatch.setenv('KRAKEN_SECRET', 'dGVzdF9rcmFrZW5fc2VjcmV0')  # base64
-    monkeypatch.setenv('ALPACA_PAPER', 'test_alpaca_key')
-    monkeypatch.setenv('ALPACA_PAPER_SECRET', 'test_alpaca_secret')
-    monkeypatch.setenv('TEST', 'true')
+    monkeypatch.setenv("BINANCE_TESTNET_KEY", "test_key")
+    monkeypatch.setenv("BINANCE_TESTNET_SECRET", "test_secret")
+    monkeypatch.setenv("KRAKEN_KEY", "test_kraken_key")
+    monkeypatch.setenv("KRAKEN_SECRET", "dGVzdF9rcmFrZW5fc2VjcmV0")  # base64
+    monkeypatch.setenv("ALPACA_PAPER", "test_alpaca_key")
+    monkeypatch.setenv("ALPACA_PAPER_SECRET", "test_alpaca_secret")
+    monkeypatch.setenv("TEST", "true")
 
 
 @pytest.fixture
 def mock_binance_client(mock_env_vars):
     """Mock Binance Client."""
-    with patch('hyperdrive.Exchange.Client') as MockClient:
+    with patch("hyperdrive.Exchange.Client") as MockClient:
         client = MagicMock()
 
         # Mock constants
-        client.ORDER_TYPE_MARKET = 'MARKET'
-        client.SIDE_BUY = 'BUY'
-        client.SIDE_SELL = 'SELL'
+        client.ORDER_TYPE_MARKET = "MARKET"
+        client.SIDE_BUY = "BUY"
+        client.SIDE_SELL = "SELL"
 
         # Mock get_symbol_info
         client.get_symbol_info.return_value = {
-            'baseAsset': 'BTC',
-            'quoteAsset': 'USD',
-            'baseAssetPrecision': 8,
-            'quoteAssetPrecision': 4,
-            'filters': [
-                {'filterType': 'LOT_SIZE', 'stepSize': '0.00000100'},
-                {'filterType': 'MIN_NOTIONAL', 'minNotional': '10.0000'}
-            ]
+            "baseAsset": "BTC",
+            "quoteAsset": "USD",
+            "baseAssetPrecision": 8,
+            "quoteAssetPrecision": 4,
+            "filters": [
+                {"filterType": "LOT_SIZE", "stepSize": "0.00000100"},
+                {"filterType": "MIN_NOTIONAL", "minNotional": "10.0000"},
+            ],
         }
 
         # Mock get_asset_balance
-        client.get_asset_balance.return_value = {'free': '1000.00', 'locked': '0'}
+        client.get_asset_balance.return_value = {"free": "1000.00", "locked": "0"}
 
         # Mock create_order / create_test_order
         client.create_order.return_value = SAMPLE_BINANCE_ORDER.copy()
@@ -125,7 +123,8 @@ def mock_binance_client(mock_env_vars):
 @pytest.fixture
 def binance(mock_binance_client):
     """Create Binance instance with mocked client."""
-    from Exchange import Binance
+    from hyperdrive.Exchange import Binance
+
     return Binance(testnet=True)
 
 
@@ -133,37 +132,65 @@ def binance(mock_binance_client):
 def mock_kraken_api(mock_env_vars):
     """Mock Kraken API responses."""
     with responses.RequestsMock() as rsps:
-        base = 'https://api.kraken.com'
+        base = "https://api.kraken.com"
 
         # Mock Balance
-        rsps.add(responses.POST, f'{base}/0/private/Balance',
-                 json={'result': {'XXBT': '0.5', 'ZUSD': '1000'}, 'error': []})
+        rsps.add(
+            responses.POST,
+            f"{base}/0/private/Balance",
+            json={"result": {"XXBT": "0.5", "ZUSD": "1000"}, "error": []},
+        )
 
         # Mock AssetPairs
-        rsps.add(responses.GET, f'{base}/0/public/AssetPairs',
-                 json={'result': {'XXBTZUSD': {
-                     'lot_decimals': 8, 'cost_decimals': 5, 'ordermin': '0.0001'
-                 }}, 'error': []})
+        rsps.add(
+            responses.GET,
+            f"{base}/0/public/AssetPairs",
+            json={
+                "result": {
+                    "XXBTZUSD": {
+                        "lot_decimals": 8,
+                        "cost_decimals": 5,
+                        "ordermin": "0.0001",
+                    }
+                },
+                "error": [],
+            },
+        )
 
         # Mock TradeVolume (for fees)
-        rsps.add(responses.POST, f'{base}/0/private/TradeVolume',
-                 json={'result': {'fees': {'XXBTZUSD': {'fee': '0.26'}}}, 'error': []})
+        rsps.add(
+            responses.POST,
+            f"{base}/0/private/TradeVolume",
+            json={"result": {"fees": {"XXBTZUSD": {"fee": "0.26"}}}, "error": []},
+        )
 
         # Mock AddOrder
-        rsps.add(responses.POST, f'{base}/0/private/AddOrder',
-                 json={'result': {'txid': ['ORDER123']}, 'error': []})
+        rsps.add(
+            responses.POST,
+            f"{base}/0/private/AddOrder",
+            json={"result": {"txid": ["ORDER123"]}, "error": []},
+        )
 
         # Mock QueryOrders
-        rsps.add(responses.POST, f'{base}/0/private/QueryOrders',
-                 json={'result': {'OD74VW-UPIQ7-A47XCN': SAMPLE_KRAKEN_ORDER}, 'error': []})
+        rsps.add(
+            responses.POST,
+            f"{base}/0/private/QueryOrders",
+            json={"result": {"OD74VW-UPIQ7-A47XCN": SAMPLE_KRAKEN_ORDER}, "error": []},
+        )
 
         # Mock QueryTrades
-        rsps.add(responses.POST, f'{base}/0/private/QueryTrades',
-                 json={'result': {'TZX2YO-WCZN5-6GIH3E': SAMPLE_KRAKEN_TRADE}, 'error': []})
+        rsps.add(
+            responses.POST,
+            f"{base}/0/private/QueryTrades",
+            json={"result": {"TZX2YO-WCZN5-6GIH3E": SAMPLE_KRAKEN_TRADE}, "error": []},
+        )
 
         # Mock Ticker
-        rsps.add(responses.POST, f'{base}/0/public/Ticker',
-                 json={'result': {'XXBTZUSD': {'c': ['50000.00']}}, 'error': []})
+        rsps.add(
+            responses.POST,
+            f"{base}/0/public/Ticker",
+            json={"result": {"XXBTZUSD": {"c": ["50000.00"]}}, "error": []},
+        )
 
         yield rsps
 
@@ -171,7 +198,8 @@ def mock_kraken_api(mock_env_vars):
 @pytest.fixture
 def kraken(mock_env_vars, mock_kraken_api):
     """Create Kraken instance with mocked API."""
-    from Exchange import Kraken
+    from hyperdrive.Exchange import Kraken
+
     return Kraken(test=True)
 
 
@@ -179,31 +207,46 @@ def kraken(mock_env_vars, mock_kraken_api):
 def mock_alpaca_api(mock_env_vars):
     """Mock Alpaca API responses."""
     with responses.RequestsMock() as rsps:
-        base = 'https://paper-api.alpaca.markets/v2'
+        base = "https://paper-api.alpaca.markets/v2"
 
         # Mock account
-        rsps.add(responses.GET, f'{base}/account',
-                 json={'status': 'ACTIVE', 'buying_power': '10000'})
+        rsps.add(
+            responses.GET,
+            f"{base}/account",
+            json={"status": "ACTIVE", "buying_power": "10000"},
+        )
 
         # Mock positions
-        rsps.add(responses.GET, f'{base}/positions',
-                 json=[{'symbol': 'LTC/USD', 'qty': '0.1', 'market_value': '10.00'}])
+        rsps.add(
+            responses.GET,
+            f"{base}/positions",
+            json=[{"symbol": "LTC/USD", "qty": "0.1", "market_value": "10.00"}],
+        )
 
         # Mock create order
-        rsps.add(responses.POST, f'{base}/orders',
-                 json={'id': 'order123', 'status': 'filled', 'symbol': 'LTC/USD'})
+        rsps.add(
+            responses.POST,
+            f"{base}/orders",
+            json={"id": "order123", "status": "filled", "symbol": "LTC/USD"},
+        )
 
         # Mock get order
-        rsps.add(responses.GET, f'{base}/orders/order123',
-                 json={'id': 'order123', 'status': 'filled'})
+        rsps.add(
+            responses.GET,
+            f"{base}/orders/order123",
+            json={"id": "order123", "status": "filled"},
+        )
 
         # Mock delete position
-        rsps.add(responses.DELETE, f'{base}/positions/LTC/USD',
-                 json={'id': 'close123', 'status': 'filled'})
+        rsps.add(
+            responses.DELETE,
+            f"{base}/positions/LTC/USD",
+            json={"id": "close123", "status": "filled"},
+        )
 
         # Mock 404 for invalid routes/orders
-        rsps.add(responses.GET, f'{base}/not_a_real_route', status=404)
-        rsps.add(responses.GET, f'{base}/orders/not_a_real_id', status=404)
+        rsps.add(responses.GET, f"{base}/not_a_real_route", status=404)
+        rsps.add(responses.GET, f"{base}/orders/not_a_real_id", status=404)
 
         yield rsps
 
@@ -211,7 +254,8 @@ def mock_alpaca_api(mock_env_vars):
 @pytest.fixture
 def alpaca(mock_env_vars, mock_alpaca_api):
     """Create AlpacaEx instance with mocked API."""
-    from Exchange import AlpacaEx
+    from hyperdrive.Exchange import AlpacaEx
+
     return AlpacaEx(paper=True)
 
 
@@ -219,77 +263,80 @@ def alpaca(mock_env_vars, mock_alpaca_api):
 # Test Classes
 # ============================================================
 
+
 class TestAlpacaEx:
     """Unit tests for AlpacaEx class."""
 
     def test_init(self, alpaca):
         """Test AlpacaEx initialization."""
-        assert hasattr(alpaca, 'base')
-        assert alpaca.base == 'https://paper-api.alpaca.markets'
-        assert hasattr(alpaca, 'version')
-        assert hasattr(alpaca, 'token')
-        assert hasattr(alpaca, 'secret')
+        assert hasattr(alpaca, "base")
+        assert alpaca.base == "https://paper-api.alpaca.markets"
+        assert hasattr(alpaca, "version")
+        assert hasattr(alpaca, "token")
+        assert hasattr(alpaca, "secret")
 
     def test_make_request_success(self, alpaca):
         """Test successful API request."""
-        result = alpaca.make_request('GET', 'account')
-        assert result['status'] == 'ACTIVE'
+        result = alpaca.make_request("GET", "account")
+        assert result["status"] == "ACTIVE"
 
     def test_make_request_failure(self, alpaca):
         """Test failed API request raises exception."""
-        with pytest.raises(Exception):
-            alpaca.make_request('GET', 'not_a_real_route')
+        with pytest.raises(RuntimeError):
+            alpaca.make_request("GET", "not_a_real_route")
 
     def test_get_positions(self, alpaca):
         """Test getting positions."""
         positions = alpaca.get_positions()
         assert len(positions) == 1
-        assert positions[0]['symbol'] == 'LTC/USD'
+        assert positions[0]["symbol"] == "LTC/USD"
 
     def test_get_account(self, alpaca):
         """Test getting account info."""
         account = alpaca.get_account()
-        assert account['status'] == 'ACTIVE'
-        assert account['buying_power'] == '10000'
+        assert account["status"] == "ACTIVE"
+        assert account["buying_power"] == "10000"
 
     def test_create_order(self, alpaca):
         """Test creating an order."""
-        order = alpaca.create_order('LTC/USD', 'buy', 10)
-        assert order['id'] == 'order123'
-        assert order['status'] == 'filled'
+        order = alpaca.create_order("LTC/USD", "buy", 10)
+        assert order["id"] == "order123"
+        assert order["status"] == "filled"
 
     def test_get_order(self, alpaca, mock_alpaca_api):
         """Test getting order by ID."""
         # Add specific order response
         mock_alpaca_api.add(
             responses.GET,
-            'https://paper-api.alpaca.markets/v2/orders/order123',
-            json={'id': 'order123', 'status': 'filled'}
+            "https://paper-api.alpaca.markets/v2/orders/order123",
+            json={"id": "order123", "status": "filled"},
         )
-        order = alpaca.get_order('order123')
-        assert order['status'] == 'filled'
+        order = alpaca.get_order("order123")
+        assert order["status"] == "filled"
 
     def test_get_order_not_found(self, alpaca):
         """Test getting non-existent order raises exception."""
-        with pytest.raises(Exception):
-            alpaca.get_order('not_a_real_id')
+        with pytest.raises(RuntimeError):
+            alpaca.get_order("not_a_real_id")
 
     def test_close_position(self, alpaca):
         """Test closing a position."""
-        result = alpaca.close_position('LTC/USD')
-        assert result['status'] == 'filled'
+        result = alpaca.close_position("LTC/USD")
+        assert result["status"] == "filled"
 
     def test_fill_orders(self, alpaca, mock_alpaca_api):
         """Test filling multiple orders."""
         # Add response for the order
         mock_alpaca_api.add(
             responses.POST,
-            'https://paper-api.alpaca.markets/v2/orders',
-            json={'id': 'order456', 'status': 'filled', 'symbol': 'ETH/USD'}
+            "https://paper-api.alpaca.markets/v2/orders",
+            json={"id": "order456", "status": "filled", "symbol": "ETH/USD"},
         )
-        orders = alpaca.fill_orders(['ETH/USD'], alpaca.create_order, side='buy', notional=10)
+        orders = alpaca.fill_orders(
+            ["ETH/USD"], alpaca.create_order, side="buy", notional=10
+        )
         assert len(orders) == 1
-        assert orders[0]['status'] == 'filled'
+        assert orders[0]["status"] == "filled"
 
 
 class TestBinance:
@@ -297,39 +344,39 @@ class TestBinance:
 
     def test_init(self, binance):
         """Test Binance initialization."""
-        assert hasattr(binance, 'key')
-        assert hasattr(binance, 'secret')
-        assert hasattr(binance, 'client')
+        assert hasattr(binance, "key")
+        assert hasattr(binance, "secret")
+        assert hasattr(binance, "client")
 
     def test_create_pair(self, binance):
         """Test pair creation."""
-        assert binance.create_pair('BTC', 'USD') == 'BTCUSD'
-        assert binance.create_pair('ETH', 'USDT') == 'ETHUSDT'
+        assert binance.create_pair("BTC", "USD") == "BTCUSD"
+        assert binance.create_pair("ETH", "USDT") == "ETHUSDT"
 
     def test_order_buy(self, binance, mock_binance_client):
         """Test buy order."""
         mock_binance_client.create_test_order.return_value = {}
 
-        result = binance.order('BTC', 'USD', 'buy', 0.01, test=True)
+        binance.order("BTC", "USD", "buy", 0.01, test=True)
 
         # Verify the client was called correctly
-        mock_binance_client.get_symbol_info.assert_called_with('BTCUSD')
-        mock_binance_client.get_asset_balance.assert_called_with('USD')
+        mock_binance_client.get_symbol_info.assert_called_with("BTCUSD")
+        mock_binance_client.get_asset_balance.assert_called_with("USD")
         mock_binance_client.create_test_order.assert_called_once()
 
     def test_order_sell(self, binance, mock_binance_client):
         """Test sell order."""
         mock_binance_client.create_test_order.return_value = {}
 
-        result = binance.order('BTC', 'USD', 'sell', 1, test=True)
+        binance.order("BTC", "USD", "sell", 1, test=True)
 
-        mock_binance_client.get_asset_balance.assert_called_with('BTC')
+        mock_binance_client.get_asset_balance.assert_called_with("BTC")
         mock_binance_client.create_test_order.assert_called()
 
     def test_order_invalid_side(self, binance):
         """Test order with invalid side raises exception."""
-        with pytest.raises(Exception, match='Need to specify BUY or SELL'):
-            binance.order('BTC', 'USD', 'invalid', 0.01)
+        with pytest.raises(Exception, match="Need to specify BUY or SELL"):
+            binance.order("BTC", "USD", "invalid", 0.01)
 
 
 class TestKraken:
@@ -337,11 +384,11 @@ class TestKraken:
 
     def test_init(self, kraken):
         """Test Kraken initialization."""
-        assert hasattr(kraken, 'key')
-        assert hasattr(kraken, 'secret')
-        assert hasattr(kraken, 'version')
-        assert hasattr(kraken, 'api_url')
-        assert kraken.api_url == 'https://api.kraken.com'
+        assert hasattr(kraken, "key")
+        assert hasattr(kraken, "secret")
+        assert hasattr(kraken, "version")
+        assert hasattr(kraken, "api_url")
+        assert kraken.api_url == "https://api.kraken.com"
 
     def test_gen_nonce(self, kraken):
         """Test nonce generation."""
@@ -351,29 +398,29 @@ class TestKraken:
 
     def test_get_signature(self, kraken):
         """Test signature generation."""
-        data = {'nonce': '1234567890'}
-        sig = kraken.get_signature('/0/private/Balance', data)
+        data = {"nonce": "1234567890"}
+        sig = kraken.get_signature("/0/private/Balance", data)
         assert isinstance(sig, str)
         assert len(sig) > 0
 
     def test_get_balance(self, kraken):
         """Test getting account balance."""
         balance = kraken.get_balance()
-        assert 'XXBT' in balance
-        assert 'ZUSD' in balance
-        assert balance['XXBT'] == 0.5
-        assert balance['ZUSD'] == 1000.0
+        assert "XXBT" in balance
+        assert "ZUSD" in balance
+        assert balance["XXBT"] == 0.5
+        assert balance["ZUSD"] == 1000.0
 
     def test_get_asset_pair(self, kraken):
         """Test getting asset pair info."""
-        pair_info = kraken.get_asset_pair('XXBTZUSD')
-        assert 'lot_decimals' in pair_info
-        assert pair_info['lot_decimals'] == 8
+        pair_info = kraken.get_asset_pair("XXBTZUSD")
+        assert "lot_decimals" in pair_info
+        assert pair_info["lot_decimals"] == 8
 
     def test_order_with_test_flag(self, kraken):
         """Test order with validation (test) flag."""
-        result = kraken.order('XXBT', 'ZUSD', 'sell', 0.005, test=True)
-        assert 'txid' in result
+        result = kraken.order("XXBT", "ZUSD", "sell", 0.005, test=True)
+        assert "txid" in result
 
     def test_standardize_order(self, kraken):
         """Test order standardization."""
@@ -382,9 +429,9 @@ class TestKraken:
 
         std_order = kraken.standardize_order(order, trades)
 
-        assert std_order['symbol'] == 'USDCUSD'
-        assert std_order['orderId'] == 'OD74VW-UPIQ7-A47XCN'
-        assert std_order['status'] == 'CLOSED'
-        assert std_order['type'] == 'MARKET'
-        assert std_order['side'] == 'SELL'
-        assert len(std_order['fills']) == 1
+        assert std_order["symbol"] == "USDCUSD"
+        assert std_order["orderId"] == "OD74VW-UPIQ7-A47XCN"
+        assert std_order["status"] == "CLOSED"
+        assert std_order["type"] == "MARKET"
+        assert std_order["side"] == "SELL"
+        assert len(std_order["fills"]) == 1

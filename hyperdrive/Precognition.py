@@ -1,10 +1,10 @@
-import numpy as np
-from sklearn.decomposition import PCA
-from autogluon.tabular import TabularDataset, TabularPredictor
-import pandas as pd
-from FileOps import FileReader, FileWriter
-from Calculus import Calculator
 import Constants as C
+import numpy as np
+import pandas as pd
+from autogluon.tabular import TabularDataset, TabularPredictor
+from Calculus import Calculator
+from FileOps import FileReader, FileWriter
+from sklearn.decomposition import PCA
 
 
 class Oracle:
@@ -13,11 +13,11 @@ class Oracle:
         self.writer = FileWriter()
         self.calc = Calculator()
 
-    def get_filename(self, name, ext='pkl'):
-        return f'models/latest/{name}.{ext}'
+    def get_filename(self, name, ext="pkl"):
+        return f"models/latest/{name}.{ext}"
 
     def load_metadata(self):
-        filename = self.get_filename('metadata', 'json')
+        filename = self.get_filename("metadata", "json")
         return self.reader.load_json(filename)
 
     def load_model_pickle(self, name):
@@ -29,13 +29,10 @@ class Oracle:
         return self.writer.save_pickle(filename, data)
 
     def predict(self, data):
-        model_path = 'models/latest/autogluon'
+        model_path = "models/latest/autogluon"
         self.reader.store.download_dir(model_path)
         model = TabularPredictor.load(model_path)
-        if (
-                isinstance(model, TabularPredictor) and not
-                isinstance(data, TabularDataset)
-        ):
+        if isinstance(model, TabularPredictor) and not isinstance(data, TabularDataset):
             data = TabularDataset(data)
         return model.predict(data)
 
@@ -47,33 +44,33 @@ class Oracle:
         components = X_transformed.T
         all_coords = np.concatenate(X_transformed)
         # or method='mean'
-        centroid = self.calc.find_centroid(X_transformed, method='extrema')
+        centroid = self.calc.find_centroid(X_transformed, method="extrema")
         super_min = min(all_coords)
         super_min -= abs(super_min) * increase_percent
         super_max = max(all_coords)
         super_max += abs(super_max) * increase_percent
         radius = (super_max - super_min) / 2
-        lins = [np.linspace(
-            component - radius if dimensions > 2 else min(components[idx]),
-            component + radius if dimensions > 2 else max(components[idx]),
-            num_points
-        ) for idx, component in enumerate(centroid)]
+        lins = [
+            np.linspace(
+                component - radius if dimensions > 2 else min(components[idx]),
+                component + radius if dimensions > 2 else max(components[idx]),
+                num_points,
+            )
+            for idx, component in enumerate(centroid)
+        ]
         unflattened = np.meshgrid(*lins)
         flattened = [arr.flatten() for arr in unflattened]
         reduced = np.array(flattened).T
         unreduced = reducer.inverse_transform(reduced)
         metadata = self.load_metadata()
-        features = metadata['features']
-        data = pd.DataFrame(unreduced, columns=features[:unreduced.shape[1]])
+        features = metadata["features"]
+        data = pd.DataFrame(unreduced, columns=features[: unreduced.shape[1]])
         preds = self.predict(data).astype(int).to_numpy()
         actual = [
             {
-                C.BUY: [
-                    datum for idx, datum in enumerate(component) if y[idx]
-                ],
-                C.SELL: [
-                    datum for idx, datum in enumerate(component) if not y[idx]
-                ]
-            } for component in components
+                C.BUY: [datum for idx, datum in enumerate(component) if y[idx]],
+                C.SELL: [datum for idx, datum in enumerate(component) if not y[idx]],
+            }
+            for component in components
         ]
         return actual, centroid, radius, flattened, preds

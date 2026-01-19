@@ -1,49 +1,49 @@
 import os
+
 import requests
-from dotenv import load_dotenv, find_dotenv
-from setuptools import setup, find_packages
+from dotenv import find_dotenv, load_dotenv
+from setuptools import find_packages, setup
 
-
-load_dotenv(find_dotenv('config.env'))
+load_dotenv(find_dotenv("config.env"))
 
 
 def get_version():
-    url = 'https://api.github.com/repos/suchak1/hyperdrive/releases/latest'
-    token = os.environ.get('GITHUB')
-    headers = {'Authorization': f'token {token}'}
+    url = "https://api.github.com/repos/suchak1/hyperdrive/releases/latest"
+    token = os.environ.get("GITHUB")
+    headers = {"Authorization": f"token {token}"}
     response = requests.get(url, headers=headers if token else None)
     if response.ok:
         data = response.json()
-        version = data['tag_name'].replace('v', '')
+        version = data["tag_name"].replace("v", "")
         return version
     else:
         raise Exception(response.text)
 
 
 def get_requirements():
-    with open('requirements.txt', 'r') as file:
+    with open("requirements.txt") as file:
         return [line.strip() for line in file if line]
 
 
 def get_readme():
-    with open("README.md", "r") as file:
+    with open("README.md") as file:
         return file.read()
 
 
 setup(
-    name='hyperdrive',
+    name="hyperdrive",
     version=get_version(),
-    description='An algorithmic trading platform',
+    description="An algorithmic trading platform",
     long_description=get_readme(),
     long_description_content_type="text/markdown",
-    url='https://github.com/suchak1/hyperdrive',
-    author='Krish Suchak',
-    author_email='suchak.krish@gmail.com',
+    url="https://github.com/suchak1/hyperdrive",
+    author="Krish Suchak",
+    author_email="suchak.krish@gmail.com",
     packages=find_packages(),
-    python_requires='>=3.7',
+    python_requires=">=3.7",
     install_requires=get_requirements(),
     project_urls={
-        'Bug Reports': 'https://github.com/suchak1/hyperdrive/issues',
-        'Source': 'https://github.com/suchak1/hyperdrive'
-    }
+        "Bug Reports": "https://github.com/suchak1/hyperdrive/issues",
+        "Source": "https://github.com/suchak1/hyperdrive",
+    },
 )

@@ -1,14 +1,8 @@
-"""
-Integration tests for Exchange module.
+"""Integration tests for Exchange module.
 
 These tests make real API calls to exchange testnet/paper APIs.
 Run with: pytest tests/integration/ -v
 """
-import pytest
-import sys
-
-sys.path.append('hyperdrive')
-import Constants as C  # noqa: E402
 
 
 class TestAlpacaExIntegration:
@@ -16,14 +10,16 @@ class TestAlpacaExIntegration:
 
     def test_alpaca_paper_account(self):
         """Test real Alpaca paper account."""
-        from Exchange import AlpacaEx
+        from hyperdrive.Exchange import AlpacaEx
+
         alpc = AlpacaEx(paper=True)
         account = alpc.get_account()
-        assert account['status'] == 'ACTIVE'
+        assert account["status"] == "ACTIVE"
 
     def test_alpaca_paper_positions(self):
         """Test real Alpaca paper positions."""
-        from Exchange import AlpacaEx
+        from hyperdrive.Exchange import AlpacaEx
+
         alpc = AlpacaEx(paper=True)
         positions = alpc.get_positions()
         assert isinstance(positions, list)
@@ -34,9 +30,10 @@ class TestBinanceIntegration:
 
     def test_binance_testnet_connection(self):
         """Test real Binance testnet connection."""
-        from Exchange import Binance
+        from hyperdrive.Exchange import Binance
+
         bn = Binance(testnet=True)
-        info = bn.client.get_symbol_info('BTCUSDT')
+        info = bn.client.get_symbol_info("BTCUSDT")
         assert info is not None
 
 
@@ -45,7 +42,8 @@ class TestKrakenIntegration:
 
     def test_kraken_balance(self):
         """Test real Kraken balance check."""
-        from Exchange import Kraken
+        from hyperdrive.Exchange import Kraken
+
         kr = Kraken(test=True)
         balance = kr.get_balance()
         assert isinstance(balance, dict)

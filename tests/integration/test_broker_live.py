@@ -1,14 +1,8 @@
-"""
-Integration tests for Broker module.
+"""Integration tests for Broker module.
 
 These tests make real API calls to Robinhood.
 Run with: pytest tests/integration/ -v
 """
-import pytest
-import sys
-
-sys.path.append('hyperdrive')
-import Constants as C  # noqa: E402
 
 
 class TestRobinhoodIntegration:
@@ -16,14 +10,16 @@ class TestRobinhoodIntegration:
 
     def test_robinhood_login(self):
         """Test real Robinhood login."""
-        from Broker import Robinhood
+        from hyperdrive.Broker import Robinhood
+
         rh = Robinhood()
         holdings = rh.get_holdings()
         assert isinstance(holdings, dict)
 
     def test_robinhood_symbols(self):
         """Test real Robinhood symbols."""
-        from Broker import Robinhood
+        from hyperdrive.Broker import Robinhood
+
         rh = Robinhood()
         symbols = rh.get_symbols()
         assert isinstance(symbols, list)
