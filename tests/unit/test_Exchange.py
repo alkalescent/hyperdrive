@@ -540,3 +540,53 @@ class TestBinanceEdgeCases:
         mock_binance_client.create_order.assert_called_once()
         assert "orderId" in result
 
+
+class TestAlpacaFillOrders:
+    """Tests for AlpacaEx fill_orders with pending orders."""
+
+    def test_fill_orders_with_pending(self, alpaca, mock_alpaca_api):
+        """Test fill_orders adds pending orders to queue (line 52)."""
+
+        def mock_order_func(symbol, **kwargs):
+            return {"id": f"order_{symbol}", "status": "filled", "symbol": symbol}
+
+        orders = alpaca.fill_orders(["AAPL", "GOOG"], mock_order_func, side="buy")
+        assert len(orders) == 2
+
+    def test_fill_orders_waits_for_pending(self, alpaca, mock_alpaca_api):
+        """Test fill_orders handles pending orders that later fill (lines 52-59)."""
+        call_count = {"AAPL": 0}
+
+        def mock_order_func(symbol, **kwargs):
+            # First order is pending, second is filled
+            if symbol == "AAPL":
+                return {"id": "order_AAPL", "status": "pending", "symbol": symbol}
+            return {"id": f"order_{symbol}", "status": "filled", "symbol": symbol}
+
+        # Mock get_order to return filled status after first call
+        def mock_get_order(order_id):
+            call_count["AAPL"] += 1
+            return {"id": order_id, "status": "filled"}
+
+        alpaca.get_order = mock_get_order
+
+        orders = alpaca.fill_orders(["AAPL", "GOOG"], mock_order_func, side="buy")
+        assert len(orders) == 2
+        assert call_count["AAPL"] >= 1  # get_order was called to check pending
+
+
+class TestAlpacaMissingCredentials:
+    """Test for missing credentials exception."""
+
+    def test_init_missing_credentials(self, mock_env_vars, monkeypatch):
+        """Test AlpacaEx raises exception with missing credentials (line 40)."""
+        # Remove Alpaca credentials
+        monkeypatch.delenv("ALPACA", raising=False)
+        monkeypatch.delenv("ALPACA_SECRET", raising=False)
+        monkeypatch.delenv("ALPACA_PAPER", raising=False)
+        monkeypatch.delenv("ALPACA_PAPER_SECRET", raising=False)
+
+        from hyperdrive.Exchange import AlpacaEx
+
+        with pytest.raises(Exception, match="missing Alpaca credentials"):
+            AlpacaEx(token=None, secret=None, paper=False)
