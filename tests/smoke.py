@@ -50,7 +50,7 @@ def test_imports() -> None:
 
     for module_name in core_modules:
         try:
-            module = importlib.import_module(f"{package}.{module_name}")
+            importlib.import_module(f"{package}.{module_name}")
             print(f"[+] {package}.{module_name}")
         except ImportError as e:
             print(f"[-] {package}.{module_name}: {e}", file=sys.stderr)
