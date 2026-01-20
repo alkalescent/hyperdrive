@@ -1046,3 +1046,35 @@ class TestMarketDataSaveMoreMethods:
         assert result == str(ndx_path)
 
 
+class TestMarketDataEmptyDataFrames:
+    """Tests for DataSource methods with empty DataFrames."""
+
+    def test_standardize_ndx_empty(self, market_data):
+        """Test standardize_ndx with empty DataFrame (line 353)."""
+        empty_df = pd.DataFrame()
+        result = market_data.standardize_ndx(empty_df)
+        assert C.TIME in result.columns
+        assert C.SYMBOL in result.columns
+        assert C.DELTA in result.columns
+
+    def test_save_intraday_with_existing_file(self, market_data, mock_file_ops, tmp_path):
+        """Test save_intraday when file already exists (line 195)."""
+        # Create existing file
+        intraday_path = tmp_path / "intraday_test.csv"
+        intraday_path.write_text("old,data")
+
+        intraday_df = pd.DataFrame({
+            C.TIME: pd.date_range("2024-01-01 09:30", periods=5, freq="1min"),
+            "open": [100.0] * 5,
+        })
+
+        market_data.get_intraday = lambda **kw: [intraday_df]
+        market_data.finder.get_intraday_path = lambda s, d, p: str(intraday_path)
+        mock_file_ops["reader"].update_df.return_value = intraday_df
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_intraday(symbol="AAPL")
+        assert len(result) == 1
+
+
+

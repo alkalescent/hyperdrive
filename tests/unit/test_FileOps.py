@@ -443,3 +443,39 @@ class TestFileReader:
         assert result is True
         assert os.path.exists(pickle_path)
 
+    def test_load_csv_general_exception(self, reader, tmp_path):
+        """Test load_csv with general exception (lines 52-53)."""
+        reader.store.download_file = MagicMock()
+
+        # Create a malformed CSV that will cause a general exception during read
+        bad_csv = tmp_path / "bad.csv"
+        bad_csv.write_bytes(b"\x00\x01\x02\x03")  # Binary data
+
+        result = reader.load_csv(str(bad_csv))
+        # Should return empty DataFrame on general exception
+        assert result.empty
+
+    def test_update_df_with_save_fmt(self, reader, writer, tmp_path):
+        """Test update_df with save_fmt parameter (line 70)."""
+        reader.store.download_file = MagicMock()
+        writer.store.upload_file = MagicMock()
+
+        # Create initial CSV
+        csv_path = str(tmp_path / "test_fmt.csv")
+        old_df = pd.DataFrame({
+            "date": ["2024-01-01"],
+            "value": [100],
+        })
+        old_df.to_csv(csv_path, index=False)
+
+        new_df = pd.DataFrame({
+            "date": ["2024-01-02"],
+            "value": [200],
+        })
+
+        result = reader.update_df(csv_path, new_df, "date", save_fmt="%Y-%m-%d")
+        assert len(result) >= 1
+        # Check that date is formatted as string
+        assert isinstance(result["date"].iloc[0], str)
+
+
