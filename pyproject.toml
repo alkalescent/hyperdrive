@@ -39,6 +39,7 @@ dev = [
     "pytest-mock",
     "responses",
     "freezegun",
+    "qrcode[pil]",
 ]
 
 [project.urls]

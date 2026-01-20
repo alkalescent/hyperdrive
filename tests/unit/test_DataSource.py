@@ -669,7 +669,9 @@ class TestMarketDataSave:
         mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
 
         # Mock get_latest_ndx to return sample data
-        with patch.object(market_data, "get_latest_ndx", return_value=SAMPLE_NDX.copy()):
+        with patch.object(
+            market_data, "get_latest_ndx", return_value=SAMPLE_NDX.copy()
+        ):
             result = market_data.save_ndx()
             assert result == str(ndx_path)
             assert ndx_path.exists()
@@ -709,7 +711,19 @@ class TestMarketDataSave:
         raw = pd.DataFrame(
             {
                 "t": pd.date_range("2020-01-01", periods=3, freq="D"),
-                **{f"o.{ma.lower()}": [100.0] * 3 for ma in ["ma9", "ma14", "ma25", "ma40", "ma60", "ma90", "ma128", "ma200"]},
+                **{
+                    f"o.{ma.lower()}": [100.0] * 3
+                    for ma in [
+                        "ma9",
+                        "ma14",
+                        "ma25",
+                        "ma40",
+                        "ma60",
+                        "ma90",
+                        "ma128",
+                        "ma200",
+                    ]
+                },
             }
         )
         result = market_data.standardize_diff_ribbon(raw)
@@ -833,14 +847,18 @@ class TestMarketDataIntraday:
         """Test saving intraday data."""
         # Create mock intraday data
         intraday_data = [
-            pd.DataFrame({
-                C.TIME: pd.date_range("2024-01-01 09:30", periods=5, freq="1min"),
-                "open": [100.0] * 5,
-                "close": [101.0] * 5,
-            })
+            pd.DataFrame(
+                {
+                    C.TIME: pd.date_range("2024-01-01 09:30", periods=5, freq="1min"),
+                    "open": [100.0] * 5,
+                    "close": [101.0] * 5,
+                }
+            )
         ]
         market_data.get_intraday = lambda **kw: intraday_data
-        market_data.finder.get_intraday_path = lambda s, d, p: str(tmp_path / f"{s}_{d}.csv")
+        market_data.finder.get_intraday_path = lambda s, d, p: str(
+            tmp_path / f"{s}_{d}.csv"
+        )
         mock_file_ops["reader"].update_df.return_value = intraday_data[0]
         mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
 
@@ -915,14 +933,16 @@ class TestMarketDataStandardize:
 
     def test_standardize_ohlc_with_symbol(self, market_data):
         """Test OHLC standardization adds symbol."""
-        raw = pd.DataFrame({
-            "date": pd.date_range("2020-01-01", periods=3, freq="D"),
-            "open": [100.0, 101.0, 102.0],
-            "high": [105.0, 106.0, 107.0],
-            "low": [99.0, 100.0, 101.0],
-            "close": [103.0, 104.0, 105.0],
-            "volume": [1000, 2000, 3000],
-        })
+        raw = pd.DataFrame(
+            {
+                "date": pd.date_range("2020-01-01", periods=3, freq="D"),
+                "open": [100.0, 101.0, 102.0],
+                "high": [105.0, 106.0, 107.0],
+                "low": [99.0, 100.0, 101.0],
+                "close": [103.0, 104.0, 105.0],
+                "volume": [1000, 2000, 3000],
+            }
+        )
         result = market_data.standardize_ohlc("AAPL", raw)
         assert C.SYMBOL in result.columns.tolist() or True  # May or may not add symbol
 
@@ -1001,14 +1021,18 @@ class TestMarketDataGetMethods:
     def test_get_intraday(self, market_data, mock_file_ops, tmp_path):
         """Test get_intraday yields dataframes (lines 179-184)."""
         # Create mock intraday file
-        intraday_df = pd.DataFrame({
-            C.TIME: pd.date_range("2024-01-01 09:30", periods=5, freq="1min"),
-            "open": [100.0] * 5,
-        })
+        intraday_df = pd.DataFrame(
+            {
+                C.TIME: pd.date_range("2024-01-01 09:30", periods=5, freq="1min"),
+                "open": [100.0] * 5,
+            }
+        )
         mock_file_ops["reader"].load_csv.return_value = intraday_df
         mock_file_ops["reader"].data_in_timeframe.return_value = intraday_df
         market_data.traveller.dates_in_range = lambda tf: ["2024-01-01"]
-        market_data.finder.get_intraday_path = lambda s, d, p: str(tmp_path / "intraday.csv")
+        market_data.finder.get_intraday_path = lambda s, d, p: str(
+            tmp_path / "intraday.csv"
+        )
 
         # Should yield dataframes
         dfs = list(market_data.get_intraday("AAPL", timeframe="1d"))
@@ -1018,7 +1042,9 @@ class TestMarketDataGetMethods:
 class TestMarketDataSaveMoreMethods:
     """Tests for more save methods with file removal."""
 
-    def test_save_unemployment_rate_with_existing(self, market_data, mock_file_ops, tmp_path):
+    def test_save_unemployment_rate_with_existing(
+        self, market_data, mock_file_ops, tmp_path
+    ):
         """Test save_unemployment_rate when file exists (line 224)."""
         un_path = tmp_path / "unemployment.csv"
         un_path.write_text("old,data")
@@ -1057,16 +1083,20 @@ class TestMarketDataEmptyDataFrames:
         assert C.SYMBOL in result.columns
         assert C.DELTA in result.columns
 
-    def test_save_intraday_with_existing_file(self, market_data, mock_file_ops, tmp_path):
+    def test_save_intraday_with_existing_file(
+        self, market_data, mock_file_ops, tmp_path
+    ):
         """Test save_intraday when file already exists (line 195)."""
         # Create existing file
         intraday_path = tmp_path / "intraday_test.csv"
         intraday_path.write_text("old,data")
 
-        intraday_df = pd.DataFrame({
-            C.TIME: pd.date_range("2024-01-01 09:30", periods=5, freq="1min"),
-            "open": [100.0] * 5,
-        })
+        intraday_df = pd.DataFrame(
+            {
+                C.TIME: pd.date_range("2024-01-01 09:30", periods=5, freq="1min"),
+                "open": [100.0] * 5,
+            }
+        )
 
         market_data.get_intraday = lambda **kw: [intraday_df]
         market_data.finder.get_intraday_path = lambda s, d, p: str(intraday_path)
@@ -1075,6 +1105,3 @@ class TestMarketDataEmptyDataFrames:
 
         result = market_data.save_intraday(symbol="AAPL")
         assert len(result) == 1
-
-
-

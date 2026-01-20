@@ -116,4 +116,3 @@ class TestTimeTraveller:
         date_obj = datetime(2020, 1, 15)
         result = traveller.convert_date(date_obj)
         assert result == "2020-01-15"
-

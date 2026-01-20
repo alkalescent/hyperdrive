@@ -263,4 +263,3 @@ class TestRobinhood:
 
         # Verify save was called
         mock_store["writer"].save_csv.assert_called()
-

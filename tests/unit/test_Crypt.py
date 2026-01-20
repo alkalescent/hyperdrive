@@ -45,7 +45,7 @@ class TestCryptographer:
     def test_decrypt_binary_data(self):
         """Test decrypting binary data that can't be decoded as UTF-8 (lines 95-96)."""
         # Create binary data that isn't valid UTF-8
-        binary_data = bytes([0x80, 0x81, 0x82, 0xff, 0xfe])
+        binary_data = bytes([0x80, 0x81, 0x82, 0xFF, 0xFE])
         ciphertext = crypt.encrypt(binary_data)
         plaintext = crypt.decrypt(ciphertext)
         # Should return bytes when UTF-8 decode fails
@@ -57,4 +57,3 @@ class TestCryptographer:
         crypt2 = Cryptographer(b"password bytes", b"salt bytes")
         assert hasattr(crypt2, "key")
         assert isinstance(crypt2.key, bytes)
-

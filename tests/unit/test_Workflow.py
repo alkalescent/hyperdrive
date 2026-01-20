@@ -94,4 +94,3 @@ class TestWorkFlow:
 
             result = flow.is_any_workflow_running()
             assert result is True
-

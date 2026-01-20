@@ -351,9 +351,16 @@ class TestFileReader:
         writer.save_csv(csv_path, test_dataframes["test_df"])
 
         # Create new data with date column
-        new_data = pd.DataFrame([
-            {"symbol": "GOOG", "open": 1500.00, "volume": 300000, "date": "2021-01-01"},
-        ])
+        new_data = pd.DataFrame(
+            [
+                {
+                    "symbol": "GOOG",
+                    "open": 1500.00,
+                    "volume": 300000,
+                    "date": "2021-01-01",
+                },
+            ]
+        )
 
         # Update - should merge old and new
         result = reader.update_df(csv_path, new_data, "date")
@@ -370,22 +377,30 @@ class TestFileReader:
         empty_df = pd.DataFrame(columns=["symbol", "open", "volume", "date"])
         empty_df.to_csv(csv_path, index=False)
 
-        new_data = pd.DataFrame([
-            {"symbol": "GOOG", "open": 1500.00, "volume": 300000, "date": "2021-01-01"},
-        ])
+        new_data = pd.DataFrame(
+            [
+                {
+                    "symbol": "GOOG",
+                    "open": 1500.00,
+                    "volume": 300000,
+                    "date": "2021-01-01",
+                },
+            ]
+        )
 
         result = reader.update_df(csv_path, new_data, "date")
         assert len(result) >= 1
 
     def test_data_in_timeframe(self, reader):
         """Test data_in_timeframe filters data correctly."""
-        from hyperdrive.Constants import TZ
 
         # Create test data with dates
-        df = pd.DataFrame({
-            "date": pd.date_range("2020-01-01", periods=365, freq="D"),
-            "value": range(365),
-        })
+        df = pd.DataFrame(
+            {
+                "date": pd.date_range("2020-01-01", periods=365, freq="D"),
+                "value": range(365),
+            }
+        )
 
         # Filter to last 30 days (1m)
         result = reader.data_in_timeframe(df, "date", "1m")
@@ -396,9 +411,11 @@ class TestFileReader:
 
     def test_data_in_timeframe_no_column(self, reader):
         """Test data_in_timeframe returns unchanged df when column doesn't exist."""
-        df = pd.DataFrame({
-            "value": [1, 2, 3],
-        })
+        df = pd.DataFrame(
+            {
+                "value": [1, 2, 3],
+            }
+        )
 
         result = reader.data_in_timeframe(df, "nonexistent_col", "1m")
 
@@ -407,10 +424,12 @@ class TestFileReader:
 
     def test_data_in_timeframe_max(self, reader):
         """Test data_in_timeframe with max timeframe."""
-        df = pd.DataFrame({
-            "date": pd.date_range("2020-01-01", periods=30, freq="D"),
-            "value": range(30),
-        })
+        df = pd.DataFrame(
+            {
+                "date": pd.date_range("2020-01-01", periods=30, freq="D"),
+                "value": range(30),
+            }
+        )
 
         result = reader.data_in_timeframe(df, "date", "max")
         assert len(result) == 30
@@ -462,20 +481,22 @@ class TestFileReader:
 
         # Create initial CSV
         csv_path = str(tmp_path / "test_fmt.csv")
-        old_df = pd.DataFrame({
-            "date": ["2024-01-01"],
-            "value": [100],
-        })
+        old_df = pd.DataFrame(
+            {
+                "date": ["2024-01-01"],
+                "value": [100],
+            }
+        )
         old_df.to_csv(csv_path, index=False)
 
-        new_df = pd.DataFrame({
-            "date": ["2024-01-02"],
-            "value": [200],
-        })
+        new_df = pd.DataFrame(
+            {
+                "date": ["2024-01-02"],
+                "value": [200],
+            }
+        )
 
         result = reader.update_df(csv_path, new_df, "date", save_fmt="%Y-%m-%d")
         assert len(result) >= 1
         # Check that date is formatted as string
         assert isinstance(result["date"].iloc[0], str)
-
-

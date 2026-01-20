@@ -162,4 +162,3 @@ class TestCalculator:
         """Test generate_octahedron."""
         vertices = calc.generate_octahedron(2.0, np.array([1, 1, 1]))
         assert len(vertices) == 6
-

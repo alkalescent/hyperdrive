@@ -267,4 +267,3 @@ class TestStore:
         with patch("hyperdrive.Storage.Pool", MockPool):
             # Should not raise
             store.download_dir("data/")
-

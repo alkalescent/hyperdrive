@@ -4,7 +4,7 @@ NAME := $(shell basename $(CURDIR))
 UV_SYNC := uv sync $(if $(DEV),--dev,--no-dev)
 UV_SYNC_FROZEN := uv sync --frozen $(if $(DEV),--dev,--no-dev)
 
-.PHONY: install ci lint format test cov clean help all
+.PHONY: install ci lint format smoke test cov clean qr help all
 
 help:
 	@echo "Available targets:"
@@ -12,8 +12,10 @@ help:
 	@echo "  ci      - Install with frozen lock file (DEV=1 for dev deps)"
 	@echo "  lint    - Run ruff linter and formatter check"
 	@echo "  format  - Run ruff formatter"
+	@echo "  smoke   - Run smoke tests"
 	@echo "  test    - Run unit tests with pytest"
 	@echo "  cov     - Run tests with pytest and coverage"
+	@echo "  qr      - Generate QR codes for donation addresses"
 	@echo "  clean   - Remove build artifacts"
 	@echo "  all     - Run lint, test, and cov"
 
@@ -36,6 +38,12 @@ test:
 
 cov:
 	uv run python -m pytest --cov
+
+smoke:
+	uv run python tests/smoke.py
+
+qr:
+	uv run python scripts/qr.py
 
 clean:
 	rm -rf dist/ build/ *.egg-info/ .coverage coverage.xml
