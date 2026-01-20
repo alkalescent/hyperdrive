@@ -1,3 +1,8 @@
+"""Backtesting and machine learning utilities for trading strategies."""
+
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import vectorbt as vbt
@@ -22,19 +27,50 @@ from .Calculus import Calculator
 
 
 class Historian:
-    def __init__(self):
+    """Backtesting and ML utility for trading strategy development.
+
+    Provides methods for portfolio creation, signal generation,
+    feature preprocessing, and classifier evaluation.
+
+    Attributes:
+        calc: Calculator instance for mathematical operations.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the Historian with a Calculator instance."""
         self.calc = Calculator()
 
-    # add fx to perform calculations on columns
-    # takes calc.fx, df, and column names as args, fx args
+    def from_holding(self, close: pd.Series, init_cash: float = 1000) -> vbt.Portfolio:
+        """Create a portfolio based on buy-and-hold strategy.
 
-    def from_holding(self, close, init_cash=1000):
-        # returns a portfolio based on buy and hold strategy
+        Args:
+            close: Series of closing prices.
+            init_cash: Initial cash amount.
+
+        Returns:
+            A vectorbt Portfolio object.
+        """
         portfolio = vbt.Portfolio.from_holding(close, init_cash=init_cash, freq="D")
         return portfolio
 
-    def from_signals(self, close, signals, init_cash=1000, fee=0):
-        # returns a portfolio based on signals
+    def from_signals(
+        self,
+        close: pd.Series,
+        signals: pd.Series,
+        init_cash: float = 1000,
+        fee: float = 0,
+    ) -> vbt.Portfolio:
+        """Create a portfolio based on trading signals.
+
+        Args:
+            close: Series of closing prices.
+            signals: Boolean series indicating buy signals.
+            init_cash: Initial cash amount.
+            fee: Trading fee as a decimal.
+
+        Returns:
+            A vectorbt Portfolio object.
+        """
         portfolio = vbt.Portfolio.from_signals(
             close, signals, ~signals, init_cash=init_cash, freq="D", fees=fee
         )
@@ -43,20 +79,33 @@ class Historian:
     def optimize_portfolio(
         self,
         close: pd.DataFrame,
-        indicator: callable,
+        indicator: Callable[..., pd.Series],
         top_n: int,
         period: str,
         init_cash: float,
-        **kwargs: dict[str, any],
+        **kwargs: Any,
     ) -> vbt.Portfolio:
+        """Optimize a portfolio by rotating into top-ranked assets.
+
+        Args:
+            close: DataFrame of closing prices with symbols as columns.
+            indicator: Function to compute ranking indicator.
+            top_n: Number of top assets to hold.
+            period: Rebalancing period attribute (e.g., 'month', 'week').
+            init_cash: Initial cash amount.
+            **kwargs: Additional arguments passed to indicator function.
+
+        Returns:
+            A vectorbt Portfolio object.
+        """
         if C.TIME in close.columns:
             close = close.set_index(C.TIME)
         signals = close.apply(indicator, **kwargs)
         close = close.dropna()
         positions = pd.DataFrame(0, index=close.index, columns=close.columns)
-        holdings = {"cash": init_cash}
+        holdings: dict[str, float] = {"cash": init_cash}
         prev_period = None
-        prev_symbols = set()
+        prev_symbols: set[str] = set()
         for day in close.index:
             curr_period = getattr(day, period)
             # if is first of the period
@@ -94,13 +143,34 @@ class Historian:
     def from_orders(
         self, close: pd.DataFrame, size: pd.DataFrame, fee: float = 0
     ) -> vbt.Portfolio:
+        """Create a portfolio from order sizes.
+
+        Args:
+            close: DataFrame of closing prices.
+            size: DataFrame of order sizes.
+            fee: Trading fee as a decimal.
+
+        Returns:
+            A vectorbt Portfolio object.
+        """
         portfolio = vbt.Portfolio.from_orders(
             close, size, freq="D", fees=fee, init_cash=0, group_by=True
         )
         return portfolio
 
-    def fill(self, arr, method="ffill", type="bool"):
-        # forward fills or nearest fills an array
+    def fill(
+        self, arr: np.ndarray, method: str = "ffill", type: str = "bool"
+    ) -> np.ndarray:
+        """Fill missing values in an array.
+
+        Args:
+            arr: Array with missing values.
+            method: Fill method ('ffill' for forward fill).
+            type: Output dtype.
+
+        Returns:
+            Filled array.
+        """
         df = pd.DataFrame(arr)
         s = df.iloc[:, 0]
         if method == "ffill":
@@ -110,7 +180,15 @@ class Historian:
         out = s.to_numpy().flatten()
         return out
 
-    def unfill(self, xs):
+    def unfill(self, xs: list[Any]) -> list[Any]:
+        """Remove consecutive duplicates from a list.
+
+        Args:
+            xs: Input list with potential duplicates.
+
+        Returns:
+            List with consecutive duplicates replaced by None.
+        """
         if not len(xs):
             return xs
         curr = xs[0]
@@ -123,8 +201,19 @@ class Historian:
                 new.append(None)
         return new
 
-    def get_optimal_signals(self, close, n=10, method="ffill"):
-        # finds the optimal signals for an array of prices
+    def get_optimal_signals(
+        self, close: np.ndarray, n: int = 10, method: str = "ffill"
+    ) -> np.ndarray:
+        """Find optimal buy/sell signals based on local extrema.
+
+        Args:
+            close: Array of closing prices.
+            n: Order parameter for extrema detection.
+            method: Fill method for missing signals.
+
+        Returns:
+            Boolean array of buy signals.
+        """
         close = np.array(close)
         mins = argrelextrema(close, np.less_equal, order=n)[0]
         maxs = argrelextrema(close, np.greater_equal, order=n)[0]
@@ -136,8 +225,16 @@ class Historian:
 
         return self.fill(signals, method=method)
 
-    def generate_random(self, close, num=10**4):
-        # generate random strategies
+    def generate_random(self, close: pd.Series, num: int = 10**4) -> list[pd.Series]:
+        """Generate random trading strategies and return top performers.
+
+        Args:
+            close: Series of closing prices.
+            num: Number of random strategies to generate.
+
+        Returns:
+            List of signal series for top-performing strategies.
+        """
         good_signals = []
         portfolios = []
         sortinos = []
@@ -170,12 +267,46 @@ class Historian:
         ]
         return good_signals
 
-    def oversample(self, X_train, y_train):
+    def oversample(
+        self, X_train: np.ndarray, y_train: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Oversample minority class using SMOTE.
+
+        Args:
+            X_train: Training features.
+            y_train: Training labels.
+
+        Returns:
+            Tuple of resampled features and labels.
+        """
         sm = SMOTE()
         X_res, y_res = sm.fit_resample(X_train, y_train)
         return X_res, y_res
 
-    def preprocess(self, X, y, num_pca=2):
+    def preprocess(
+        self, X: np.ndarray, y: np.ndarray, num_pca: int = 2
+    ) -> tuple[
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        StandardScaler,
+        PCA | None,
+        StandardScaler,
+        PCA | None,
+    ]:
+        """Preprocess data with train/test split, scaling, and PCA.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            num_pca: Number of PCA components (0 to skip PCA).
+
+        Returns:
+            Tuple of processed data and fitted transformers.
+        """
         df = pd.DataFrame(X)
         df["y"] = y
         df = df.dropna()
@@ -207,8 +338,30 @@ class Historian:
             full_pca,
         )
 
-    def undersample(self, X, y, n=2):
-        # undersample, split train / test data, and standardize
+    def undersample(
+        self, X: np.ndarray, y: np.ndarray, n: int = 2
+    ) -> tuple[
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        StandardScaler,
+        PCA,
+        StandardScaler,
+        PCA,
+    ]:
+        """Undersample majority class and preprocess data.
+
+        Args:
+            X: Feature matrix.
+            y: Target labels.
+            n: Number of PCA components.
+
+        Returns:
+            Tuple of processed data and fitted transformers.
+        """
         df = pd.DataFrame(X)
         df["y"] = y
         df = df.dropna()
@@ -252,7 +405,21 @@ class Historian:
             full_pca,
         )
 
-    def standardize(self, X_train, X_test=None):
+    def standardize(
+        self, X_train: np.ndarray, X_test: np.ndarray | None = None
+    ) -> (
+        tuple[np.ndarray, StandardScaler]
+        | tuple[np.ndarray, np.ndarray, StandardScaler]
+    ):
+        """Standardize features using StandardScaler.
+
+        Args:
+            X_train: Training features to fit and transform.
+            X_test: Optional test features to transform.
+
+        Returns:
+            Transformed features and fitted scaler.
+        """
         scaler = StandardScaler().fit(X_train)
         X_train = scaler.transform(X_train)
         if isinstance(X_test, np.ndarray):
@@ -260,7 +427,19 @@ class Historian:
             return X_train, X_test, scaler
         return X_train, scaler
 
-    def pca(self, X_train, n, X_test=None):
+    def pca(
+        self, X_train: np.ndarray, n: int, X_test: np.ndarray | None = None
+    ) -> tuple[np.ndarray, PCA] | tuple[np.ndarray, np.ndarray, PCA]:
+        """Apply PCA dimensionality reduction.
+
+        Args:
+            X_train: Training features to fit and transform.
+            n: Number of components.
+            X_test: Optional test features to transform.
+
+        Returns:
+            Transformed features and fitted PCA object.
+        """
         num_features = X_train.shape[1]
         n = n if n <= num_features else num_features
         pca = PCA(n_components=n).fit(X_train)
@@ -274,7 +453,24 @@ class Historian:
         print(f"Explained variance (X): {round(var, 2)}%")
         return X_train, pca
 
-    def run_classifiers(self, X_train, X_test, y_train, y_test):
+    def run_classifiers(
+        self,
+        X_train: np.ndarray,
+        X_test: np.ndarray,
+        y_train: np.ndarray,
+        y_test: np.ndarray,
+    ) -> list[tuple[str, dict[str, Any]]]:
+        """Evaluate multiple classifiers on the data.
+
+        Args:
+            X_train: Training features.
+            X_test: Test features.
+            y_train: Training labels.
+            y_test: Test labels.
+
+        Returns:
+            Sorted list of (name, results) tuples for non-overfitting classifiers.
+        """
         names = [
             "Nearest Neighbors",
             "Linear SVM",
@@ -300,7 +496,7 @@ class Historian:
             QuadraticDiscriminantAnalysis(),
         ]
 
-        clfs = {}
+        clfs: dict[str, dict[str, Any]] = {}
 
         for name, clf in zip(names, classifiers, strict=True):
             clf.fit(X_train, y_train)
@@ -316,5 +512,7 @@ class Historian:
                     "ratio": ratio,
                     "clf": clf,
                 }
-        clfs = sorted(clfs.items(), reverse=True, key=lambda clf: clf[1]["score"])
-        return clfs
+        clfs_sorted = sorted(
+            clfs.items(), reverse=True, key=lambda clf: clf[1]["score"]
+        )
+        return clfs_sorted

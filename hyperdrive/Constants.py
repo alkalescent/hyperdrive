@@ -1,3 +1,5 @@
+"""Constants, configuration values, and path utilities for hyperdrive."""
+
 import os
 from pathlib import Path
 
@@ -8,7 +10,16 @@ from pytz import timezone
 load_dotenv(find_dotenv("config.env"))
 
 
-def get_env_int(var_name, default=None):
+def get_env_int(var_name: str, default: int | None = None) -> int | None:
+    """Get an environment variable as an integer.
+
+    Args:
+        var_name: Name of the environment variable.
+        default: Default value if variable is not set or not numeric.
+
+    Returns:
+        The integer value or default.
+    """
     return (
         int(os.environ[var_name])
         if os.environ.get(var_name) and os.environ[var_name].isnumeric()
@@ -16,7 +27,15 @@ def get_env_int(var_name, default=None):
     )
 
 
-def get_env_bool(var_name):
+def get_env_bool(var_name: str) -> bool:
+    """Get an environment variable as a boolean.
+
+    Args:
+        var_name: Name of the environment variable.
+
+    Returns:
+        True if the variable is set to 'true' (case-insensitive).
+    """
     return bool(os.environ.get(var_name) and os.environ[var_name].lower() == "true")
 
 
@@ -154,74 +173,179 @@ KRAKEN_TEST_SPEND = 0.005
 
 
 class PathFinder:
-    def make_path(self, path):
+    """Utility class for constructing file paths.
+
+    Provides methods for generating paths to various data files
+    including symbols, dividends, OHLC data, and more.
+    """
+
+    def make_path(self, path: str) -> None:
+        """Create parent directories for a path if they don't exist.
+
+        Args:
+            path: File path whose parent directories should be created.
+        """
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
-    def get_symbols_path(self):
-        # return the path for the symbols reference csv
+    def get_symbols_path(self) -> str:
+        """Get the path for the symbols reference CSV.
+
+        Returns:
+            Path to the symbols CSV file.
+        """
         return os.path.join(DATA_DIR, "symbols.csv")
 
-    def get_dividends_path(self, symbol, provider=POLY_DIR):
-        # given a symbol
-        # return the path to its csv
+    def get_dividends_path(self, symbol: str, provider: str = POLY_DIR) -> str:
+        """Get the path to a symbol's dividends CSV.
+
+        Args:
+            symbol: Stock symbol.
+            provider: Data provider directory name.
+
+        Returns:
+            Path to the dividends CSV file.
+        """
         return os.path.join(
             DATA_DIR, DIV_DIR, folders[provider], f"{symbol.upper()}.csv"
         )
 
-    def get_splits_path(self, symbol, provider=POLY_DIR):
-        # given a symbol
-        # return the path to its stock splits
+    def get_splits_path(self, symbol: str, provider: str = POLY_DIR) -> str:
+        """Get the path to a symbol's stock splits CSV.
+
+        Args:
+            symbol: Stock symbol.
+            provider: Data provider directory name.
+
+        Returns:
+            Path to the splits CSV file.
+        """
         return os.path.join(
             DATA_DIR, SPLT_DIR, folders[provider], f"{symbol.upper()}.csv"
         )
 
-    def get_ohlc_path(self, symbol, provider=POLY_DIR):
-        # given a symbol
-        # return the path to its ohlc data
+    def get_ohlc_path(self, symbol: str, provider: str = POLY_DIR) -> str:
+        """Get the path to a symbol's OHLC data CSV.
+
+        Args:
+            symbol: Stock symbol.
+            provider: Data provider directory name.
+
+        Returns:
+            Path to the OHLC CSV file.
+        """
         return os.path.join(
             DATA_DIR, OHLC_DIR, folders[provider], f"{symbol.upper()}.csv"
         )
 
-    def get_intraday_path(self, symbol, date, provider=POLY_DIR):
-        # given a symbol,
-        # return the path to its intraday ohlc data
+    def get_intraday_path(
+        self, symbol: str, date: str, provider: str = POLY_DIR
+    ) -> str:
+        """Get the path to a symbol's intraday OHLC data CSV.
+
+        Args:
+            symbol: Stock symbol.
+            date: Date string for the intraday data.
+            provider: Data provider directory name.
+
+        Returns:
+            Path to the intraday CSV file.
+        """
         return os.path.join(
             DATA_DIR, INTRA_DIR, folders[provider], symbol.upper(), f"{date}.csv"
         )
 
-    def get_unemployment_path(self):
+    def get_unemployment_path(self) -> str:
+        """Get the path to the unemployment data CSV.
+
+        Returns:
+            Path to the unemployment CSV file.
+        """
         return os.path.join(DATA_DIR, "unemployment.csv")
 
-    def get_s2f_path(self):
+    def get_s2f_path(self) -> str:
+        """Get the path to the stock-to-flow data CSV.
+
+        Returns:
+            Path to the S2F CSV file.
+        """
         return os.path.join(DATA_DIR, "s2f.csv")
 
-    def get_diff_ribbon_path(self):
+    def get_diff_ribbon_path(self) -> str:
+        """Get the path to the difficulty ribbon data CSV.
+
+        Returns:
+            Path to the difficulty ribbon CSV file.
+        """
         return os.path.join(DATA_DIR, "diff_ribbon.csv")
 
-    def get_sopr_path(self):
+    def get_sopr_path(self) -> str:
+        """Get the path to the SOPR data CSV.
+
+        Returns:
+            Path to the SOPR CSV file.
+        """
         return os.path.join(DATA_DIR, "sopr.csv")
 
-    def get_signals_path(self):
+    def get_signals_path(self) -> str:
+        """Get the path to the trading signals CSV.
+
+        Returns:
+            Path to the signals CSV file.
+        """
         return os.path.join(MODELS_DIR, "latest", "signals.csv")
 
-    def get_orders_path(self):
+    def get_orders_path(self) -> str:
+        """Get the path to the orders CSV.
+
+        Returns:
+            Path to the orders CSV file.
+        """
         return os.path.join(MODELS_DIR, "latest", "orders.csv")
 
-    def get_new_orders_path(self, provider):
+    def get_new_orders_path(self, provider: str) -> str:
+        """Get the path to new orders CSV for a provider.
+
+        Args:
+            provider: Data provider name.
+
+        Returns:
+            Path to the new orders CSV file.
+        """
         return os.path.join(DATA_DIR, "orders", f"{provider}.csv")
 
-    def get_api_path(self, endpoint):
+    def get_api_path(self, endpoint: str) -> str:
+        """Get the path to an API response JSON file.
+
+        Args:
+            endpoint: API endpoint name.
+
+        Returns:
+            Path to the API JSON file.
+        """
         return os.path.join(
             DATA_DIR,
             API_DIR,
             f"{endpoint}.json",
         )
 
-    def get_ndx_path(self):
+    def get_ndx_path(self) -> str:
+        """Get the path to the NASDAQ index data CSV.
+
+        Returns:
+            Path to the NDX CSV file.
+        """
         return os.path.join(DATA_DIR, IDX_DIR, "ndx.csv")
 
-    def get_all_paths(self, path, truncate=False):
-        # given a path, get all sub paths
+    def get_all_paths(self, path: str, truncate: bool = False) -> list[str]:
+        """Get all file paths under a directory.
+
+        Args:
+            path: Root directory to search.
+            truncate: If True, remove the root path prefix from results.
+
+        Returns:
+            List of file paths, excluding cache and temp files.
+        """
         paths = []
         for root, _, files in os.walk(path):
             for file in files:

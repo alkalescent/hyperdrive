@@ -73,7 +73,9 @@ def test_core_classes() -> None:
     for module_name, class_name in classes_to_test:
         try:
             module = importlib.import_module(f"{package}.{module_name}")
-            assert hasattr(module, class_name), f"{module_name} should have {class_name}"
+            assert hasattr(module, class_name), (
+                f"{module_name} should have {class_name}"
+            )
             print(f"[+] {package}.{module_name}.{class_name}")
         except (ImportError, AssertionError) as e:
             print(f"[-] {package}.{module_name}.{class_name}: {e}", file=sys.stderr)

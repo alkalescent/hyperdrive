@@ -1,3 +1,5 @@
+"""Time manipulation utilities for date calculations and scheduling."""
+
 from datetime import datetime, timedelta, tzinfo
 from time import sleep
 
@@ -7,9 +9,10 @@ FlexibleDate = datetime | str
 
 
 class TimeTraveller:
-    """
-    A class to handle time-related operations, such as calculating deltas,
-    converting timeframes, and managing sleep intervals.
+    """Time manipulation utility for date calculations and scheduling.
+
+    Provides methods for calculating date differences, converting timeframes,
+    generating date ranges, and managing sleep intervals based on schedules.
     """
 
     def get_delta(
@@ -39,18 +42,14 @@ class TimeTraveller:
         return abs(d2 - d1)
 
     def convert_timeframe(self, d1: FlexibleDate, d2: FlexibleDate) -> str:
-        """
-        Convert two datetime objects
-        to a string representation of the timeframe.
+        """Convert two datetime objects to a string representation of the timeframe.
 
         Args:
-            d1 (FlexibleDate):
-                The first date, can be a datetime object or a string.
-            d2 (FlexibleDate):
-                The second date, can be a datetime object or a string.
+            d1: The first date, can be a datetime object or a string.
+            d2: The second date, can be a datetime object or a string.
 
         Returns:
-            str: A string representation of the timeframe in days.
+            A string representation of the timeframe in days.
         """
         delta = self.get_delta(d1, d2)
         days = delta.days
@@ -126,6 +125,7 @@ class TimeTraveller:
     ) -> list[FlexibleDate]:
         """
         Get a list of dates in the specified timeframe.
+
         Args:
             timeframe (str):
                 A string representing the timeframe,

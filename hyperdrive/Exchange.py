@@ -1,11 +1,14 @@
+"""Cryptocurrency exchange integrations for trading operations."""
+
 import base64
 import hashlib
 import hmac
 import os
 import time
 import urllib.parse
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from time import sleep
+from typing import Any
 
 import requests
 from binance import Client
@@ -18,17 +21,50 @@ load_dotenv(find_dotenv("config.env"))
 
 
 class CEX:
+    """Base class for centralized exchange clients.
+
+    Provides common functionality shared by exchange implementations.
+    """
+
     def create_pair(self, base: str, quote: str) -> str:
+        """Create a trading pair symbol from base and quote currencies.
+
+        Args:
+            base: Base currency symbol (e.g., 'BTC').
+            quote: Quote currency symbol (e.g., 'USD').
+
+        Returns:
+            Combined trading pair (e.g., 'BTCUSD').
+        """
         return f"{base}{quote}"
 
 
 class AlpacaEx(CEX):
+    """Alpaca exchange client for stock and crypto trading.
+
+    Attributes:
+        base: Base API URL.
+        version: API version string.
+        token: API key.
+        secret: API secret.
+    """
+
     def __init__(
         self,
         token: str | None = os.environ.get("ALPACA"),
         secret: str | None = os.environ.get("ALPACA_SECRET"),
         paper: bool = False,
     ) -> None:
+        """Initialize the Alpaca client.
+
+        Args:
+            token: API key. Defaults to ALPACA env var.
+            secret: API secret. Defaults to ALPACA_SECRET env var.
+            paper: Use paper trading account if True.
+
+        Raises:
+            Exception: If credentials are missing.
+        """
         super().__init__()
         self.base = f"https://{'paper-' if paper or C.TEST else ''}api.alpaca.markets"
         self.version = "v2"
@@ -40,10 +76,23 @@ class AlpacaEx(CEX):
             raise Exception("missing Alpaca credentials")
 
     def fill_orders(
-        self, symbols: Iterable[str], func: callable, **kwargs: dict[str, any]
-    ) -> list[dict[str, any]]:
-        pending_orders = set()
-        completed_orders = []
+        self,
+        symbols: Iterable[str],
+        func: Callable[..., dict[str, Any]],
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        """Execute orders for multiple symbols and wait for fills.
+
+        Args:
+            symbols: Symbols to trade.
+            func: Order function to call for each symbol.
+            **kwargs: Additional arguments for the order function.
+
+        Returns:
+            List of completed order responses.
+        """
+        pending_orders: set[str] = set()
+        completed_orders: list[dict[str, Any]] = []
         for symbol in symbols:
             order = func(symbol, **kwargs)
             if order["status"] == "filled":
@@ -60,8 +109,24 @@ class AlpacaEx(CEX):
         return completed_orders
 
     def make_request(
-        self, method: str, route: str, payload: dict[str, any] | None = None
-    ) -> any:
+        self,
+        method: str,
+        route: str,
+        payload: dict[str, Any] | None = None,
+    ) -> Any:
+        """Make an authenticated API request.
+
+        Args:
+            method: HTTP method (GET, POST, DELETE, etc.).
+            route: API endpoint route.
+            payload: Request body for POST requests.
+
+        Returns:
+            JSON response data.
+
+        Raises:
+            RuntimeError: If the request fails.
+        """
         if payload is None:
             payload = {}
         parts = [self.base, self.version, route]
@@ -77,19 +142,55 @@ class AlpacaEx(CEX):
         else:
             raise RuntimeError(response.text)
 
-    def get_positions(self) -> any:
+    def get_positions(self) -> Any:
+        """Get all open positions.
+
+        Returns:
+            List of position data.
+        """
         return self.make_request("GET", "positions")
 
-    def close_position(self, symbol: str) -> any:
+    def close_position(self, symbol: str) -> Any:
+        """Close a position for a symbol.
+
+        Args:
+            symbol: Trading symbol to close.
+
+        Returns:
+            Close order response.
+        """
         return self.make_request("DELETE", f"positions/{symbol}")
 
-    def get_order(self, id: str) -> any:
+    def get_order(self, id: str) -> Any:
+        """Get order details by ID.
+
+        Args:
+            id: Order ID.
+
+        Returns:
+            Order data.
+        """
         return self.make_request("GET", f"orders/{id}")
 
-    def get_account(self) -> any:
+    def get_account(self) -> Any:
+        """Get account information.
+
+        Returns:
+            Account data including balances.
+        """
         return self.make_request("GET", "account")
 
-    def create_order(self, symbol: str, side: str, notional: int | float | str) -> any:
+    def create_order(self, symbol: str, side: str, notional: int | float | str) -> Any:
+        """Create a market order by notional value.
+
+        Args:
+            symbol: Trading symbol.
+            side: 'buy' or 'sell'.
+            notional: Dollar amount to trade.
+
+        Returns:
+            Order response.
+        """
         payload = {
             "symbol": symbol,
             "side": side.lower(),
@@ -101,7 +202,29 @@ class AlpacaEx(CEX):
 
 
 class Kraken(CEX):
-    def __init__(self, key=None, secret=None, test=False):
+    """Kraken exchange client for cryptocurrency trading.
+
+    Attributes:
+        key: API key.
+        secret: API secret.
+        test: Enable test mode.
+        api_url: Base API URL.
+        version: API version.
+    """
+
+    def __init__(
+        self,
+        key: str | None = None,
+        secret: str | None = None,
+        test: bool = False,
+    ) -> None:
+        """Initialize the Kraken client.
+
+        Args:
+            key: API key. Defaults to KRAKEN_KEY env var.
+            secret: API secret. Defaults to KRAKEN_SECRET env var.
+            test: Enable test/validation mode.
+        """
         super().__init__()
         self.key = key
         self.secret = secret
@@ -113,7 +236,16 @@ class Kraken(CEX):
         self.api_url = "https://api.kraken.com"
         self.version = "0"
 
-    def get_signature(self, urlpath, data):
+    def get_signature(self, urlpath: str, data: dict[str, Any]) -> str:
+        """Generate API signature for authenticated requests.
+
+        Args:
+            urlpath: API endpoint path.
+            data: Request data including nonce.
+
+        Returns:
+            Base64-encoded signature string.
+        """
         postdata = urllib.parse.urlencode(data)
         encoded = (str(data["nonce"]) + postdata).encode()
         message = urlpath.encode() + hashlib.sha256(encoded).digest()
@@ -122,21 +254,39 @@ class Kraken(CEX):
         sigdigest = base64.b64encode(mac.digest())
         return sigdigest.decode()
 
-    def make_auth_req(self, uri_path, data=None):
+    def make_auth_req(self, uri_path: str, data: dict[str, Any] | None = None) -> Any:
+        """Make an authenticated API request.
+
+        Args:
+            uri_path: API endpoint path.
+            data: Request data.
+
+        Returns:
+            API response result.
+        """
         if data is None:
             data = {}
         data["nonce"] = self.gen_nonce()
-        headers = {}
+        headers: dict[str, str] = {}
         headers["API-Key"] = self.key
-        # get_kraken_signature() as defined in the 'Authentication' section
         headers["API-Sign"] = self.get_signature(uri_path, data)
         response = requests.post((self.api_url + uri_path), headers=headers, data=data)
         return self.handle_response(response)
 
-    def gen_nonce(self):
+    def gen_nonce(self) -> str:
+        """Generate a unique nonce for API requests.
+
+        Returns:
+            Millisecond timestamp as string.
+        """
         return str(int(1000 * time.time()))
 
-    def get_balance(self):
+    def get_balance(self) -> dict[str, float]:
+        """Get account balances for all assets.
+
+        Returns:
+            Dictionary mapping asset symbols to balances.
+        """
         access = "private"
         endpoint = "Balance"
         parts = [
@@ -151,7 +301,15 @@ class Kraken(CEX):
             response[asset] = float(response[asset])
         return response
 
-    def get_asset_pair(self, pair):
+    def get_asset_pair(self, pair: str) -> dict[str, Any]:
+        """Get trading pair information.
+
+        Args:
+            pair: Trading pair symbol.
+
+        Returns:
+            Pair configuration and limits.
+        """
         access = "public"
         endpoint = "AssetPairs"
         parts = [
@@ -166,7 +324,29 @@ class Kraken(CEX):
         result = self.handle_response(response)[pair]
         return result
 
-    def order(self, base, quote, side, spend_ratio=1, test=False):
+    def order(
+        self,
+        base: str,
+        quote: str,
+        side: str,
+        spend_ratio: float = 1,
+        test: bool = False,
+    ) -> Any:
+        """Place a market order.
+
+        Args:
+            base: Base currency.
+            quote: Quote currency.
+            side: 'buy' or 'sell'.
+            spend_ratio: Fraction of balance to use.
+            test: Validate order without executing.
+
+        Returns:
+            Order response.
+
+        Raises:
+            Exception: If side is not BUY or SELL.
+        """
         pair = self.create_pair(base, quote)
         pair_info = self.get_asset_pair(pair)
         fee = self.get_fee(pair) / 100
@@ -209,14 +389,33 @@ class Kraken(CEX):
         response = self.make_auth_req(url, data)
         return response
 
-    def handle_response(self, response):
+    def handle_response(self, response: requests.Response) -> Any:
+        """Handle API response and check for errors.
+
+        Args:
+            response: HTTP response object.
+
+        Returns:
+            Result data from response.
+
+        Raises:
+            Exception: If response contains errors.
+        """
         response = response.json()
         error = response["error"]
         if error:
             raise Exception(error)
         return response["result"]
 
-    def get_order(self, order_id):
+    def get_order(self, order_id: str) -> dict[str, Any]:
+        """Get order details by ID.
+
+        Args:
+            order_id: Transaction ID of the order.
+
+        Returns:
+            Order data with order_id field added.
+        """
         access = "private"
         endpoint = "QueryOrders"
         parts = [
@@ -232,7 +431,15 @@ class Kraken(CEX):
         order["order_id"] = order_id
         return order
 
-    def get_trades(self, trade_ids):
+    def get_trades(self, trade_ids: list[str]) -> list[dict[str, Any]]:
+        """Get trade details for multiple trade IDs.
+
+        Args:
+            trade_ids: List of trade transaction IDs.
+
+        Returns:
+            List of trade data with trade_id field added.
+        """
         access = "private"
         endpoint = "QueryTrades"
         parts = [
@@ -249,8 +456,19 @@ class Kraken(CEX):
         ]
         return trades
 
-    def standardize_order(self, order, trades):
-        std = {}
+    def standardize_order(
+        self, order: dict[str, Any], trades: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Convert Kraken order format to standardized format.
+
+        Args:
+            order: Kraken order data.
+            trades: List of associated trades.
+
+        Returns:
+            Standardized order data compatible with other exchanges.
+        """
+        std: dict[str, Any] = {}
         std["symbol"] = order["descr"]["pair"]
         std["orderId"] = order["order_id"]
         std["transactTime"] = int((order["closetm"] + order["opentm"]) / 2 * 1000)
@@ -258,7 +476,6 @@ class Kraken(CEX):
         side = order["descr"]["type"].upper()
         origQty = float(order["vol"])
         if side == C.BUY:
-            # other test would be [if 'viqc' in order['oflags'].split(','):]
             origQty = round(origQty / std["price"], 10)
         std["origQty"] = origQty
         std["executedQty"] = float(order["vol_exec"])
@@ -267,8 +484,8 @@ class Kraken(CEX):
         std["type"] = order["descr"]["ordertype"].upper()
         std["side"] = side
 
-        def standardize_trade(trade):
-            std_trade = {}
+        def standardize_trade(trade: dict[str, Any]) -> dict[str, Any]:
+            std_trade: dict[str, Any] = {}
             std_trade["price"] = str(round(float(trade["price"]), 10))
             std_trade["qty"] = trade["vol"]
             std_trade["commission"] = trade["fee"]
@@ -279,7 +496,16 @@ class Kraken(CEX):
         std["fills"] = fills
         return std
 
-    def get_test_side(self, base, quote):
+    def get_test_side(self, base: str, quote: str) -> str:
+        """Determine optimal trade side for testing.
+
+        Args:
+            base: Base currency.
+            quote: Quote currency.
+
+        Returns:
+            'buy' or 'sell' based on current balances.
+        """
         pair = f"{base}{quote}"
         balances = self.get_balance()
         base_bal = balances[base]
@@ -289,7 +515,15 @@ class Kraken(CEX):
         side = "buy" if quote_bal > base_val else "sell"
         return side
 
-    def get_fee(self, pair):
+    def get_fee(self, pair: str) -> float:
+        """Get trading fee for a pair.
+
+        Args:
+            pair: Trading pair symbol.
+
+        Returns:
+            Fee as a percentage (e.g., 0.26 for 0.26%).
+        """
         access = "private"
         endpoint = "TradeVolume"
         parts = [
@@ -304,7 +538,15 @@ class Kraken(CEX):
         fee = float(response["fees"][pair]["fee"])
         return fee
 
-    def get_ticker(self, pair=None):
+    def get_ticker(self, pair: str | None = None) -> dict[str, Any]:
+        """Get ticker data for a trading pair.
+
+        Args:
+            pair: Trading pair symbol. None for all pairs.
+
+        Returns:
+            Ticker data including price and volume.
+        """
         access = "public"
         endpoint = "Ticker"
         parts = [
@@ -318,14 +560,42 @@ class Kraken(CEX):
         response = self.make_auth_req(url, data)
         return response
 
-    def get_price(self, pair):
+    def get_price(self, pair: str) -> float:
+        """Get current price for a trading pair.
+
+        Args:
+            pair: Trading pair symbol.
+
+        Returns:
+            Current price as float.
+        """
         ticker = self.get_ticker(pair)
         price = float(ticker[pair]["c"][0])
         return price
 
 
 class Binance(CEX):
-    def __init__(self, key=None, secret=None, testnet=False):
+    """Binance exchange client for cryptocurrency trading.
+
+    Attributes:
+        key: API key.
+        secret: API secret.
+        client: Binance API client instance.
+    """
+
+    def __init__(
+        self,
+        key: str | None = None,
+        secret: str | None = None,
+        testnet: bool = False,
+    ) -> None:
+        """Initialize the Binance client.
+
+        Args:
+            key: API key. Defaults to BINANCE_KEY env var.
+            secret: API secret. Defaults to BINANCE_SECRET env var.
+            testnet: Use testnet if True.
+        """
         super().__init__()
         self.key = key
         self.secret = secret
@@ -341,13 +611,35 @@ class Binance(CEX):
                 self.secret = os.environ["BINANCE_SECRET"]
         self.client = Client(self.key, self.secret, testnet=testnet, tld="us")
 
-    def order(self, base, quote, side, spend_ratio=1, test=False):
+    def order(
+        self,
+        base: str,
+        quote: str,
+        side: str,
+        spend_ratio: float = 1,
+        test: bool = False,
+    ) -> dict[str, Any]:
+        """Place a market order.
+
+        Args:
+            base: Base currency.
+            quote: Quote currency.
+            side: 'BUY' or 'SELL'.
+            spend_ratio: Fraction of balance to use.
+            test: Validate order without executing.
+
+        Returns:
+            Order response data.
+
+        Raises:
+            Exception: If side is not BUY or SELL.
+        """
         # fee is 0.1%, so max spend_ratio is 99.9%
         spend_ratio = spend_ratio - C.BINANCE_FEE
         pair = self.create_pair(base, quote)
         side = side.upper()
         order_type = self.client.ORDER_TYPE_MARKET
-        params = {"symbol": pair, "type": order_type}
+        params: dict[str, Any] = {"symbol": pair, "type": order_type}
         symbol_info = self.client.get_symbol_info(pair)
 
         if side == C.SELL:
@@ -381,9 +673,3 @@ class Binance(CEX):
 
         order = fx(**params)
         return order
-
-
-# write script that gets most recent data at 9pm est
-# predicts using model
-# writes that back to predict.csv
-# write successful orders to binance.csv

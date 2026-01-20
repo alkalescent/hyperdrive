@@ -1,16 +1,20 @@
+"""Multiprocessing example demonstrating shared counter with locks."""
+
 from multiprocessing import Process, Value
 
 counter = Value("i", 0)
 num = 1000
 
 
-def fx1():
+def fx1() -> None:
+    """Increment shared counter with lock protection."""
     for _ in range(num):
         with counter.get_lock():
             counter.value += 1
 
 
-def fx2():
+def fx2() -> None:
+    """Increment shared counter with lock protection."""
     for _ in range(num):
         with counter.get_lock():
             counter.value += 1
