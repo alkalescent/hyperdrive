@@ -40,6 +40,7 @@ dev = [
     "responses",
     "freezegun",
     "qrcode[pil]",
+    "PyGithub",
 ]
 
 [project.urls]

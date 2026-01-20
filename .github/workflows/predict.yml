@@ -4,9 +4,6 @@
 name: Predict Signal
 
 on:
-  # push:
-  #   branches:
-  #     - feature/predict
   schedule:
     - cron: "00 22 * * *"
     # 5:00pm EST / 22:00 UTC every day
@@ -18,35 +15,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          enable-cache: true
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        run: make ci
 
       - name: Decrypt script
         env:
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
           SALT: ${{ secrets.SALT }}
-        run: |
-          python util/decrypt.py encrypted/predict_signal.py
+        run: uv run python util/decrypt.py encrypted/predict_signal.py
 
       - name: Sleep until 00:00 UTC
-        run: python scripts/sleep.py 00:00
+        run: uv run python scripts/sleep.py 00:00
 
       - name: Predict signal
         env:
@@ -61,8 +52,7 @@ jobs:
           EMIT_SECRET: ${{ secrets.EMIT_SECRET }}
           SALT: ${{ secrets.SALT }}
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
-        run: |
-          python encrypted/predict_signal.py
+        run: uv run python encrypted/predict_signal.py
 
       - name: Execute order
         env:
@@ -75,5 +65,4 @@ jobs:
           KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
           KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
           PREF_EXCHANGE: ${{ secrets.PREF_EXCHANGE }}
-        run: |
-          python scripts/execute_order.py
+        run: uv run python scripts/execute_order.py
