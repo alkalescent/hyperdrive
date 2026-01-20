@@ -1,3 +1,5 @@
+"""Update OHLC price data from Polygon and Alpaca APIs."""
+
 import os
 from multiprocessing import Process, Value
 
@@ -13,13 +15,12 @@ poly_symbols = stock_symbols + C.POLY_CRYPTO_SYMBOLS
 alpc_symbols = set(alpc.get_ndx()[C.SYMBOL]).union(stock_symbols)
 
 
-def update_poly_ohlc():
+def update_poly_ohlc() -> None:
+    """Update OHLC data from Polygon.io for all symbols."""
     for symbol in poly_symbols:
         try:
             if not C.TEST:
-                filename = poly.save_ohlc(
-                    symbol=symbol, timeframe=C.FEW_DAYS, retries=1
-                )
+                poly.save_ohlc(symbol=symbol, timeframe=C.FEW_DAYS, retries=1)
             with counter.get_lock():
                 counter.value += 1
         except Exception as e:
@@ -31,10 +32,11 @@ def update_poly_ohlc():
                 os.remove(filename)
 
 
-def update_alpc_ohlc():
+def update_alpc_ohlc() -> None:
+    """Update OHLC data from Alpaca API for all symbols."""
     for symbol in alpc_symbols:
         try:
-            filename = alpc.save_ohlc(symbol=symbol, timeframe=C.FEW_DAYS, retries=1)
+            alpc.save_ohlc(symbol=symbol, timeframe=C.FEW_DAYS, retries=1)
             with counter.get_lock():
                 counter.value += 1
         except Exception as e:

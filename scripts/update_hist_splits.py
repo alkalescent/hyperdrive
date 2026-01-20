@@ -1,3 +1,5 @@
+"""Update historical split data from Polygon API."""
+
 import os
 from multiprocessing import Process
 
@@ -9,7 +11,8 @@ symbols = poly.get_symbols()
 symbols = symbols[250:]
 
 
-def update_poly_splits():
+def update_poly_splits() -> None:
+    """Update historical split data from Polygon.io."""
     for symbol in symbols:
         filename = PathFinder().get_splits_path(symbol=symbol, provider=poly.provider)
         try:

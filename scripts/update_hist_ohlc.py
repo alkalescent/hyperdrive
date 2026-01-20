@@ -1,3 +1,5 @@
+"""Update historical OHLC data from Alpaca API."""
+
 import os
 from multiprocessing import Process
 
@@ -32,7 +34,8 @@ timeframe = "10y"
 # 2nd pass
 
 
-def update_alpc_ohlc():
+def update_alpc_ohlc() -> None:
+    """Update OHLC data from Alpaca API."""
     for symbol in alpc_symbols:
         filename = PathFinder().get_ohlc_path(symbol=symbol, provider=alpc.provider)
         try:

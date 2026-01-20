@@ -10,7 +10,8 @@ poly = Polygon()
 symbols = poly.get_symbols()
 
 
-def update_poly_dividends():
+def update_poly_dividends() -> None:
+    """Update dividend data from Polygon.io for all symbols."""
     for symbol in symbols:
         try:
             filename = poly.save_dividends(

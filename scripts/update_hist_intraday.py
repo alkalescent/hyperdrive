@@ -1,3 +1,5 @@
+"""Update historical intraday data from Polygon API."""
+
 import os
 from datetime import datetime
 from time import sleep
@@ -11,7 +13,8 @@ crypto_symbols = POLY_CRYPTO_SYMBOLS
 all_symbols = stock_symbols + crypto_symbols
 
 
-def update_poly_intraday():
+def update_poly_intraday() -> None:
+    """Update historical intraday data from Polygon.io."""
     for symbol in all_symbols:
         now = datetime.now()
         hour = now.hour
@@ -20,7 +23,7 @@ def update_poly_intraday():
             print("Sleeping for 1 hr")
             sleep(3600)
             hour = datetime.now().hour
-        filenames = []
+        filenames: list[str] = []
         try:
             filenames = poly.save_intraday(symbol=symbol, timeframe="30d", retries=1)
         except Exception as e:

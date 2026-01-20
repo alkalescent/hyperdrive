@@ -1,8 +1,17 @@
+"""Data source classes for fetching market data from various providers.
+
+This module contains classes for retrieving financial data including stock prices,
+dividends, splits, and crypto indicators from providers like Polygon, Alpaca,
+BLS, and Glassnode.
+"""
+
 import json
 import os
+from collections.abc import Callable, Generator, Iterable
 from datetime import datetime
 from random import random
 from time import sleep, time
+from typing import Any
 
 import pandas as pd
 import requests
@@ -24,7 +33,14 @@ from .TimeMachine import TimeTraveller
 
 
 class MarketData:
-    def __init__(self):
+    """Base class for market data providers.
+
+    Provides common functionality for fetching and storing market data including
+    OHLC prices, dividends, splits, and other financial indicators.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the MarketData instance with default components."""
         load_dotenv(find_dotenv("config.env"))
         self.writer = FileWriter()
         self.reader = FileReader()
@@ -33,12 +49,35 @@ class MarketData:
         self.calculator = Calculator()
         self.provider = "polygon"
 
-    def get_indexer(self, s1, s2):
+    def get_indexer(self, s1: set[str], s2: Iterable[str]) -> list[str]:
+        """Get intersection of two sets as a list.
+
+        Args:
+            s1: First set of strings.
+            s2: Second iterable of strings.
+
+        Returns:
+            List of strings that appear in both s1 and s2.
+        """
         return list(s1.intersection(s2))
 
-    def try_again(self, func, **kwargs):
-        retries = kwargs["retries"] if "retries" in kwargs else C.DEFAULT_RETRIES
-        delay = kwargs["delay"] if "delay" in kwargs else C.DEFAULT_DELAY
+    def try_again(self, func: Callable[..., Any], **kwargs: Any) -> Any:
+        """Retry a function with exponential backoff on failure.
+
+        Args:
+            func: The function to retry.
+            **kwargs: Arguments passed to the function. Special keys:
+                - retries: Number of retry attempts (default: C.DEFAULT_RETRIES)
+                - delay: Seconds to wait between retries (default: C.DEFAULT_DELAY)
+
+        Returns:
+            The result of the function call.
+
+        Raises:
+            Exception: If all retries are exhausted.
+        """
+        retries = kwargs.get("retries", C.DEFAULT_RETRIES)
+        delay = kwargs.get("delay", C.DEFAULT_DELAY)
         func_args = {k: v for k, v in kwargs.items() if k not in {"retries", "delay"}}
         for retry in range(retries):
             try:
@@ -48,19 +87,51 @@ class MarketData:
                     raise e
                 else:
                     sleep(delay)
+        return None
 
-    def get_symbols(self):
-        # get cached list of symbols
+    def get_symbols(self) -> list[str]:
+        """Get cached list of tradable symbols.
+
+        Returns:
+            List of stock/crypto symbols.
+        """
         symbols_path = self.finder.get_symbols_path()
         return list(self.reader.load_csv(symbols_path)[C.SYMBOL])
 
-    def get_dividends(self, symbol, timeframe="max"):
-        # given a symbol, return a cached dataframe
+    def get_dividends(self, symbol: str, timeframe: str = "max") -> pd.DataFrame:
+        """Get cached dividend data for a symbol.
+
+        Args:
+            symbol: The stock symbol.
+            timeframe: Time range for data (default: "max").
+
+        Returns:
+            DataFrame with dividend history.
+        """
         df = self.reader.load_csv(self.finder.get_dividends_path(symbol, self.provider))
         filtered = self.reader.data_in_timeframe(df, C.EX, timeframe)
         return filtered
 
-    def standardize(self, df, full_mapping, filename, columns, default):
+    def standardize(
+        self,
+        df: pd.DataFrame,
+        full_mapping: dict[str, str],
+        filename: str,
+        columns: list[str],
+        default: float | int,
+    ) -> pd.DataFrame:
+        """Standardize a DataFrame to a common column format.
+
+        Args:
+            df: Input DataFrame to standardize.
+            full_mapping: Column name mapping (old -> new).
+            filename: Path to save/load cached data.
+            columns: List of column names [time_col, *value_cols].
+            default: Default value for missing data.
+
+        Returns:
+            Standardized DataFrame.
+        """
         mapping = {k: v for k, v in full_mapping.items() if k in df}
 
         df = df[list(mapping)].rename(columns=mapping)
@@ -70,8 +141,6 @@ class MarketData:
             df = self.reader.update_df(filename, df, time_col).sort_values(
                 by=[time_col]
             )
-            # since time col is pd.datetime,
-            # consider converting to YYYY-MM-DD str format
             for val_col in val_cols:
                 df[val_col] = df[val_col].apply(
                     lambda val: float(val) if val else default
@@ -79,7 +148,16 @@ class MarketData:
 
         return df
 
-    def standardize_dividends(self, symbol, df):
+    def standardize_dividends(self, symbol: str, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize dividend data to common format.
+
+        Args:
+            symbol: The stock symbol.
+            df: Raw dividend DataFrame.
+
+        Returns:
+            Standardized DataFrame with columns [EX, PAY, DEC, DIV].
+        """
         full_mapping = dict(
             zip(
                 ["exDate", "paymentDate", "declaredDate", "amount"],
@@ -90,8 +168,15 @@ class MarketData:
         filename = self.finder.get_dividends_path(symbol, self.provider)
         return self.standardize(df, full_mapping, filename, [C.EX, C.DIV], 0)
 
-    def save_dividends(self, **kwargs):
-        # given a symbol, save its dividend history
+    def save_dividends(self, **kwargs: Any) -> str | None:
+        """Save dividend history for a symbol.
+
+        Args:
+            **kwargs: Must include 'symbol'. Other args passed to get_dividends.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
         symbol = kwargs["symbol"]
         filename = self.finder.get_dividends_path(symbol, self.provider)
         if os.path.exists(filename):
@@ -102,14 +187,32 @@ class MarketData:
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
+        return None
 
-    def get_splits(self, symbol, timeframe="max"):
-        # given a symbol, return a cached dataframe
+    def get_splits(self, symbol: str, timeframe: str = "max") -> pd.DataFrame:
+        """Get cached split data for a symbol.
+
+        Args:
+            symbol: The stock symbol.
+            timeframe: Time range for data (default: "max").
+
+        Returns:
+            DataFrame with split history.
+        """
         df = self.reader.load_csv(self.finder.get_splits_path(symbol, self.provider))
         filtered = self.reader.data_in_timeframe(df, C.EX, timeframe)
         return filtered
 
-    def standardize_splits(self, symbol, df):
+    def standardize_splits(self, symbol: str, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize split data to common format.
+
+        Args:
+            symbol: The stock symbol.
+            df: Raw split DataFrame.
+
+        Returns:
+            Standardized DataFrame with columns [EX, PAY, DEC, RATIO].
+        """
         full_mapping = dict(
             zip(
                 ["exDate", "paymentDate", "declaredDate", "ratio"],
@@ -120,8 +223,15 @@ class MarketData:
         filename = self.finder.get_splits_path(symbol, self.provider)
         return self.standardize(df, full_mapping, filename, [C.EX, C.RATIO], 1)
 
-    def save_splits(self, **kwargs):
-        # given a symbol, save its splits history
+    def save_splits(self, **kwargs: Any) -> str | None:
+        """Save split history for a symbol.
+
+        Args:
+            **kwargs: Must include 'symbol'. Other args passed to get_splits.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
         symbol = kwargs["symbol"]
         filename = self.finder.get_splits_path(symbol, self.provider)
         if os.path.exists(filename):
@@ -132,8 +242,21 @@ class MarketData:
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
+        return None
 
-    def standardize_ohlc(self, symbol, df, filename=None):
+    def standardize_ohlc(
+        self, symbol: str, df: pd.DataFrame, filename: str | None = None
+    ) -> pd.DataFrame:
+        """Standardize OHLC data to common format.
+
+        Args:
+            symbol: The stock/crypto symbol.
+            df: Raw OHLC DataFrame.
+            filename: Optional custom filename for caching.
+
+        Returns:
+            Standardized DataFrame with OHLC columns.
+        """
         full_mapping = dict(
             zip(
                 ["date", "open", "high", "low", "close", "volume", "average", "trades"],
@@ -154,12 +277,29 @@ class MarketData:
 
         return df
 
-    def get_ohlc(self, symbol, timeframe="max"):
+    def get_ohlc(self, symbol: str, timeframe: str = "max") -> pd.DataFrame:
+        """Get cached OHLC data for a symbol.
+
+        Args:
+            symbol: The stock/crypto symbol.
+            timeframe: Time range for data (default: "max").
+
+        Returns:
+            DataFrame with OHLC price history.
+        """
         df = self.reader.load_csv(self.finder.get_ohlc_path(symbol, self.provider))
         filtered = self.reader.data_in_timeframe(df, C.TIME, timeframe)
         return filtered
 
-    def save_ohlc(self, **kwargs):
+    def save_ohlc(self, **kwargs: Any) -> str | None:
+        """Save OHLC data for a symbol.
+
+        Args:
+            **kwargs: Must include 'symbol'. Other args passed to get_ohlc.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
         symbol = kwargs["symbol"]
         filename = self.finder.get_ohlc_path(symbol, self.provider)
         if os.path.exists(filename):
@@ -170,12 +310,26 @@ class MarketData:
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
+        return None
 
-    def get_intraday(self, symbol, min=1, timeframe="max", extra_hrs=False):
-        # implement way to transform 1 min dataset to 5 min data
-        #  or 30 or 60 should be flexible soln
-        # implement way to only get market hours
-        # given a symbol, return a cached dataframe
+    def get_intraday(
+        self,
+        symbol: str,
+        min: int = 1,  # noqa: A002
+        timeframe: str = "max",
+        extra_hrs: bool = False,
+    ) -> Generator[pd.DataFrame, None, None]:
+        """Get cached intraday data for a symbol.
+
+        Args:
+            symbol: The stock/crypto symbol.
+            min: Minute interval for data (default: 1).
+            timeframe: Time range for data (default: "max").
+            extra_hrs: Include extended hours data (default: False).
+
+        Yields:
+            DataFrames with intraday OHLC data for each date.
+        """
         dates = self.traveller.dates_in_range(timeframe)
         for date in dates:
             df = self.reader.load_csv(
@@ -183,7 +337,15 @@ class MarketData:
             )
             yield self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-    def save_intraday(self, **kwargs):
+    def save_intraday(self, **kwargs: Any) -> list[str]:
+        """Save intraday data for a symbol.
+
+        Args:
+            **kwargs: Must include 'symbol'. Other args passed to get_intraday.
+
+        Returns:
+            List of paths to saved files.
+        """
         symbol = kwargs["symbol"]
         dfs = self.get_intraday(**kwargs)
         filenames = []
@@ -200,13 +362,28 @@ class MarketData:
                 filenames.append(filename)
         return filenames
 
-    def get_unemployment_rate(self, timeframe="max"):
-        # given a timeframe, return a cached dataframe
+    def get_unemployment_rate(self, timeframe: str = "max") -> pd.DataFrame:
+        """Get cached unemployment rate data.
+
+        Args:
+            timeframe: Time range for data (default: "max").
+
+        Returns:
+            DataFrame with unemployment rate history.
+        """
         df = self.reader.load_csv(self.finder.get_unemployment_path())
         filtered = self.reader.data_in_timeframe(df, C.TIME, timeframe)
         return filtered
 
-    def standardize_unemployment(self, df):
+    def standardize_unemployment(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize unemployment data to common format.
+
+        Args:
+            df: Raw unemployment DataFrame.
+
+        Returns:
+            Standardized DataFrame with [TIME, UN_RATE] columns.
+        """
         full_mapping = dict(
             zip(
                 ["time", "value"],
@@ -217,8 +394,15 @@ class MarketData:
         filename = self.finder.get_unemployment_path()
         return self.standardize(df, full_mapping, filename, [C.TIME, C.UN_RATE], 0)
 
-    def save_unemployment_rate(self, **kwargs):
-        # given a symbol, save its dividend history
+    def save_unemployment_rate(self, **kwargs: Any) -> str | None:
+        """Save unemployment rate data.
+
+        Args:
+            **kwargs: Arguments passed to get_unemployment_rate.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
         filename = self.finder.get_unemployment_path()
         if os.path.exists(filename):
             os.remove(filename)
@@ -228,8 +412,17 @@ class MarketData:
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
+        return None
 
-    def standardize_s2f_ratio(self, df):
+    def standardize_s2f_ratio(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize stock-to-flow ratio data.
+
+        Args:
+            df: Raw S2F DataFrame.
+
+        Returns:
+            Standardized DataFrame with [TIME, HALVING, RATIO] columns.
+        """
         full_mapping = dict(
             zip(
                 ["t", "o.daysTillHalving", "o.ratio"],
@@ -243,16 +436,30 @@ class MarketData:
         )
         return df[self.get_indexer({C.TIME, C.HALVING, C.RATIO}, df.columns)]
 
-    def get_s2f_ratio(self, timeframe="max"):
-        # given a symbol, return a cached dataframe
+    def get_s2f_ratio(self, timeframe: str = "max") -> pd.DataFrame:
+        """Get cached stock-to-flow ratio data.
+
+        Args:
+            timeframe: Time range for data (default: "max").
+
+        Returns:
+            DataFrame with S2F ratio history.
+        """
         df = self.reader.load_csv(self.finder.get_s2f_path())
         filtered = self.reader.data_in_timeframe(df, C.TIME, timeframe)[
             [C.TIME, C.HALVING, C.RATIO]
         ]
         return filtered
 
-    def save_s2f_ratio(self, **kwargs):
-        # # given a symbol, save its s2f data
+    def save_s2f_ratio(self, **kwargs: Any) -> str | None:
+        """Save stock-to-flow ratio data.
+
+        Args:
+            **kwargs: Arguments passed to get_s2f_ratio.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
         filename = self.finder.get_s2f_path()
 
         if os.path.exists(filename):
@@ -265,8 +472,17 @@ class MarketData:
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
+        return None
 
-    def standardize_diff_ribbon(self, df):
+    def standardize_diff_ribbon(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize difficulty ribbon data.
+
+        Args:
+            df: Raw difficulty ribbon DataFrame.
+
+        Returns:
+            Standardized DataFrame with moving average columns.
+        """
         full_mapping = dict(
             zip(
                 [
@@ -288,16 +504,30 @@ class MarketData:
         df = self.standardize(df, full_mapping, filename, [C.TIME] + C.MAs, 0)
         return df[self.get_indexer(set([C.TIME] + C.MAs), df.columns)]
 
-    def get_diff_ribbon(self, timeframe="max"):
-        # given a symbol, return a cached dataframe
+    def get_diff_ribbon(self, timeframe: str = "max") -> pd.DataFrame:
+        """Get cached difficulty ribbon data.
+
+        Args:
+            timeframe: Time range for data (default: "max").
+
+        Returns:
+            DataFrame with difficulty ribbon moving averages.
+        """
         df = self.reader.load_csv(self.finder.get_diff_ribbon_path())
         filtered = self.reader.data_in_timeframe(df, C.TIME, timeframe)[
             [C.TIME] + C.MAs
         ]
         return filtered
 
-    def save_diff_ribbon(self, **kwargs):
-        # # given a symbol, save its s2f data
+    def save_diff_ribbon(self, **kwargs: Any) -> str | None:
+        """Save difficulty ribbon data.
+
+        Args:
+            **kwargs: Arguments passed to get_diff_ribbon.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
         filename = self.finder.get_diff_ribbon_path()
 
         if os.path.exists(filename):
@@ -310,8 +540,17 @@ class MarketData:
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
+        return None
 
-    def standardize_sopr(self, df):
+    def standardize_sopr(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize SOPR (Spent Output Profit Ratio) data.
+
+        Args:
+            df: Raw SOPR DataFrame.
+
+        Returns:
+            Standardized DataFrame with [TIME, SOPR] columns.
+        """
         full_mapping = dict(
             zip(
                 ["t", "v"],
@@ -323,16 +562,30 @@ class MarketData:
         df = self.standardize(df, full_mapping, filename, [C.TIME, C.SOPR], 1)
         return df[self.get_indexer({C.TIME, C.SOPR}, df.columns)]
 
-    def get_sopr(self, timeframe="max"):
-        # given a symbol, return a cached dataframe
+    def get_sopr(self, timeframe: str = "max") -> pd.DataFrame:
+        """Get cached SOPR data.
+
+        Args:
+            timeframe: Time range for data (default: "max").
+
+        Returns:
+            DataFrame with SOPR history.
+        """
         df = self.reader.load_csv(self.finder.get_sopr_path())
         filtered = self.reader.data_in_timeframe(df, C.TIME, timeframe)[
             [C.TIME, C.SOPR]
         ]
         return filtered
 
-    def save_sopr(self, **kwargs):
-        # # given a symbol, save its s2f data
+    def save_sopr(self, **kwargs: Any) -> str | None:
+        """Save SOPR data.
+
+        Args:
+            **kwargs: Arguments passed to get_sopr.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
         filename = self.finder.get_sopr_path()
 
         if os.path.exists(filename):
@@ -345,10 +598,17 @@ class MarketData:
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
+        return None
 
-    # def handle_request(self, url, err_msg):
+    def standardize_ndx(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Standardize NDX (Nasdaq-100) constituency data.
 
-    def standardize_ndx(self, df):
+        Args:
+            df: Raw NDX DataFrame.
+
+        Returns:
+            Standardized DataFrame with current NDX constituents.
+        """
         if df.empty:
             df = pd.DataFrame(columns=[C.TIME, C.SYMBOL, C.DELTA])
         df = df.sort_values(by=[C.TIME, C.SYMBOL]).drop_duplicates(
@@ -357,41 +617,67 @@ class MarketData:
         df = df[df[C.DELTA] == "+"].reset_index(drop=True)
         return df
 
-    def get_saved_ndx(self):
+    def get_saved_ndx(self) -> pd.DataFrame:
+        """Get cached NDX constituency data.
+
+        Returns:
+            DataFrame with NDX constituency history.
+        """
         df = self.reader.load_csv(self.finder.get_ndx_path())
         return df
 
-    def get_ndx(self, date=None):
+    def get_ndx(self, date: datetime | None = None) -> pd.DataFrame:
+        """Get NDX constituents as of a specific date.
+
+        Args:
+            date: Date to get constituents for (default: now).
+
+        Returns:
+            DataFrame with NDX constituents.
+        """
         if date is None:
             date = datetime.now()
-        date = self.traveller.convert_date(date)
+        date_str = self.traveller.convert_date(date)
         df = self.get_saved_ndx()
-        return self.standardize_ndx(df[df[C.TIME] <= date] if C.TIME in df else df)
+        return self.standardize_ndx(df[df[C.TIME] <= date_str] if C.TIME in df else df)
 
-    def get_latest_ndx(self, **kwargs):
-        def _get_latest_ndx():
+    def get_latest_ndx(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch latest NDX constituents from Wikipedia.
+
+        Args:
+            **kwargs: Arguments for retry logic (retries, delay).
+
+        Returns:
+            DataFrame with current NDX constituents.
+        """
+
+        def _get_latest_ndx() -> pd.DataFrame:
             url = "https://en.wikipedia.org/wiki/Nasdaq-100#Components"
-            # alternatives:
-            # https://www.nasdaq.com/solutions/nasdaq-100/companies
-            # https://www.cnbc.com/nasdaq-100/
             res = requests.get(url)
             soup = BeautifulSoup(res.text, "html.parser")
             html = soup.select("table#constituents")[0]
             df = pd.read_html(str(html))[0]
             symbols = df["Ticker"]
             today = datetime.today().strftime(C.DATE_FMT)
-            df = pd.DataFrame(
+            return pd.DataFrame(
                 {
                     C.TIME: len(symbols) * [today],
                     C.SYMBOL: symbols,
                     C.DELTA: len(symbols) * ["+"],
                 }
             )
-            return df
 
         return self.try_again(func=_get_latest_ndx, **kwargs)
 
-    def save_ndx(self, **kwargs):
+    def save_ndx(self, **kwargs: Any) -> str | None:
+        """Save NDX constituency data with changes.
+
+        Args:
+            **kwargs: Arguments for get_latest_ndx.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
         filename = self.finder.get_ndx_path()
 
         if os.path.exists(filename):
@@ -419,11 +705,18 @@ class MarketData:
 
         if os.path.exists(filename):
             return filename
+        return None
 
-    def log_api_call_time(self):
+    def log_api_call_time(self) -> None:
+        """Record the timestamp of the last API call."""
         self.last_api_call_time = time()
 
-    def obey_free_limit(self, free_delay):
+    def obey_free_limit(self, free_delay: float) -> None:
+        """Wait if needed to respect free tier rate limits.
+
+        Args:
+            free_delay: Minimum seconds between API calls.
+        """
         if self.free and hasattr(self, "last_api_call_time"):
             time_since_last_call = time() - self.last_api_call_time
             delay = free_delay - time_since_last_call
@@ -432,22 +725,52 @@ class MarketData:
 
 
 class Indices(MarketData):
-    def __init__(self):
+    """Market data provider for index constituency data."""
+
+    def __init__(self) -> None:
+        """Initialize the Indices provider."""
         super().__init__()
 
-    def get_ndx(self, date=None):
+    def get_ndx(self, date: datetime | None = None) -> pd.DataFrame:
+        """Get NDX constituents combining cached and live data.
+
+        Args:
+            date: Date to get constituents for (default: now).
+
+        Returns:
+            DataFrame with NDX constituents.
+        """
         if date is None:
             date = datetime.now()
         old = super().get_ndx(date)
-        date = self.traveller.convert_date(date)
+        date_str = self.traveller.convert_date(date)
         new = self.get_latest_ndx()
-        new = new[new[C.TIME] <= date]
+        new = new[new[C.TIME] <= date_str]
         df = pd.concat([old, new])
         return self.standardize_ndx(df)
 
 
 class AlpacaData(MarketData):
-    def __init__(self, token=None, secret=None, free=True, paper=False):
+    """Market data provider for Alpaca API."""
+
+    def __init__(
+        self,
+        token: str | None = None,
+        secret: str | None = None,
+        free: bool = True,
+        paper: bool = False,
+    ) -> None:
+        """Initialize the Alpaca data provider.
+
+        Args:
+            token: API key (default: from ALPACA env var).
+            secret: API secret (default: from ALPACA_SECRET env var).
+            free: Use free tier rate limits (default: True).
+            paper: Use paper trading credentials (default: False).
+
+        Raises:
+            Exception: If credentials are missing.
+        """
         super().__init__()
         if token is None:
             token = os.environ.get("ALPACA")
@@ -463,13 +786,20 @@ class AlpacaData(MarketData):
         self.provider = "alpaca"
         self.free = free
 
-    # def get_dividends(self, **kwargs):
-    #     pass
-    # def get_splits(self, **kwargs):
-    #     pass
+    def get_ohlc(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch OHLC data from Alpaca API.
 
-    def get_ohlc(self, **kwargs):
-        def _get_ohlc(symbol, timeframe="max"):
+        Args:
+            **kwargs: Must include 'symbol'. Optional 'timeframe' (default: "max").
+
+        Returns:
+            DataFrame with OHLC price history.
+
+        Raises:
+            Exception: If API request fails.
+        """
+
+        def _get_ohlc(symbol: str, timeframe: str = "max") -> pd.DataFrame:
             is_crypto = symbol in C.ALPC_CRYPTO_SYMBOLS
             version = "v1beta3" if is_crypto else "v2"
             page_token = None
@@ -485,15 +815,13 @@ class AlpacaData(MarketData):
                 "symbols": symbol,
                 "timeframe": "1D",
                 "start": start,
-                # end should be > 15 min before current UTC time in this format
-                # 2025-01-01T00:00:00Z
                 "limit": 10000,
             } | ({} if is_crypto else {"adjustment": "all"})
             headers = {
                 "APCA-API-KEY-ID": self.token,
                 "APCA-API-SECRET-KEY": self.secret,
             }
-            results = []
+            results: list[dict[str, Any]] = []
             while True:
                 self.obey_free_limit(C.ALPACA_FREE_DELAY)
                 try:
@@ -535,15 +863,17 @@ class AlpacaData(MarketData):
 
         return self.try_again(func=_get_ohlc, **kwargs)
 
-        # def get_intraday(self, **kwargs):
-        #     pass
-
-        # def get_news(self, **kwargs):
-        #     pass
-
 
 class Polygon(MarketData):
-    def __init__(self, token=None, free=True):
+    """Market data provider for Polygon.io API."""
+
+    def __init__(self, token: str | None = None, free: bool = True) -> None:
+        """Initialize the Polygon data provider.
+
+        Args:
+            token: API key (default: from POLYGON env var).
+            free: Use free tier rate limits (default: True).
+        """
         super().__init__()
         if token is None:
             token = os.environ.get("POLYGON")
@@ -551,8 +881,19 @@ class Polygon(MarketData):
         self.provider = "polygon"
         self.free = free
 
-    def paginate(self, gen, apply):
-        results = []
+    def paginate(
+        self, gen: Generator[Any, None, None], apply: Callable[[Any], dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Paginate through API results with rate limiting.
+
+        Args:
+            gen: Generator yielding API response items.
+            apply: Function to transform each item.
+
+        Returns:
+            List of transformed results.
+        """
+        results: list[dict[str, Any]] = []
         for idx, item in enumerate(gen):
             if idx % C.POLY_MAX_LIMIT == 0:
                 self.log_api_call_time()
@@ -561,8 +902,17 @@ class Polygon(MarketData):
             results.append(apply(item))
         return results
 
-    def get_dividends(self, **kwargs):
-        def _get_dividends(symbol, timeframe="max"):
+    def get_dividends(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch dividend data from Polygon API.
+
+        Args:
+            **kwargs: Must include 'symbol'. Optional 'timeframe' (default: "max").
+
+        Returns:
+            DataFrame with dividend history.
+        """
+
+        def _get_dividends(symbol: str, timeframe: str = "max") -> pd.DataFrame:
             self.obey_free_limit(C.POLY_FREE_DELAY)
             try:
                 start, _ = self.traveller.convert_dates(timeframe)
@@ -589,8 +939,17 @@ class Polygon(MarketData):
 
         return self.try_again(func=_get_dividends, **kwargs)
 
-    def get_splits(self, **kwargs):
-        def _get_splits(symbol, timeframe="max"):
+    def get_splits(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch split data from Polygon API.
+
+        Args:
+            **kwargs: Must include 'symbol'. Optional 'timeframe' (default: "max").
+
+        Returns:
+            DataFrame with split history.
+        """
+
+        def _get_splits(symbol: str, timeframe: str = "max") -> pd.DataFrame:
             self.obey_free_limit(C.POLY_FREE_DELAY)
             try:
                 start, _ = self.traveller.convert_dates(timeframe)
@@ -615,8 +974,17 @@ class Polygon(MarketData):
 
         return self.try_again(func=_get_splits, **kwargs)
 
-    def get_ohlc(self, **kwargs):
-        def _get_ohlc(symbol, timeframe="max"):
+    def get_ohlc(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch OHLC data from Polygon API.
+
+        Args:
+            **kwargs: Must include 'symbol'. Optional 'timeframe' (default: "max").
+
+        Returns:
+            DataFrame with OHLC price history.
+        """
+
+        def _get_ohlc(symbol: str, timeframe: str = "max") -> pd.DataFrame:
             is_crypto = symbol.find("X%3A") == 0
             formatted_start, formatted_end = self.traveller.convert_dates(timeframe)
             self.obey_free_limit(C.POLY_FREE_DELAY)
@@ -650,9 +1018,24 @@ class Polygon(MarketData):
 
         return self.try_again(func=_get_ohlc, **kwargs)
 
-    def get_intraday(self, **kwargs):
-        def _get_intraday(symbol, min=1, timeframe="max", extra_hrs=True):
-            # pass min directly into stock_aggs function as multiplier
+    def get_intraday(
+        self, **kwargs: Any
+    ) -> Generator[pd.DataFrame, None, None] | None:
+        """Fetch intraday data from Polygon API.
+
+        Args:
+            **kwargs: Must include 'symbol'. Optional 'min', 'timeframe', 'extra_hrs'.
+
+        Returns:
+            Generator yielding DataFrames with intraday OHLC data.
+        """
+
+        def _get_intraday(
+            symbol: str,
+            min: int = 1,  # noqa: A002
+            timeframe: str = "max",
+            extra_hrs: bool = True,
+        ) -> Generator[pd.DataFrame, None, None]:
             is_crypto = symbol.find("X%3A") == 0
             dates = self.traveller.dates_in_range(timeframe)
             if dates == []:
@@ -671,7 +1054,6 @@ class Polygon(MarketData):
                         limit=C.POLY_MAX_AGGS_LIMIT,
                     )
                 except exceptions.NoResultsError:
-                    # This is to prevent breaking the loop over weekends
                     continue
                 finally:
                     self.log_api_call_time()
@@ -700,19 +1082,31 @@ class Polygon(MarketData):
         return self.try_again(func=_get_intraday, **kwargs)
 
 
-# newShares = oldShares / ratio
-
-
 class LaborStats(MarketData):
-    def __init__(self):
+    """Market data provider for Bureau of Labor Statistics API."""
+
+    def __init__(self) -> None:
+        """Initialize the BLS data provider."""
         super().__init__()
         self.base = "https://api.bls.gov"
         self.version = "v2"
         self.token = os.environ.get("BLS")
         self.provider = "bls"
 
-    def get_unemployment_rate(self, **kwargs):
-        def _get_unemployment_rate(timeframe):
+    def get_unemployment_rate(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch unemployment rate from BLS API.
+
+        Args:
+            **kwargs: Must include 'timeframe'.
+
+        Returns:
+            DataFrame with unemployment rate history.
+
+        Raises:
+            Exception: If API request fails.
+        """
+
+        def _get_unemployment_rate(timeframe: str) -> pd.DataFrame:
             start, end = self.traveller.convert_dates(timeframe, "%Y")
 
             parts = [self.base, "publicAPI", self.version, "timeseries", "data"]
@@ -753,7 +1147,14 @@ class LaborStats(MarketData):
 
 
 class Glassnode(MarketData):
-    def __init__(self, use_cookies=False):
+    """Market data provider for Glassnode crypto analytics API."""
+
+    def __init__(self, use_cookies: bool = False) -> None:
+        """Initialize the Glassnode data provider.
+
+        Args:
+            use_cookies: Use browser-based authentication (default: False).
+        """
         super().__init__()
         self.base = "https://api.glassnode.com"
         self.version = "v1"
@@ -763,7 +1164,8 @@ class Glassnode(MarketData):
         if self.use_cookies:
             self.use_auth()
 
-    def use_auth(self):
+    def use_auth(self) -> None:
+        """Authenticate via browser to get session cookies."""
         options = ChromeOptions()
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
@@ -774,7 +1176,7 @@ class Glassnode(MarketData):
         driver.get("https://studio.glassnode.com/auth/login")
         delay = 10
 
-        def get_element(id):
+        def get_element(id: str) -> Any:  # noqa: A002
             return WebDriverWait(driver, delay).until(
                 EC.presence_of_element_located((By.ID, id))
             )
@@ -792,13 +1194,12 @@ class Glassnode(MarketData):
             "?a=BTC&i=24h&referer=charts"
         )
         driver.get(url)
-        sleep(5)  # wait for the requests to take place
+        sleep(5)
 
-        # extract requests from logs
         raw_logs = driver.get_log("performance")
         logs = [json.loads(raw_log["message"])["message"] for raw_log in raw_logs]
 
-        def log_filter(log_):
+        def log_filter(log_: dict[str, Any]) -> bool:
             return (
                 log_["method"] == "Network.requestWillBeSent"
                 and log_["params"]["request"]["url"] == url
@@ -812,8 +1213,16 @@ class Glassnode(MarketData):
             cookie["name"]: cookie["value"] for cookie in driver.get_cookies()
         }
 
-    def make_request(self, url):
-        params = {"a": "BTC", "c": "native", "i": "24h", "referer": "charts"}
+    def make_request(self, url: str) -> requests.Response:
+        """Make authenticated request to Glassnode API.
+
+        Args:
+            url: API endpoint URL.
+
+        Returns:
+            Response object from the API.
+        """
+        params: dict[str, str] = {"a": "BTC", "c": "native", "i": "24h", "referer": "charts"}
         if self.use_cookies:
             headers = self.headers
             cookies = self.cookies
@@ -825,8 +1234,20 @@ class Glassnode(MarketData):
         sleep(random() * 5)
         return response
 
-    def get_s2f_ratio(self, **kwargs):
-        def _get_s2f_ratio(timeframe):
+    def get_s2f_ratio(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch stock-to-flow ratio from Glassnode API.
+
+        Args:
+            **kwargs: Must include 'timeframe'.
+
+        Returns:
+            DataFrame with S2F ratio history.
+
+        Raises:
+            Exception: If API request fails.
+        """
+
+        def _get_s2f_ratio(timeframe: str) -> pd.DataFrame:
             parts = [
                 self.base,
                 self.version,
@@ -855,8 +1276,20 @@ class Glassnode(MarketData):
 
         return self.try_again(func=_get_s2f_ratio, **kwargs)
 
-    def get_diff_ribbon(self, **kwargs):
-        def _get_diff_ribbon(timeframe):
+    def get_diff_ribbon(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch difficulty ribbon from Glassnode API.
+
+        Args:
+            **kwargs: Must include 'timeframe'.
+
+        Returns:
+            DataFrame with difficulty ribbon moving averages.
+
+        Raises:
+            Exception: If API request fails.
+        """
+
+        def _get_diff_ribbon(timeframe: str) -> pd.DataFrame:
             parts = [
                 self.base,
                 self.version,
@@ -885,8 +1318,20 @@ class Glassnode(MarketData):
 
         return self.try_again(func=_get_diff_ribbon, **kwargs)
 
-    def get_sopr(self, **kwargs):
-        def _get_sopr(timeframe):
+    def get_sopr(self, **kwargs: Any) -> pd.DataFrame:
+        """Fetch SOPR from Glassnode API.
+
+        Args:
+            **kwargs: Must include 'timeframe'.
+
+        Returns:
+            DataFrame with SOPR history.
+
+        Raises:
+            Exception: If API request fails.
+        """
+
+        def _get_sopr(timeframe: str) -> pd.DataFrame:
             parts = [self.base, self.version, "metrics", "indicators", "sopr"]
             url = "/".join(parts)
             empty = pd.DataFrame()

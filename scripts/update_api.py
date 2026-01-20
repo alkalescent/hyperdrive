@@ -1,4 +1,7 @@
+"""Update API with portfolio performance data."""
+
 import os
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -9,28 +12,35 @@ from hyperdrive.Exchange import Kraken
 from hyperdrive.History import Historian
 
 
-def transform_stats(stats, metrics):
+def transform_stats(stats: Any, metrics: list[str]) -> dict[str, float | None]:
+    """Transform portfolio stats to a simplified dictionary.
+
+    Args:
+        stats: Stats object from vectorbt portfolio.
+        metrics: List of metric names to extract.
+
+    Returns:
+        Dictionary mapping metric names to rounded values.
+    """
     return {
         k: (None if pd.isna(v) else round(v, 2))
         for k, v in dict(stats[metrics]).items()
     }
 
 
-md = MarketData()
-md.provider = "polygon"
-hist = Historian()
-kr = Kraken(test=True)
-symbol = os.environ["SYMBOL"]
-signals_path = md.finder.get_signals_path()
-signals = md.reader.load_csv(signals_path)
-signals[C.TIME] = pd.to_datetime(signals[C.TIME])
-df = md.get_ohlc(symbol).merge(signals, on=C.TIME)
+def create_portfolio_preview(
+    close: pd.Series, signals: pd.Series, invert: bool
+) -> dict[str, Any]:
+    """Create portfolio preview data comparing HODL vs hyperdrive strategy.
 
-# 1 week delay
-df = df.head(len(df) - 5)
+    Args:
+        close: Series of closing prices.
+        signals: Series of trading signals.
+        invert: If True, invert for BTC-denominated returns.
 
-
-def create_portfolio_preview(close, signals, invert):
+    Returns:
+        Dictionary with 'data' (time series) and 'stats' (metrics).
+    """
     metrics = [
         "Total Return [%]",
         "Max Drawdown [%]",
@@ -76,7 +86,7 @@ def create_portfolio_preview(close, signals, invert):
 
     dates = list(df[C.TIME].dt.strftime("%m/%d/%Y"))
     full_signals = list(df[C.SIG])
-    signals = hist.unfill(full_signals)
+    signals_unfilled = hist.unfill(full_signals)
     records = []
 
     for idx, date in enumerate(dates):
@@ -93,7 +103,7 @@ def create_portfolio_preview(close, signals, invert):
                 "Name": "hyperdrive",
                 C.TIME: date,
                 C.BAL: hyper_balances[idx],
-                C.SIG: signals[idx],
+                C.SIG: signals_unfilled[idx],
                 f"Full_{C.SIG}": full_signals[idx],
             }
         )
@@ -111,6 +121,20 @@ def create_portfolio_preview(close, signals, invert):
 
     preview = {"data": records, "stats": stats}
     return preview
+
+
+md = MarketData()
+md.provider = "polygon"
+hist = Historian()
+kr = Kraken(test=True)
+symbol = os.environ["SYMBOL"]
+signals_path = md.finder.get_signals_path()
+signals = md.reader.load_csv(signals_path)
+signals[C.TIME] = pd.to_datetime(signals[C.TIME])
+df = md.get_ohlc(symbol).merge(signals, on=C.TIME)
+
+# 1 week delay
+df = df.head(len(df) - 5)
 
 
 usd_preview = create_portfolio_preview(df[C.CLOSE], df[C.SIG], False)

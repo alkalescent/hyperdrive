@@ -9,7 +9,8 @@ symbols = poly.get_symbols()
 symbols = symbols[250:]
 
 
-def update_poly_dividends():
+def update_poly_dividends() -> None:
+    """Update historical dividend data from Polygon.io."""
     for symbol in symbols:
         filename = PathFinder().get_dividends_path(
             symbol=symbol, provider=poly.provider

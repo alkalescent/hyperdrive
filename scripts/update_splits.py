@@ -1,3 +1,5 @@
+"""Update stock split data from Polygon API."""
+
 import os
 from multiprocessing import Process, Value
 
@@ -10,10 +12,11 @@ poly = Polygon()
 symbols = poly.get_symbols()
 
 
-def update_poly_splits():
+def update_poly_splits() -> None:
+    """Update split data from Polygon.io for all symbols."""
     for symbol in symbols:
         try:
-            filename = poly.save_splits(
+            poly.save_splits(
                 symbol=symbol,
                 timeframe="3m",
                 retries=1 if C.TEST else C.DEFAULT_RETRIES,

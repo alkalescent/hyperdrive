@@ -12,9 +12,9 @@ crypto_symbols = POLY_CRYPTO_SYMBOLS
 all_symbols = stock_symbols + crypto_symbols
 
 
-def update_poly_intraday():
+def update_poly_intraday() -> None:
+    """Update intraday data from Polygon.io for all symbols."""
     for symbol in all_symbols:
-        filenames = []
         try:
             filenames = poly.save_intraday(symbol=symbol, timeframe=FEW_DAYS, retries=1)
             with counter.get_lock():

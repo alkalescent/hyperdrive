@@ -17,7 +17,6 @@ dependencies = [
     "scipy>=1.15.3",
     "scikit-learn>=1.6.1",
     "cryptography>=44.0.3",
-    "ta>=0.11.0",
     "python-binance>=1.0.28",
     "imbalanced-learn>=0.13.0",
     "icosphere>=0.1.3",
@@ -87,10 +86,6 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN", "D"]  # Don't require annotations/docstrings in tests
-"scripts/*" = ["ANN", "D"]  # Don't require annotations/docstrings in scripts
-"hyperdrive/DataSource.py" = ["ANN", "D"]  # Gradual adoption - large file
 
 [tool.ruff.format]
 quote-style = "double"
