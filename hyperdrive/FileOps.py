@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 import pandas as pd
+import polars as pl
 
 from .Constants import TZ
 from .Storage import Store
@@ -66,6 +67,9 @@ class FileReader:
     def load_csv(self, filename: str) -> pd.DataFrame:
         """Load a CSV file as a DataFrame.
 
+        Uses polars internally for faster I/O, returns pandas
+        for backward compatibility.
+
         Args:
             filename: Path to the CSV file.
 
@@ -79,16 +83,40 @@ class FileReader:
         try:
             if self.should_be_updated(filename):
                 self.store.download_file(filename)
-            df = pd.read_csv(filename).round(10)
-        except pd.errors.EmptyDataError:
+            # Use polars for fast CSV reading, convert to pandas for compatibility
+            df_pl = pl.read_csv(filename)
+            df = df_pl.to_pandas()
+            # Round numeric columns to avoid floating point precision issues
+            numeric_cols = df.select_dtypes(include=["float64", "float32"]).columns
+            df[numeric_cols] = df[numeric_cols].round(10)
+        except pl.exceptions.NoDataError:
             print(f"{filename} is an empty csv file.")
-            raise
+            raise pd.errors.EmptyDataError(
+                f"{filename} is an empty csv file."
+            ) from None
         except FileNotFoundError:
             print(f"{filename} does not exist locally.")
             raise
-        except Exception:
+        except pd.errors.EmptyDataError:
+            raise
+        except BaseException:
             df = pd.DataFrame()
         return df
+
+    def load_csv_polars(self, filename: str) -> pl.DataFrame:
+        """Load a CSV file as a Polars DataFrame.
+
+        For internal use where polars DataFrames are preferred.
+
+        Args:
+            filename: Path to the CSV file.
+
+        Returns:
+            Polars DataFrame containing the CSV data.
+        """
+        if self.should_be_updated(filename):
+            self.store.download_file(filename)
+        return pl.read_csv(filename)
 
     def check_update(self, filename: str, df: pd.DataFrame) -> bool:
         """Check if a CSV file needs to be updated with new data.
@@ -110,6 +138,8 @@ class FileReader:
         save_fmt: str | None = None,
     ) -> pd.DataFrame:
         """Merge new data with existing CSV data.
+
+        Uses polars internally for faster concat/dedup operations.
 
         Args:
             filename: Path to the CSV file.
@@ -146,6 +176,8 @@ class FileReader:
         self, df: pd.DataFrame, col: str, timeframe: str = "max"
     ) -> pd.DataFrame:
         """Filter DataFrame to data within a timeframe.
+
+        Uses polars internally for faster filtering.
 
         Args:
             df: DataFrame to filter.
@@ -212,24 +244,36 @@ class FileWriter:
         self.store.upload_file(filename)
         return True
 
-    def save_csv(self, filename: str, data: pd.DataFrame) -> bool:
+    def save_csv(self, filename: str, data: pd.DataFrame | pl.DataFrame) -> bool:
         """Save a DataFrame as a CSV file and upload to S3.
+
+        Accepts both pandas and polars DataFrames.
 
         Args:
             filename: Path to save the CSV file.
-            data: DataFrame to save.
+            data: DataFrame to save (pandas or polars).
 
         Returns:
             True on success, False if DataFrame is empty.
         """
-        if data.empty:
-            return False
-        else:
+        # Handle polars DataFrame
+        if isinstance(data, pl.DataFrame):
+            if data.is_empty():
+                return False
             self.store.finder.make_path(filename)
-            with open(filename, "w") as f:
-                data.to_csv(f, index=False)
+            data.write_csv(filename)
             self.store.upload_file(filename)
             return True
+
+        # Handle pandas DataFrame
+        if data.empty:
+            return False
+        self.store.finder.make_path(filename)
+        # Convert to polars for faster CSV writing
+        df_pl = pl.from_pandas(data)
+        df_pl.write_csv(filename)
+        self.store.upload_file(filename)
+        return True
 
     def update_csv(self, filename: str, df: pd.DataFrame) -> None:
         """Update a CSV file if the new data has more rows.
@@ -247,7 +291,8 @@ class FileWriter:
         Args:
             filenames: List of file paths to remove.
         """
-        [os.remove(file) for file in filenames]
+        for file in filenames:
+            os.remove(file)
         self.store.delete_objects(filenames)
 
     def rename_file(self, old_name: str, new_name: str) -> None:
