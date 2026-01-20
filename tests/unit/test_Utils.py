@@ -1,3 +1,5 @@
+"""Tests for the Utils module."""
+
 import os
 
 import pytest
@@ -9,7 +11,10 @@ knife = SwissArmyKnife()
 
 
 class Example:
-    def __init__(self):
+    """Example class for testing attribute manipulation."""
+
+    def __init__(self) -> None:
+        """Initialize example with default attributes."""
         self.var = "old"
         self.bucket_name = "random"
 
@@ -18,7 +23,10 @@ ex = Example()
 
 
 class TestSwissArmyKnife:
-    def test_replace_attr(self):
+    """Tests for the SwissArmyKnife utility class."""
+
+    def test_replace_attr(self) -> None:
+        """Test replacing and adding attributes on objects."""
         assert ex.var == "old"
         knife.replace_attr(ex, "var", "new")
         assert ex.var == "new"
@@ -26,7 +34,8 @@ class TestSwissArmyKnife:
         with pytest.raises(AttributeError):
             ex.absent  # noqa: B018
 
-    def test_use_dev(self):
+    def test_use_dev(self) -> None:
+        """Test switching to dev bucket configuration."""
         assert ex.bucket_name == "random"
         if not C.CI:
             dev_ex = knife.use_dev(ex)

@@ -1,3 +1,5 @@
+"""Tests for the Calculus module."""
+
 import numpy as np
 import pandas as pd
 
@@ -7,46 +9,56 @@ calc = Calculator()
 
 
 class TestCalculator:
-    def test_avg(self):
+    """Tests for the Calculator math utility class."""
+
+    def test_avg(self) -> None:
+        """Test calculating average of a list."""
         nums = [1, 2, 3, 4, 5]
         avg = calc.avg(nums)
         assert avg == 3
 
-    def test_delta(self):
+    def test_delta(self) -> None:
+        """Test calculating percentage change."""
         series = pd.Series([50, 100, 25])
         shifted = calc.delta(series)
         expected = pd.Series([np.nan, 1, -0.75])
         assert shifted.equals(expected)
 
-    def test_roll(self):
+    def test_roll(self) -> None:
+        """Test rolling average calculation."""
         series = pd.Series([1, 2, 3])
         rolled = calc.roll(series, 2)
         expected = pd.Series([np.nan, 1.5, 2.5])
         assert rolled.equals(expected)
 
-    def test_smooth(self):
+    def test_smooth(self) -> None:
+        """Test Savitzky-Golay smoothing filter."""
         series = pd.Series([0, 25, 50, 100, 50, 25, 0])
         smoothed = calc.smooth(series, 3, 2)
         expected = [-8, 36, 63, 79, 63, 36, -8]
         for idx, s in enumerate(smoothed):
             assert round(s) == expected[idx]
 
-    def test_derive(self):
+    def test_derive(self) -> None:
+        """Test numerical derivative calculation."""
         series = pd.Series(calc.fib(9))
         derived = calc.derive(series)
         expected = pd.Series([1, 0.5, 0.5, 1, 1.5, 2.5, 4, 6.5, 8])
         assert np.array_equal(derived, expected)
 
-    def test_cv(self):
+    def test_cv(self) -> None:
+        """Test coefficient of variation calculation."""
         series = pd.Series([2, 4, 6])
         cvd = calc.cv(x=series, ddof=1)
         expected = 0.5
         assert cvd == expected
 
-    def test_fib(self):
+    def test_fib(self) -> None:
+        """Test Fibonacci sequence generation."""
         assert calc.fib(9) == [0, 1, 1, 2, 3, 5, 8, 13, 21]
 
-    def test_find_plane(self):
+    def test_find_plane(self) -> None:
+        """Test finding plane equation from 3 points."""
         # x = 0
         pt1 = (0, 0, 0)
         pt2 = (0, 0, 1)
@@ -70,18 +82,21 @@ class TestCalculator:
         plane = calc.find_plane(pt1, pt2, pt3)
         assert plane == (0, 1, 1, -1)
 
-    def test_eval_plane(self):
+    def test_eval_plane(self) -> None:
+        """Test evaluating plane equation at a point."""
         pt = (1, 2, 3)
         coeffs = (4, 5, 6, 7)
         result = calc.eval_plane(pt, coeffs)
         assert result == 39
 
-    def test_find_shortest_dist(self):
+    def test_find_shortest_dist(self) -> None:
+        """Test finding shortest distance between points."""
         pts = [(0, 0, 0), (0, 0, 1), (1, 1, 1)]
         min_dist = calc.find_shortest_dist(pts)
         assert min_dist == 1
 
-    def test_same_plane_side(self):
+    def test_same_plane_side(self) -> None:
+        """Test checking if two points are on same side of plane."""
         pt1 = (0, 2, 0)
         pt2 = (0, 0, 2)
         # y + z = 1
@@ -93,7 +108,8 @@ class TestCalculator:
         pt2 = (1, 0, 0)
         assert calc.same_plane_side(pt1, pt2, plane)
 
-    def test_check_pt_in_shape(self):
+    def test_check_pt_in_shape(self) -> None:
+        """Test checking if point is inside a 3D shape."""
         # refinement=1 ensures triangular faces
         # check_pt_in_shape fx only works with triangular faces
         vertices, _ = calc.generate_icosphere(2, (0.1, 0.1, 0.1), 1)
@@ -104,7 +120,8 @@ class TestCalculator:
         assert calc.check_pt_in_shape((0, 0, 0), vertices)
         assert not calc.check_pt_in_shape((3, 3, 3), vertices)
 
-    def test_get_3D_circle(self):
+    def test_get_3D_circle(self) -> None:
+        """Test generating 3D circle points."""
         center = np.array([0, 0, 0])
         p1 = np.array([1.25, 1.25, 1.25])
         p2 = np.array([1.25, 1.25, -1.25])
@@ -117,7 +134,7 @@ class TestCalculator:
         assert np.isclose(circle.T[0], p1).all()
         assert np.isclose(circle.T[int(num_pts / 2)], -p1, atol=0.02).all()
 
-    def test_derive_with_series_x(self):
+    def test_derive_with_series_x(self) -> None:
         """Test derive with pd.Series for x (line 41)."""
         y = np.array([0, 1, 4, 9, 16])  # x^2
         x = pd.Series([0, 1, 2, 3, 4])
@@ -125,26 +142,26 @@ class TestCalculator:
         # Derivative of x^2 is 2x
         assert len(derived) == 5
 
-    def test_cv_numpy_array(self):
+    def test_cv_numpy_array(self) -> None:
         """Test cv with 2D numpy array (line 50)."""
         arr = np.array([[2, 4, 6], [1, 2, 3]])
         cvd = calc.cv(x=arr, ddof=0)
         assert len(cvd) == 2  # One cv per row
 
-    def test_fib_edge_cases(self):
+    def test_fib_edge_cases(self) -> None:
         """Test fib with edge cases (lines 54-56)."""
         assert calc.fib(0) == [0]  # n < 1
         assert calc.fib(1) == [0]  # n <= 1
         assert calc.fib(2) == [0, 1]  # n == 2
 
-    def test_find_centroid_minmax(self):
+    def test_find_centroid_minmax(self) -> None:
         """Test find_centroid with method != mean (line 18)."""
         points = np.array([[0, 0, 0], [2, 4, 6], [1, 2, 3]])
         centroid = calc.find_centroid(points, method="minmax")
         # Should use min/max instead of mean
         assert len(centroid) == 3
 
-    def test_get_difference(self):
+    def test_get_difference(self) -> None:
         """Test get_difference between sets."""
         old = {"a", "b", "c"}
         new = {"b", "c", "d"}
@@ -152,13 +169,13 @@ class TestCalculator:
         assert minus == {"a"}
         assert plus == {"d"}
 
-    def test_generate_icosphere(self):
+    def test_generate_icosphere(self) -> None:
         """Test generate_icosphere."""
         vertices, faces = calc.generate_icosphere(1.0, np.array([0, 0, 0]), 1)
         assert len(vertices) > 0
         assert len(faces) > 0
 
-    def test_generate_octahedron(self):
+    def test_generate_octahedron(self) -> None:
         """Test generate_octahedron."""
         vertices = calc.generate_octahedron(2.0, np.array([1, 1, 1]))
         assert len(vertices) == 6

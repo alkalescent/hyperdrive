@@ -1,3 +1,5 @@
+"""Tests for the Transformer module."""
+
 import json
 
 import numpy as np
@@ -9,7 +11,10 @@ encoder = NumpyEncoder()
 
 
 class TestNumpyEncoder:
-    def test_default(self):
+    """Tests for the NumpyEncoder JSON encoder."""
+
+    def test_default(self) -> None:
+        """Test encoding various numpy types to JSON."""
         # list
         arr = np.array([True, False])
         with pytest.raises(TypeError):

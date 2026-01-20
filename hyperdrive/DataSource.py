@@ -1018,9 +1018,7 @@ class Polygon(MarketData):
 
         return self.try_again(func=_get_ohlc, **kwargs)
 
-    def get_intraday(
-        self, **kwargs: Any
-    ) -> Generator[pd.DataFrame, None, None] | None:
+    def get_intraday(self, **kwargs: Any) -> Generator[pd.DataFrame, None, None] | None:
         """Fetch intraday data from Polygon API.
 
         Args:
@@ -1222,7 +1220,12 @@ class Glassnode(MarketData):
         Returns:
             Response object from the API.
         """
-        params: dict[str, str] = {"a": "BTC", "c": "native", "i": "24h", "referer": "charts"}
+        params: dict[str, str] = {
+            "a": "BTC",
+            "c": "native",
+            "i": "24h",
+            "referer": "charts",
+        }
         if self.use_cookies:
             headers = self.headers
             cookies = self.cookies

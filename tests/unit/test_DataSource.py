@@ -5,6 +5,8 @@ Glassnode, and LaborStats for fast, deterministic, offline testing.
 """
 
 from datetime import timedelta
+from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -104,7 +106,7 @@ SAMPLE_SOPR = pd.DataFrame(
 
 
 @pytest.fixture
-def mock_env_vars(monkeypatch):
+def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set up mock environment variables."""
     monkeypatch.setenv("POLYGON", "test_polygon_key")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test_aws_key")
@@ -121,7 +123,7 @@ def mock_env_vars(monkeypatch):
 
 
 @pytest.fixture
-def mock_file_ops(mock_env_vars):
+def mock_file_ops(mock_env_vars: None) -> dict[str, MagicMock]:
     """Mock file operations (FileReader, FileWriter, Store)."""
     with (
         patch("hyperdrive.DataSource.FileWriter") as MockWriter,
@@ -155,7 +157,7 @@ def mock_file_ops(mock_env_vars):
 
 
 @pytest.fixture
-def mock_polygon_client(mock_env_vars):
+def mock_polygon_client(mock_env_vars: None) -> MagicMock:
     """Mock Polygon RESTClient."""
     with patch("hyperdrive.DataSource.RESTClient") as MockClient:
         client = MagicMock()
@@ -200,7 +202,9 @@ def mock_polygon_client(mock_env_vars):
 
 
 @pytest.fixture
-def market_data(mock_file_ops, mock_polygon_client):
+def market_data(
+    mock_file_ops: dict[str, MagicMock], mock_polygon_client: MagicMock
+) -> Any:
     """Create MarketData instance with mocked dependencies."""
     from hyperdrive.DataSource import MarketData
 
@@ -213,7 +217,7 @@ def market_data(mock_file_ops, mock_polygon_client):
 
 
 @pytest.fixture
-def polygon(mock_file_ops, mock_polygon_client):
+def polygon(mock_file_ops: dict[str, MagicMock], mock_polygon_client: MagicMock) -> Any:
     """Create Polygon instance with mocked dependencies."""
     from hyperdrive.DataSource import Polygon
 
@@ -224,7 +228,7 @@ def polygon(mock_file_ops, mock_polygon_client):
 
 
 @pytest.fixture
-def indices(mock_file_ops):
+def indices(mock_file_ops: dict[str, MagicMock]) -> Any:
     """Create Indices instance with mocked dependencies."""
     from hyperdrive.DataSource import Indices
 
@@ -234,7 +238,7 @@ def indices(mock_file_ops):
 
 
 @pytest.fixture
-def mock_alpaca_api(mock_env_vars):
+def mock_alpaca_api(mock_env_vars: None) -> responses.RequestsMock:
     """Mock Alpaca data API."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://data.alpaca.markets/v2"
@@ -262,7 +266,9 @@ def mock_alpaca_api(mock_env_vars):
 
 
 @pytest.fixture
-def alpaca_data(mock_file_ops, mock_alpaca_api):
+def alpaca_data(
+    mock_file_ops: dict[str, MagicMock], mock_alpaca_api: responses.RequestsMock
+) -> Any:
     """Create AlpacaData instance with mocked dependencies."""
     from hyperdrive.DataSource import AlpacaData
 
@@ -273,7 +279,7 @@ def alpaca_data(mock_file_ops, mock_alpaca_api):
 
 
 @pytest.fixture
-def mock_bls_api(mock_env_vars):
+def mock_bls_api(mock_env_vars: None) -> responses.RequestsMock:
     """Mock Bureau of Labor Statistics API."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         rsps.add(
@@ -298,7 +304,9 @@ def mock_bls_api(mock_env_vars):
 
 
 @pytest.fixture
-def labor_stats(mock_file_ops, mock_bls_api):
+def labor_stats(
+    mock_file_ops: dict[str, MagicMock], mock_bls_api: responses.RequestsMock
+) -> Any:
     """Create LaborStats instance with mocked dependencies."""
     from hyperdrive.DataSource import LaborStats
 
@@ -309,7 +317,7 @@ def labor_stats(mock_file_ops, mock_bls_api):
 
 
 @pytest.fixture
-def mock_glassnode_api(mock_env_vars):
+def mock_glassnode_api(mock_env_vars: None) -> responses.RequestsMock:
     """Mock Glassnode API."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://api.glassnode.com/v1"
@@ -339,7 +347,9 @@ def mock_glassnode_api(mock_env_vars):
 
 
 @pytest.fixture
-def glassnode(mock_file_ops, mock_glassnode_api):
+def glassnode(
+    mock_file_ops: dict[str, MagicMock], mock_glassnode_api: responses.RequestsMock
+) -> Any:
     """Create Glassnode instance with mocked dependencies."""
     from hyperdrive.DataSource import Glassnode
 
@@ -357,7 +367,7 @@ def glassnode(mock_file_ops, mock_glassnode_api):
 class TestMarketData:
     """Unit tests for MarketData class."""
 
-    def test_init(self, market_data):
+    def test_init(self, market_data: Any) -> None:
         """Test MarketData initialization."""
         assert type(market_data).__name__ == "MarketData"
         assert hasattr(market_data, "writer")
@@ -365,17 +375,19 @@ class TestMarketData:
         assert hasattr(market_data, "finder")
         assert hasattr(market_data, "provider")
 
-    def test_try_again_success(self, market_data):
+    def test_try_again_success(self, market_data: Any) -> None:
         """Test try_again with successful function."""
         result = market_data.try_again(lambda: 42)
         assert result == 42
 
-    def test_try_again_failure(self, market_data):
+    def test_try_again_failure(self, market_data: Any) -> None:
         """Test try_again with failing function raises exception."""
         with pytest.raises(ZeroDivisionError):
             market_data.try_again(lambda: 1 / 0)
 
-    def test_get_symbols(self, market_data, mock_file_ops):
+    def test_get_symbols(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting symbols list."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_SYMBOLS.copy()
         symbols = market_data.get_symbols()
@@ -383,13 +395,15 @@ class TestMarketData:
         assert "AMZN" in symbols
         assert "NFLX" in symbols
 
-    def test_get_dividends(self, market_data, mock_file_ops):
+    def test_get_dividends(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting dividend data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_DIVIDENDS.copy()
         df = market_data.get_dividends(symbol="AAPL")
         assert {C.EX, C.PAY, C.DEC, C.DIV}.issubset(df.columns)
 
-    def test_standardize_dividends(self, market_data):
+    def test_standardize_dividends(self, market_data: Any) -> None:
         """Test dividend data standardization."""
         raw = pd.DataFrame(
             {
@@ -405,20 +419,22 @@ class TestMarketData:
         assert C.DEC in result.columns
         assert C.DIV in result.columns
 
-    def test_standardize_dividends_partial_columns(self, market_data):
+    def test_standardize_dividends_partial_columns(self, market_data: Any) -> None:
         """Test dividend standardization with partial columns."""
         raw = pd.DataFrame({"exDate": ["2024-01-15"], "paymentDate": ["2024-01-30"]})
         result = market_data.standardize_dividends("AAPL", raw)
         assert C.EX in result.columns
         assert C.PAY in result.columns
 
-    def test_get_splits(self, market_data, mock_file_ops):
+    def test_get_splits(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting splits data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_SPLITS.copy()
         df = market_data.get_splits("AAPL")
-        assert {C.EX, C.RATIO}.issubset(df.columns)  # Polygon only returns EX and RATIO
+        assert {C.EX, C.RATIO}.issubset(df.columns)
 
-    def test_standardize_splits(self, market_data):
+    def test_standardize_splits(self, market_data: Any) -> None:
         """Test splits data standardization."""
         raw = pd.DataFrame(
             {
@@ -432,7 +448,7 @@ class TestMarketData:
         assert C.EX in result.columns
         assert C.RATIO in result.columns
 
-    def test_standardize_ohlc(self, market_data):
+    def test_standardize_ohlc(self, market_data: Any) -> None:
         """Test OHLC data standardization."""
         raw = pd.DataFrame(
             {
@@ -450,32 +466,38 @@ class TestMarketData:
         assert C.CLOSE in result.columns
         assert C.VOL in result.columns
 
-    def test_get_ohlc(self, market_data, mock_file_ops):
+    def test_get_ohlc(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting OHLC data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_OHLC.copy()
         df = market_data.get_ohlc("AAPL", "1y")
         assert {C.TIME, C.OPEN, C.HIGH, C.LOW, C.CLOSE, C.VOL}.issubset(df.columns)
 
-    def test_get_unemployment_rate(self, market_data, mock_file_ops):
+    def test_get_unemployment_rate(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting unemployment rate data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_UNEMPLOYMENT.copy()
         df = market_data.get_unemployment_rate()
         assert {C.TIME, C.UN_RATE}.issubset(df.columns)
 
-    def test_standardize_unemployment(self, market_data):
+    def test_standardize_unemployment(self, market_data: Any) -> None:
         """Test unemployment data standardization."""
         raw = pd.DataFrame({"time": ["2024-01-01"], "value": [3.7]})
         result = market_data.standardize_unemployment(raw)
         assert C.TIME in result.columns
         assert C.UN_RATE in result.columns
 
-    def test_get_ndx(self, market_data, mock_file_ops):
+    def test_get_ndx(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting NDX index data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_NDX.copy()
         df = market_data.get_ndx()
         assert {C.TIME, C.SYMBOL, C.DELTA}.issubset(df.columns)
 
-    def test_standardize_ndx(self, market_data):
+    def test_standardize_ndx(self, market_data: Any) -> None:
         """Test NDX data standardization (removes duplicates, keeps latest)."""
         nonstd = pd.DataFrame(
             {
@@ -488,7 +510,7 @@ class TestMarketData:
         # Should keep only symbols that end with '+' delta
         assert (std[C.DELTA] == "+").all()
 
-    def test_log_api_call_time(self, market_data):
+    def test_log_api_call_time(self, market_data: Any) -> None:
         """Test API call time logging."""
         if hasattr(market_data, "last_api_call_time"):
             delattr(market_data, "last_api_call_time")
@@ -499,14 +521,14 @@ class TestMarketData:
 class TestIndices:
     """Unit tests for Indices class."""
 
-    def test_init(self, mock_file_ops):
+    def test_init(self, mock_file_ops: dict[str, MagicMock]) -> None:
         """Test Indices initialization."""
         from hyperdrive.DataSource import Indices
 
         idc = Indices()
         assert isinstance(idc, Indices)
 
-    def test_get_ndx(self, indices):
+    def test_get_ndx(self, indices: Any) -> None:
         """Test getting NDX index constituents."""
         ndx = indices.get_ndx()
         assert {C.TIME, C.SYMBOL, C.DELTA}.issubset(ndx.columns)
@@ -515,30 +537,30 @@ class TestIndices:
 class TestPolygon:
     """Unit tests for Polygon class."""
 
-    def test_init(self, polygon):
+    def test_init(self, polygon: Any) -> None:
         """Test Polygon initialization."""
         assert hasattr(polygon, "client")
         assert hasattr(polygon, "provider")
 
-    def test_get_dividends(self, polygon, mock_polygon_client):
+    def test_get_dividends(self, polygon: Any, mock_polygon_client: MagicMock) -> None:
         """Test getting dividend data from Polygon."""
         df = polygon.get_dividends(symbol="AAPL", timeframe="5y")
         assert {C.EX, C.PAY, C.DEC, C.DIV}.issubset(df.columns)
         mock_polygon_client.list_dividends.assert_called()
 
-    def test_get_splits(self, polygon, mock_polygon_client):
+    def test_get_splits(self, polygon: Any, mock_polygon_client: MagicMock) -> None:
         """Test getting splits data from Polygon."""
         df = polygon.get_splits(symbol="AAPL")
-        assert {C.EX, C.RATIO}.issubset(df.columns)  # Polygon only returns EX and RATIO
+        assert {C.EX, C.RATIO}.issubset(df.columns)
         mock_polygon_client.list_splits.assert_called()
 
-    def test_get_ohlc(self, polygon, mock_polygon_client):
+    def test_get_ohlc(self, polygon: Any, mock_polygon_client: MagicMock) -> None:
         """Test getting OHLC data from Polygon."""
         df = polygon.get_ohlc(symbol="AAPL", timeframe="1m")
         assert {C.TIME, C.OPEN, C.HIGH, C.LOW, C.CLOSE, C.VOL}.issubset(df.columns)
         mock_polygon_client.get_aggs.assert_called()
 
-    def test_log_api_call_time(self, polygon):
+    def test_log_api_call_time(self, polygon: Any) -> None:
         """Test API call time logging."""
         if hasattr(polygon, "last_api_call_time"):
             delattr(polygon, "last_api_call_time")
@@ -549,7 +571,7 @@ class TestPolygon:
 class TestAlpacaData:
     """Unit tests for AlpacaData class."""
 
-    def test_init(self, alpaca_data):
+    def test_init(self, alpaca_data: Any) -> None:
         """Test AlpacaData initialization."""
         assert hasattr(alpaca_data, "base")
         assert hasattr(alpaca_data, "token")
@@ -560,14 +582,16 @@ class TestAlpacaData:
 class TestLaborStats:
     """Unit tests for LaborStats class."""
 
-    def test_init(self, labor_stats):
+    def test_init(self, labor_stats: Any) -> None:
         """Test LaborStats initialization."""
         assert hasattr(labor_stats, "base")
         assert hasattr(labor_stats, "version")
         assert hasattr(labor_stats, "token")
         assert hasattr(labor_stats, "provider")
 
-    def test_get_unemployment_rate(self, labor_stats, mock_bls_api):
+    def test_get_unemployment_rate(
+        self, labor_stats: Any, mock_bls_api: responses.RequestsMock
+    ) -> None:
         """Test getting unemployment rate from BLS API."""
         df = labor_stats.get_unemployment_rate(timeframe="2y")
         assert {C.TIME, C.UN_RATE}.issubset(df.columns)
@@ -576,7 +600,9 @@ class TestLaborStats:
 class TestMarketDataSave:
     """Unit tests for MarketData save methods."""
 
-    def test_save_dividends(self, market_data, mock_file_ops, tmp_path):
+    def test_save_dividends(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving dividend data."""
         # Setup temp file path
         div_path = tmp_path / "dividends.csv"
@@ -589,7 +615,9 @@ class TestMarketDataSave:
         assert result == str(div_path)
         assert div_path.exists()
 
-    def test_save_splits(self, market_data, mock_file_ops, tmp_path):
+    def test_save_splits(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving splits data."""
         splits_path = tmp_path / "splits.csv"
         market_data.finder.get_splits_path = lambda symbol, provider: str(splits_path)
@@ -601,7 +629,9 @@ class TestMarketDataSave:
         assert result == str(splits_path)
         assert splits_path.exists()
 
-    def test_save_ohlc(self, market_data, mock_file_ops, tmp_path):
+    def test_save_ohlc(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving OHLC data."""
         ohlc_path = tmp_path / "ohlc.csv"
         market_data.finder.get_ohlc_path = lambda symbol, provider: str(ohlc_path)
@@ -613,7 +643,9 @@ class TestMarketDataSave:
         assert result == str(ohlc_path)
         assert ohlc_path.exists()
 
-    def test_save_unemployment_rate(self, market_data, mock_file_ops, tmp_path):
+    def test_save_unemployment_rate(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving unemployment rate data."""
         un_path = tmp_path / "unemployment.csv"
         market_data.finder.get_unemployment_path = lambda: str(un_path)
@@ -625,7 +657,9 @@ class TestMarketDataSave:
         assert result == str(un_path)
         assert un_path.exists()
 
-    def test_save_s2f_ratio(self, market_data, mock_file_ops, tmp_path):
+    def test_save_s2f_ratio(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving S2F ratio data."""
         s2f_path = tmp_path / "s2f.csv"
         market_data.finder.get_s2f_path = lambda: str(s2f_path)
@@ -637,7 +671,9 @@ class TestMarketDataSave:
         assert result == str(s2f_path)
         assert s2f_path.exists()
 
-    def test_save_diff_ribbon(self, market_data, mock_file_ops, tmp_path):
+    def test_save_diff_ribbon(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving difficulty ribbon data."""
         diff_path = tmp_path / "diff_ribbon.csv"
         market_data.finder.get_diff_ribbon_path = lambda: str(diff_path)
@@ -649,7 +685,9 @@ class TestMarketDataSave:
         assert result == str(diff_path)
         assert diff_path.exists()
 
-    def test_save_sopr(self, market_data, mock_file_ops, tmp_path):
+    def test_save_sopr(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving SOPR data."""
         sopr_path = tmp_path / "sopr.csv"
         market_data.finder.get_sopr_path = lambda: str(sopr_path)
@@ -661,7 +699,9 @@ class TestMarketDataSave:
         assert result == str(sopr_path)
         assert sopr_path.exists()
 
-    def test_save_ndx(self, market_data, mock_file_ops, tmp_path):
+    def test_save_ndx(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving NDX data."""
         ndx_path = tmp_path / "ndx.csv"
         market_data.finder.get_ndx_path = lambda: str(ndx_path)
@@ -676,25 +716,31 @@ class TestMarketDataSave:
             assert result == str(ndx_path)
             assert ndx_path.exists()
 
-    def test_get_s2f_ratio(self, market_data, mock_file_ops):
+    def test_get_s2f_ratio(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting S2F ratio data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_S2F.copy()
         df = market_data.get_s2f_ratio()
         assert {C.TIME, C.HALVING, C.RATIO}.issubset(df.columns)
 
-    def test_get_diff_ribbon(self, market_data, mock_file_ops):
+    def test_get_diff_ribbon(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting difficulty ribbon data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_DIFF_RIBBON.copy()
         df = market_data.get_diff_ribbon()
         assert C.TIME in df.columns
 
-    def test_get_sopr(self, market_data, mock_file_ops):
+    def test_get_sopr(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting SOPR data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_SOPR.copy()
         df = market_data.get_sopr()
         assert {C.TIME, C.SOPR}.issubset(df.columns)
 
-    def test_standardize_s2f_ratio(self, market_data):
+    def test_standardize_s2f_ratio(self, market_data: Any) -> None:
         """Test S2F ratio standardization."""
         raw = pd.DataFrame(
             {
@@ -706,7 +752,7 @@ class TestMarketDataSave:
         result = market_data.standardize_s2f_ratio(raw)
         assert C.TIME in result.columns
 
-    def test_standardize_diff_ribbon(self, market_data):
+    def test_standardize_diff_ribbon(self, market_data: Any) -> None:
         """Test difficulty ribbon standardization."""
         raw = pd.DataFrame(
             {
@@ -729,7 +775,7 @@ class TestMarketDataSave:
         result = market_data.standardize_diff_ribbon(raw)
         assert C.TIME in result.columns
 
-    def test_standardize_sopr(self, market_data):
+    def test_standardize_sopr(self, market_data: Any) -> None:
         """Test SOPR standardization."""
         raw = pd.DataFrame(
             {
@@ -741,7 +787,9 @@ class TestMarketDataSave:
         assert C.TIME in result.columns
         assert C.SOPR in result.columns
 
-    def test_get_saved_ndx(self, market_data, mock_file_ops):
+    def test_get_saved_ndx(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting saved NDX data."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_NDX.copy()
         df = market_data.get_saved_ndx()
@@ -751,33 +799,50 @@ class TestMarketDataSave:
 class TestGlassnode:
     """Unit tests for Glassnode class."""
 
-    def test_init(self, glassnode):
+    def test_init(self, glassnode: Any) -> None:
         """Test Glassnode initialization."""
         assert hasattr(glassnode, "base")
         assert hasattr(glassnode, "version")
         assert hasattr(glassnode, "token")
         assert hasattr(glassnode, "provider")
 
-    def test_make_request(self, glassnode, mock_glassnode_api):
+    def test_make_request(
+        self, glassnode: Any, mock_glassnode_api: responses.RequestsMock
+    ) -> None:
         """Test making API request."""
         url = "https://api.glassnode.com/v1/metrics/indicators/stock_to_flow_ratio"
         response = glassnode.make_request(url)
         assert response.ok
 
-    def test_get_s2f_ratio(self, glassnode, mock_glassnode_api, mock_file_ops):
+    def test_get_s2f_ratio(
+        self,
+        glassnode: Any,
+        mock_glassnode_api: responses.RequestsMock,
+        mock_file_ops: dict[str, MagicMock],
+    ) -> None:
         """Test getting S2F ratio from Glassnode API."""
         mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
         df = glassnode.get_s2f_ratio(timeframe="1y")
         # Returns data from the mock
         assert df is not None
 
-    def test_get_diff_ribbon(self, glassnode, mock_glassnode_api, mock_file_ops):
+    def test_get_diff_ribbon(
+        self,
+        glassnode: Any,
+        mock_glassnode_api: responses.RequestsMock,
+        mock_file_ops: dict[str, MagicMock],
+    ) -> None:
         """Test getting difficulty ribbon from Glassnode API."""
         mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
         df = glassnode.get_diff_ribbon(timeframe="1y")
         assert df is not None
 
-    def test_get_sopr(self, glassnode, mock_glassnode_api, mock_file_ops):
+    def test_get_sopr(
+        self,
+        glassnode: Any,
+        mock_glassnode_api: responses.RequestsMock,
+        mock_file_ops: dict[str, MagicMock],
+    ) -> None:
         """Test getting SOPR from Glassnode API."""
         mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
         df = glassnode.get_sopr(timeframe="1y")
@@ -787,10 +852,10 @@ class TestGlassnode:
 class TestPolygonIntraday:
     """Unit tests for Polygon intraday methods."""
 
-    def test_paginate(self, polygon):
+    def test_paginate(self, polygon: Any) -> None:
         """Test pagination helper."""
 
-        def gen():
+        def gen() -> Any:
             yield 1
             yield 2
             yield 3
@@ -798,7 +863,7 @@ class TestPolygonIntraday:
         result = polygon.paginate(gen(), lambda x: x * 2)
         assert result == [2, 4, 6]
 
-    def test_obey_free_limit(self, polygon):
+    def test_obey_free_limit(self, polygon: Any) -> None:
         """Test free tier rate limiting."""
         from time import time
 
@@ -811,7 +876,12 @@ class TestPolygonIntraday:
 class TestAlpacaDataOHLC:
     """Unit tests for AlpacaData OHLC methods."""
 
-    def test_get_ohlc(self, alpaca_data, mock_alpaca_api, mock_file_ops):
+    def test_get_ohlc(
+        self,
+        alpaca_data: Any,
+        mock_alpaca_api: responses.RequestsMock,
+        mock_file_ops: dict[str, MagicMock],
+    ) -> None:
         """Test getting OHLC data from Alpaca."""
         # Add the actual bars endpoint mock with proper response
         mock_alpaca_api.add(
@@ -843,7 +913,9 @@ class TestAlpacaDataOHLC:
 class TestMarketDataIntraday:
     """Unit tests for MarketData intraday methods."""
 
-    def test_save_intraday(self, market_data, mock_file_ops, tmp_path):
+    def test_save_intraday(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test saving intraday data."""
         # Create mock intraday data
         intraday_data = [
@@ -865,7 +937,7 @@ class TestMarketDataIntraday:
         result = market_data.save_intraday(symbol="AAPL")
         assert len(result) == 1
 
-    def test_obey_free_limit_with_delay(self, market_data):
+    def test_obey_free_limit_with_delay(self, market_data: Any) -> None:
         """Test obey_free_limit when delay is needed."""
         from time import time
 
@@ -879,7 +951,9 @@ class TestMarketDataIntraday:
 class TestIndicesExtended:
     """Extended tests for Indices class."""
 
-    def test_get_ndx_with_date(self, indices, mock_file_ops):
+    def test_get_ndx_with_date(
+        self, indices: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting NDX with specific date."""
         from datetime import datetime
 
@@ -887,7 +961,9 @@ class TestIndicesExtended:
         ndx = indices.get_ndx(date=datetime(2024, 1, 1))
         assert {C.TIME, C.SYMBOL, C.DELTA}.issubset(ndx.columns)
 
-    def test_get_ndx_string_date(self, indices, mock_file_ops):
+    def test_get_ndx_string_date(
+        self, indices: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test getting NDX with string date."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_NDX.copy()
         ndx = indices.get_ndx(date="2024-01-01")
@@ -897,7 +973,12 @@ class TestIndicesExtended:
 class TestPolygonExtended:
     """Extended tests for Polygon class."""
 
-    def test_get_intraday(self, polygon, mock_polygon_client, mock_file_ops):
+    def test_get_intraday(
+        self,
+        polygon: Any,
+        mock_polygon_client: MagicMock,
+        mock_file_ops: dict[str, MagicMock],
+    ) -> None:
         """Test getting intraday data from Polygon."""
         # Create mock aggregate data
         mock_agg = MagicMock()
@@ -920,7 +1001,12 @@ class TestPolygonExtended:
 class TestLaborStatsExtended:
     """Extended tests for LaborStats class."""
 
-    def test_get_unemployment_rate(self, labor_stats, mock_bls_api, mock_file_ops):
+    def test_get_unemployment_rate(
+        self,
+        labor_stats: Any,
+        mock_bls_api: responses.RequestsMock,
+        mock_file_ops: dict[str, MagicMock],
+    ) -> None:
         """Test getting unemployment rate."""
         mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
         df = labor_stats.get_unemployment_rate(timeframe="1y")
@@ -931,7 +1017,7 @@ class TestLaborStatsExtended:
 class TestMarketDataStandardize:
     """Tests for MarketData standardization methods."""
 
-    def test_standardize_ohlc_with_symbol(self, market_data):
+    def test_standardize_ohlc_with_symbol(self, market_data: Any) -> None:
         """Test OHLC standardization adds symbol."""
         raw = pd.DataFrame(
             {
@@ -946,7 +1032,9 @@ class TestMarketDataStandardize:
         result = market_data.standardize_ohlc("AAPL", raw)
         assert C.SYMBOL in result.columns.tolist() or True  # May or may not add symbol
 
-    def test_standardize_ndx(self, market_data, mock_file_ops):
+    def test_standardize_ndx(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test NDX standardization."""
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_NDX.copy()
         result = market_data.standardize_ndx(SAMPLE_NDX.copy())
@@ -956,7 +1044,7 @@ class TestMarketDataStandardize:
 class TestAlpacaDataExtended:
     """Extended tests for AlpacaData class."""
 
-    def test_init_with_paper(self, mock_env_vars):
+    def test_init_with_paper(self, mock_env_vars: None) -> None:
         """Test AlpacaData initialization with paper mode."""
         from hyperdrive.DataSource import AlpacaData
 
@@ -965,7 +1053,7 @@ class TestAlpacaDataExtended:
         assert hasattr(alpaca, "base")
         assert hasattr(alpaca, "token")
 
-    def test_log_api_call_time(self, alpaca_data):
+    def test_log_api_call_time(self, alpaca_data: Any) -> None:
         """Test logging API call time."""
         from time import time
 
@@ -977,7 +1065,9 @@ class TestAlpacaDataExtended:
 class TestMarketDataSaveWithExistingFiles:
     """Tests for save methods when file already exists (covering removal paths)."""
 
-    def test_save_dividends_with_existing(self, market_data, mock_file_ops, tmp_path):
+    def test_save_dividends_with_existing(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test save_dividends when file exists (line 98)."""
         div_path = tmp_path / "dividends.csv"
         div_path.write_text("old,data")  # Create existing file
@@ -990,7 +1080,9 @@ class TestMarketDataSaveWithExistingFiles:
         result = market_data.save_dividends(symbol="AAPL")
         assert result == str(div_path)
 
-    def test_save_splits_with_existing(self, market_data, mock_file_ops, tmp_path):
+    def test_save_splits_with_existing(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test save_splits when file exists (line 128)."""
         splits_path = tmp_path / "splits.csv"
         splits_path.write_text("old,data")
@@ -1002,7 +1094,9 @@ class TestMarketDataSaveWithExistingFiles:
         result = market_data.save_splits(symbol="AAPL")
         assert result == str(splits_path)
 
-    def test_save_ohlc_with_existing(self, market_data, mock_file_ops, tmp_path):
+    def test_save_ohlc_with_existing(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test save_ohlc when file exists (line 166)."""
         ohlc_path = tmp_path / "ohlc.csv"
         ohlc_path.write_text("old,data")
@@ -1018,7 +1112,9 @@ class TestMarketDataSaveWithExistingFiles:
 class TestMarketDataGetMethods:
     """Tests for MarketData get methods."""
 
-    def test_get_intraday(self, market_data, mock_file_ops, tmp_path):
+    def test_get_intraday(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test get_intraday yields dataframes (lines 179-184)."""
         # Create mock intraday file
         intraday_df = pd.DataFrame(
@@ -1043,8 +1139,8 @@ class TestMarketDataSaveMoreMethods:
     """Tests for more save methods with file removal."""
 
     def test_save_unemployment_rate_with_existing(
-        self, market_data, mock_file_ops, tmp_path
-    ):
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test save_unemployment_rate when file exists (line 224)."""
         un_path = tmp_path / "unemployment.csv"
         un_path.write_text("old,data")
@@ -1056,7 +1152,9 @@ class TestMarketDataSaveMoreMethods:
         result = market_data.save_unemployment_rate()
         assert result == str(un_path)
 
-    def test_save_ndx_with_existing(self, market_data, mock_file_ops, tmp_path):
+    def test_save_ndx_with_existing(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test save_ndx when file exists (line 398)."""
         ndx_path = tmp_path / "ndx.csv"
         ndx_path.write_text("old,data")
@@ -1075,7 +1173,7 @@ class TestMarketDataSaveMoreMethods:
 class TestMarketDataEmptyDataFrames:
     """Tests for DataSource methods with empty DataFrames."""
 
-    def test_standardize_ndx_empty(self, market_data):
+    def test_standardize_ndx_empty(self, market_data: Any) -> None:
         """Test standardize_ndx with empty DataFrame (line 353)."""
         empty_df = pd.DataFrame()
         result = market_data.standardize_ndx(empty_df)
@@ -1084,8 +1182,8 @@ class TestMarketDataEmptyDataFrames:
         assert C.DELTA in result.columns
 
     def test_save_intraday_with_existing_file(
-        self, market_data, mock_file_ops, tmp_path
-    ):
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock], tmp_path: Path
+    ) -> None:
         """Test save_intraday when file already exists (line 195)."""
         # Create existing file
         intraday_path = tmp_path / "intraday_test.csv"

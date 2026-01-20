@@ -1,5 +1,6 @@
 """Unit tests for Precognition module with mocked S3."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -12,7 +13,7 @@ import pytest
 
 
 @pytest.fixture
-def mock_env_vars(monkeypatch):
+def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set up mock environment variables."""
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
@@ -23,7 +24,7 @@ def mock_env_vars(monkeypatch):
 
 
 @pytest.fixture
-def mock_file_ops(mock_env_vars):
+def mock_file_ops(mock_env_vars: None) -> dict[str, MagicMock]:
     """Mock file operations (FileReader, FileWriter, Store)."""
     with (
         patch("hyperdrive.Precognition.FileWriter") as MockWriter,
@@ -63,7 +64,7 @@ def mock_file_ops(mock_env_vars):
 
 
 @pytest.fixture
-def oracle(mock_file_ops):
+def oracle(mock_file_ops: dict[str, MagicMock]) -> Any:
     """Create Oracle instance with mocked dependencies."""
     from hyperdrive.Precognition import Oracle
 
@@ -79,35 +80,41 @@ def oracle(mock_file_ops):
 
 
 class TestOracle:
-    def test_init(self, oracle):
+    """Tests for the Oracle ML prediction class."""
+
+    def test_init(self, oracle: Any) -> None:
         """Test Oracle initialization."""
         assert type(oracle).__name__ == "Oracle"
         assert hasattr(oracle, "writer")
         assert hasattr(oracle, "reader")
         assert hasattr(oracle, "calc")
 
-    def test_filename(self, oracle):
+    def test_filename(self, oracle: Any) -> None:
         """Test filename generation."""
         name = "dir/file"
         expected = f"models/latest/{name}.pkl"
         actual = oracle.get_filename(name)
         assert actual == expected
 
-    def test_save_model_pickle(self, oracle, mock_file_ops):
+    def test_save_model_pickle(
+        self, oracle: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test saving model pickle."""
         name = "test_model"
         mock_file_ops["writer"].save_pickle.return_value = True
         result = oracle.save_model_pickle(name, {"test": "data"})
         assert result is True
 
-    def test_load_model_pickle(self, oracle, mock_file_ops):
+    def test_load_model_pickle(
+        self, oracle: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
         """Test loading model pickle."""
         name = "test_model"
         mock_file_ops["reader"].load_pickle.return_value = {"test": "data"}
         result = oracle.load_model_pickle(name)
         assert result == {"test": "data"}
 
-    def test_predict(self, oracle, mock_file_ops):
+    def test_predict(self, oracle: Any, mock_file_ops: dict[str, MagicMock]) -> None:
         """Test prediction with mocked model."""
         oracle.reader.store.download_dir = MagicMock()
 
@@ -126,7 +133,7 @@ class TestOracle:
             assert len(result) == 3
             MockPredictor.load.assert_called_once()
 
-    def test_visualize(self, oracle, mock_file_ops):
+    def test_visualize(self, oracle: Any, mock_file_ops: dict[str, MagicMock]) -> None:
         """Test visualization with mocked data."""
         X = np.random.rand(100, 5)
         y = np.random.choice([True, False], size=100)

@@ -4,6 +4,7 @@ This test file mocks all robin_stocks API calls for fast,
 deterministic, offline testing.
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -70,7 +71,7 @@ NAME_MAPPING = {
 
 
 @pytest.fixture
-def mock_env_vars(monkeypatch):
+def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set up mock environment variables."""
     monkeypatch.setenv("RH_USERNAME", "test_user")
     monkeypatch.setenv("RH_PASSWORD", "test_password")
@@ -80,14 +81,16 @@ def mock_env_vars(monkeypatch):
 
 
 @pytest.fixture
-def mock_robinhood(mock_env_vars):
+def mock_robinhood(mock_env_vars: None) -> MagicMock:
     """Mock robin_stocks.robinhood module."""
     with patch("hyperdrive.Broker.rh") as mock_rh:
         # Mock login
         mock_rh.login.return_value = {"access_token": "test_token"}
 
         # Mock get_stock_historicals
-        def mock_historicals(symbol, interval, span):
+        def mock_historicals(
+            symbol: str, interval: str, span: str
+        ) -> list[dict[str, Any]]:
             return [h for h in SAMPLE_HISTORICALS if h["symbol"] == symbol]
 
         mock_rh.get_stock_historicals.side_effect = mock_historicals
@@ -104,7 +107,7 @@ def mock_robinhood(mock_env_vars):
 
 
 @pytest.fixture
-def mock_store():
+def mock_store() -> dict[str, MagicMock]:
     """Mock Store for file operations."""
     with (
         patch("hyperdrive.Broker.FileReader") as MockReader,
@@ -123,7 +126,7 @@ def mock_store():
 
 
 @pytest.fixture
-def rh(mock_robinhood, mock_store):
+def rh(mock_robinhood: MagicMock, mock_store: dict[str, MagicMock]) -> Any:
     """Create Robinhood instance with mocked dependencies."""
     from hyperdrive.Broker import Robinhood
 
@@ -138,7 +141,7 @@ def rh(mock_robinhood, mock_store):
 class TestRobinhood:
     """Unit tests for Robinhood class."""
 
-    def test_init(self, rh):
+    def test_init(self, rh: Any) -> None:
         """Test Robinhood initialization."""
         assert type(rh).__name__ == "Robinhood"
         assert hasattr(rh, "api")
@@ -146,7 +149,7 @@ class TestRobinhood:
         assert hasattr(rh, "reader")
         assert hasattr(rh, "finder")
 
-    def test_flatten(self, rh):
+    def test_flatten(self, rh: Any) -> None:
         """Test list flattening utility."""
         # Empty case
         assert rh.flatten([[]]) == []
@@ -160,7 +163,7 @@ class TestRobinhood:
         # Mixed lengths
         assert rh.flatten([[1], [2, 3], [4, 5, 6]]) == [1, 2, 3, 4, 5, 6]
 
-    def test_get_hists(self, rh, mock_robinhood):
+    def test_get_hists(self, rh: Any, mock_robinhood: MagicMock) -> None:
         """Test getting historical data."""
         symbols = ["AAPL"]
         df = rh.get_hists(symbols, span="year", interval="week")
@@ -173,7 +176,9 @@ class TestRobinhood:
         assert "symbol" in df.columns
         assert "begins_at" in df.columns
 
-    def test_get_hists_multiple_symbols(self, rh, mock_robinhood):
+    def test_get_hists_multiple_symbols(
+        self, rh: Any, mock_robinhood: MagicMock
+    ) -> None:
         """Test getting historical data for multiple symbols."""
         # Add more sample data for other symbols
         mock_robinhood.get_stock_historicals.side_effect = lambda s, i, sp: [
@@ -195,14 +200,14 @@ class TestRobinhood:
         symbols_in_df = set(df["symbol"])
         assert symbols_in_df == {"AAPL", "AMZN", "META"}
 
-    def test_get_names(self, rh, mock_robinhood):
+    def test_get_names(self, rh: Any, mock_robinhood: MagicMock) -> None:
         """Test getting company names from symbols."""
         assert rh.get_names([]) == []
 
         names = rh.get_names(["AAPL", "AMZN", "META"])
         assert names == ["Apple Inc.", "Amazon.com", "Meta Platforms"]
 
-    def test_get_names_uses_cache(self, rh, mock_robinhood):
+    def test_get_names_uses_cache(self, rh: Any, mock_robinhood: MagicMock) -> None:
         """Test that get_names uses holdings cache when available."""
         # First call get_holdings to populate cache
         rh.get_holdings()
@@ -211,7 +216,7 @@ class TestRobinhood:
         names = rh.get_names(["AAPL"])
         assert names == ["Apple Inc."]
 
-    def test_get_holdings(self, rh, mock_robinhood):
+    def test_get_holdings(self, rh: Any, mock_robinhood: MagicMock) -> None:
         """Test getting holdings."""
         holdings = rh.get_holdings()
 
@@ -220,7 +225,7 @@ class TestRobinhood:
         assert "AMZN" in holdings
         assert holdings["AAPL"]["name"] == "Apple Inc."
 
-    def test_get_holdings_cached(self, rh, mock_robinhood):
+    def test_get_holdings_cached(self, rh: Any, mock_robinhood: MagicMock) -> None:
         """Test that holdings are cached after first call."""
         # First call
         rh.get_holdings()
@@ -230,13 +235,13 @@ class TestRobinhood:
         # Should only call API once
         assert mock_robinhood.build_holdings.call_count == 1
 
-    def test_get_symbols(self, rh, mock_robinhood):
+    def test_get_symbols(self, rh: Any, mock_robinhood: MagicMock) -> None:
         """Test getting symbols from holdings."""
         symbols = rh.get_symbols()
 
         assert set(symbols) == {"AAPL", "AMZN", "META", "NFLX"}
 
-    def test_save_symbols(self, rh, mock_store):
+    def test_save_symbols(self, rh: Any, mock_store: dict[str, MagicMock]) -> None:
         """Test saving symbols to file."""
         rh.save_symbols()
 
@@ -253,7 +258,9 @@ class TestRobinhood:
         assert C.NAME in df.columns
         assert "AAPL" in list(df[C.SYMBOL])
 
-    def test_get_hists_with_save(self, rh, mock_robinhood, mock_store):
+    def test_get_hists_with_save(
+        self, rh: Any, mock_robinhood: MagicMock, mock_store: dict[str, MagicMock]
+    ) -> None:
         """Test getting historical data with save=True (line 47)."""
         symbols = ["AAPL"]
         df = rh.get_hists(symbols, span="year", interval="week", save=True)

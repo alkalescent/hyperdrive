@@ -1,5 +1,4 @@
-"""
-Pytest configuration and shared fixtures for hyperdrive tests.
+"""Pytest configuration and shared fixtures for hyperdrive tests.
 
 This module provides:
 - Sample data fixtures (OHLC, dividends, splits, etc.)
@@ -7,7 +6,10 @@ This module provides:
 - Common test utilities
 """
 
+from collections.abc import Generator
 from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -20,14 +22,16 @@ from hyperdrive import Constants as C
 # ============================================================
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers."""
     config.addinivalue_line(
         "markers", "integration: mark test as integration test (uses real APIs)"
     )
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
     """Skip integration tests unless explicitly requested."""
     if config.getoption("--run-integration", default=False):
         return
@@ -37,7 +41,7 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_integration)
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     """Add custom CLI options."""
     parser.addoption(
         "--run-integration",
@@ -53,7 +57,7 @@ def pytest_addoption(parser):
 
 
 @pytest.fixture
-def sample_ohlc_df():
+def sample_ohlc_df() -> pd.DataFrame:
     """Standard OHLC data for testing."""
     return pd.DataFrame(
         {
@@ -74,7 +78,7 @@ def sample_ohlc_df():
 
 
 @pytest.fixture
-def sample_ohlc_with_avg_df(sample_ohlc_df):
+def sample_ohlc_with_avg_df(sample_ohlc_df: pd.DataFrame) -> pd.DataFrame:
     """OHLC data with average column (Polygon/Alpaca format)."""
     df = sample_ohlc_df.copy()
     df[C.AVG] = (df[C.HIGH] + df[C.LOW]) / 2
@@ -82,7 +86,7 @@ def sample_ohlc_with_avg_df(sample_ohlc_df):
 
 
 @pytest.fixture
-def sample_dividends_df():
+def sample_dividends_df() -> pd.DataFrame:
     """Standard dividend data for testing."""
     return pd.DataFrame(
         {
@@ -95,7 +99,7 @@ def sample_dividends_df():
 
 
 @pytest.fixture
-def sample_splits_df():
+def sample_splits_df() -> pd.DataFrame:
     """Standard splits data for testing."""
     return pd.DataFrame(
         {
@@ -107,7 +111,7 @@ def sample_splits_df():
 
 
 @pytest.fixture
-def sample_symbols_df():
+def sample_symbols_df() -> pd.DataFrame:
     """Sample symbols list for testing."""
     return pd.DataFrame(
         {
@@ -124,7 +128,7 @@ def sample_symbols_df():
 
 
 @pytest.fixture
-def sample_unemployment_df():
+def sample_unemployment_df() -> pd.DataFrame:
     """Sample unemployment rate data."""
     return pd.DataFrame(
         {C.TIME: ["2024-01-01", "2024-02-01", "2024-03-01"], C.UN_RATE: [3.7, 3.8, 3.6]}
@@ -132,7 +136,7 @@ def sample_unemployment_df():
 
 
 @pytest.fixture
-def sample_ndx_df():
+def sample_ndx_df() -> pd.DataFrame:
     """Sample NDX index constituent data."""
     return pd.DataFrame(
         {
@@ -149,7 +153,7 @@ def sample_ndx_df():
 
 
 @pytest.fixture
-def mock_s3_store():
+def mock_s3_store() -> Generator[dict[str, MagicMock], None, None]:
     """Mock S3 Store that simulates all S3 operations in memory."""
     with patch("hyperdrive.Storage.boto3") as mock_boto:
         # Create mock bucket
@@ -175,7 +179,7 @@ def mock_s3_store():
 
 
 @pytest.fixture
-def mock_store(mock_s3_store):
+def mock_store(mock_s3_store: dict[str, MagicMock]) -> Generator[MagicMock, None, None]:
     """Higher-level mock for Store class."""
     with patch("hyperdrive.FileOps.Store") as MockStore:
         store = MagicMock()
@@ -195,7 +199,11 @@ def mock_store(mock_s3_store):
 
 
 @pytest.fixture
-def mock_polygon_client(sample_ohlc_df, sample_dividends_df, sample_splits_df):
+def mock_polygon_client(
+    sample_ohlc_df: pd.DataFrame,
+    sample_dividends_df: pd.DataFrame,
+    sample_splits_df: pd.DataFrame,
+) -> Generator[MagicMock, None, None]:
     """Mock Polygon API client."""
     with patch("hyperdrive.DataSource.RESTClient") as MockClient:
         client = MagicMock()
@@ -240,7 +248,7 @@ def mock_polygon_client(sample_ohlc_df, sample_dividends_df, sample_splits_df):
 
 
 @pytest.fixture
-def mock_binance_client():
+def mock_binance_client() -> Generator[MagicMock, None, None]:
     """Mock Binance client."""
     with patch("hyperdrive.Exchange.Client") as MockClient:
         client = MagicMock()
@@ -280,12 +288,12 @@ def mock_binance_client():
 
 
 @pytest.fixture
-def mock_kraken_responses():
+def mock_kraken_responses() -> Any:
     """Mock Kraken API responses."""
     import responses
 
     @responses.activate
-    def _mock():
+    def _mock() -> Generator[None, None, None]:
         # Mock balance endpoint
         responses.add(
             responses.POST,
@@ -308,7 +316,7 @@ def mock_kraken_responses():
 
 
 @pytest.fixture
-def mock_alpaca_responses():
+def mock_alpaca_responses() -> Generator[Any, None, None]:
     """Mock Alpaca API responses using responses library."""
     import responses
 
@@ -343,7 +351,7 @@ def mock_alpaca_responses():
 
 
 @pytest.fixture
-def mock_robinhood():
+def mock_robinhood() -> Generator[MagicMock, None, None]:
     """Mock Robinhood API via robin_stocks."""
     with patch("hyperdrive.Broker.rh") as mock_rh:
         # Mock login
@@ -385,7 +393,7 @@ def mock_robinhood():
 
 
 @pytest.fixture
-def temp_data_dir(tmp_path):
+def temp_data_dir(tmp_path: Path) -> Path:
     """Create a temporary data directory structure."""
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -397,7 +405,7 @@ def temp_data_dir(tmp_path):
 
 
 @pytest.fixture
-def mock_env_vars(monkeypatch):
+def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set up mock environment variables for testing."""
     monkeypatch.setenv("POLYGON", "test_polygon_key")
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test_aws_key")

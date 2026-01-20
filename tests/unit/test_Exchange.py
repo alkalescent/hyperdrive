@@ -4,6 +4,7 @@ This test file mocks all external API calls to Binance, Kraken, and Alpaca
 for fast, deterministic, offline testing.
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -75,7 +76,7 @@ SAMPLE_KRAKEN_TRADE = {
 
 
 @pytest.fixture
-def mock_env_vars(monkeypatch):
+def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set up mock environment variables."""
     monkeypatch.setenv("BINANCE_TESTNET_KEY", "test_key")
     monkeypatch.setenv("BINANCE_TESTNET_SECRET", "test_secret")
@@ -87,7 +88,7 @@ def mock_env_vars(monkeypatch):
 
 
 @pytest.fixture
-def mock_binance_client(mock_env_vars):
+def mock_binance_client(mock_env_vars: None) -> MagicMock:
     """Mock Binance Client."""
     with patch("hyperdrive.Exchange.Client") as MockClient:
         client = MagicMock()
@@ -121,7 +122,7 @@ def mock_binance_client(mock_env_vars):
 
 
 @pytest.fixture
-def binance(mock_binance_client):
+def binance(mock_binance_client: MagicMock) -> Any:
     """Create Binance instance with mocked client."""
     from hyperdrive.Exchange import Binance
 
@@ -129,7 +130,7 @@ def binance(mock_binance_client):
 
 
 @pytest.fixture
-def mock_kraken_api(mock_env_vars):
+def mock_kraken_api(mock_env_vars: None) -> responses.RequestsMock:
     """Mock Kraken API responses."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://api.kraken.com"
@@ -196,7 +197,7 @@ def mock_kraken_api(mock_env_vars):
 
 
 @pytest.fixture
-def kraken(mock_env_vars, mock_kraken_api):
+def kraken(mock_env_vars: None, mock_kraken_api: responses.RequestsMock) -> Any:
     """Create Kraken instance with mocked API."""
     from hyperdrive.Exchange import Kraken
 
@@ -204,7 +205,7 @@ def kraken(mock_env_vars, mock_kraken_api):
 
 
 @pytest.fixture
-def mock_alpaca_api(mock_env_vars):
+def mock_alpaca_api(mock_env_vars: None) -> responses.RequestsMock:
     """Mock Alpaca API responses."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://paper-api.alpaca.markets/v2"
@@ -252,7 +253,7 @@ def mock_alpaca_api(mock_env_vars):
 
 
 @pytest.fixture
-def alpaca(mock_env_vars, mock_alpaca_api):
+def alpaca(mock_env_vars: None, mock_alpaca_api: responses.RequestsMock) -> Any:
     """Create AlpacaEx instance with mocked API."""
     from hyperdrive.Exchange import AlpacaEx
 
@@ -267,7 +268,7 @@ def alpaca(mock_env_vars, mock_alpaca_api):
 class TestAlpacaEx:
     """Unit tests for AlpacaEx class."""
 
-    def test_init(self, alpaca):
+    def test_init(self, alpaca: Any) -> None:
         """Test AlpacaEx initialization."""
         assert hasattr(alpaca, "base")
         assert alpaca.base == "https://paper-api.alpaca.markets"
@@ -275,35 +276,37 @@ class TestAlpacaEx:
         assert hasattr(alpaca, "token")
         assert hasattr(alpaca, "secret")
 
-    def test_make_request_success(self, alpaca):
+    def test_make_request_success(self, alpaca: Any) -> None:
         """Test successful API request."""
         result = alpaca.make_request("GET", "account")
         assert result["status"] == "ACTIVE"
 
-    def test_make_request_failure(self, alpaca):
+    def test_make_request_failure(self, alpaca: Any) -> None:
         """Test failed API request raises exception."""
         with pytest.raises(RuntimeError):
             alpaca.make_request("GET", "not_a_real_route")
 
-    def test_get_positions(self, alpaca):
+    def test_get_positions(self, alpaca: Any) -> None:
         """Test getting positions."""
         positions = alpaca.get_positions()
         assert len(positions) == 1
         assert positions[0]["symbol"] == "LTC/USD"
 
-    def test_get_account(self, alpaca):
+    def test_get_account(self, alpaca: Any) -> None:
         """Test getting account info."""
         account = alpaca.get_account()
         assert account["status"] == "ACTIVE"
         assert account["buying_power"] == "10000"
 
-    def test_create_order(self, alpaca):
+    def test_create_order(self, alpaca: Any) -> None:
         """Test creating an order."""
         order = alpaca.create_order("LTC/USD", "buy", 10)
         assert order["id"] == "order123"
         assert order["status"] == "filled"
 
-    def test_get_order(self, alpaca, mock_alpaca_api):
+    def test_get_order(
+        self, alpaca: Any, mock_alpaca_api: responses.RequestsMock
+    ) -> None:
         """Test getting order by ID."""
         # Add specific order response
         mock_alpaca_api.add(
@@ -314,17 +317,19 @@ class TestAlpacaEx:
         order = alpaca.get_order("order123")
         assert order["status"] == "filled"
 
-    def test_get_order_not_found(self, alpaca):
+    def test_get_order_not_found(self, alpaca: Any) -> None:
         """Test getting non-existent order raises exception."""
         with pytest.raises(RuntimeError):
             alpaca.get_order("not_a_real_id")
 
-    def test_close_position(self, alpaca):
+    def test_close_position(self, alpaca: Any) -> None:
         """Test closing a position."""
         result = alpaca.close_position("LTC/USD")
         assert result["status"] == "filled"
 
-    def test_fill_orders(self, alpaca, mock_alpaca_api):
+    def test_fill_orders(
+        self, alpaca: Any, mock_alpaca_api: responses.RequestsMock
+    ) -> None:
         """Test filling multiple orders."""
         # Add response for the order
         mock_alpaca_api.add(
@@ -342,18 +347,18 @@ class TestAlpacaEx:
 class TestBinance:
     """Unit tests for Binance class."""
 
-    def test_init(self, binance):
+    def test_init(self, binance: Any) -> None:
         """Test Binance initialization."""
         assert hasattr(binance, "key")
         assert hasattr(binance, "secret")
         assert hasattr(binance, "client")
 
-    def test_create_pair(self, binance):
+    def test_create_pair(self, binance: Any) -> None:
         """Test pair creation."""
         assert binance.create_pair("BTC", "USD") == "BTCUSD"
         assert binance.create_pair("ETH", "USDT") == "ETHUSDT"
 
-    def test_order_buy(self, binance, mock_binance_client):
+    def test_order_buy(self, binance: Any, mock_binance_client: MagicMock) -> None:
         """Test buy order."""
         mock_binance_client.create_test_order.return_value = {}
 
@@ -364,7 +369,7 @@ class TestBinance:
         mock_binance_client.get_asset_balance.assert_called_with("USD")
         mock_binance_client.create_test_order.assert_called_once()
 
-    def test_order_sell(self, binance, mock_binance_client):
+    def test_order_sell(self, binance: Any, mock_binance_client: MagicMock) -> None:
         """Test sell order."""
         mock_binance_client.create_test_order.return_value = {}
 
@@ -373,7 +378,7 @@ class TestBinance:
         mock_binance_client.get_asset_balance.assert_called_with("BTC")
         mock_binance_client.create_test_order.assert_called()
 
-    def test_order_invalid_side(self, binance):
+    def test_order_invalid_side(self, binance: Any) -> None:
         """Test order with invalid side raises exception."""
         with pytest.raises(Exception, match="Need to specify BUY or SELL"):
             binance.order("BTC", "USD", "invalid", 0.01)
@@ -382,7 +387,7 @@ class TestBinance:
 class TestKraken:
     """Unit tests for Kraken class."""
 
-    def test_init(self, kraken):
+    def test_init(self, kraken: Any) -> None:
         """Test Kraken initialization."""
         assert hasattr(kraken, "key")
         assert hasattr(kraken, "secret")
@@ -390,20 +395,20 @@ class TestKraken:
         assert hasattr(kraken, "api_url")
         assert kraken.api_url == "https://api.kraken.com"
 
-    def test_gen_nonce(self, kraken):
+    def test_gen_nonce(self, kraken: Any) -> None:
         """Test nonce generation."""
         nonce = kraken.gen_nonce()
         assert isinstance(nonce, str)
         assert len(nonce) > 10
 
-    def test_get_signature(self, kraken):
+    def test_get_signature(self, kraken: Any) -> None:
         """Test signature generation."""
         data = {"nonce": "1234567890"}
         sig = kraken.get_signature("/0/private/Balance", data)
         assert isinstance(sig, str)
         assert len(sig) > 0
 
-    def test_get_balance(self, kraken):
+    def test_get_balance(self, kraken: Any) -> None:
         """Test getting account balance."""
         balance = kraken.get_balance()
         assert "XXBT" in balance
@@ -411,18 +416,18 @@ class TestKraken:
         assert balance["XXBT"] == 0.5
         assert balance["ZUSD"] == 1000.0
 
-    def test_get_asset_pair(self, kraken):
+    def test_get_asset_pair(self, kraken: Any) -> None:
         """Test getting asset pair info."""
         pair_info = kraken.get_asset_pair("XXBTZUSD")
         assert "lot_decimals" in pair_info
         assert pair_info["lot_decimals"] == 8
 
-    def test_order_with_test_flag(self, kraken):
+    def test_order_with_test_flag(self, kraken: Any) -> None:
         """Test order with validation (test) flag."""
         result = kraken.order("XXBT", "ZUSD", "sell", 0.005, test=True)
         assert "txid" in result
 
-    def test_standardize_order(self, kraken):
+    def test_standardize_order(self, kraken: Any) -> None:
         """Test order standardization."""
         order = SAMPLE_KRAKEN_ORDER.copy()
         trades = [SAMPLE_KRAKEN_TRADE.copy()]
@@ -436,20 +441,22 @@ class TestKraken:
         assert std_order["side"] == "SELL"
         assert len(std_order["fills"]) == 1
 
-    def test_get_order(self, kraken):
+    def test_get_order(self, kraken: Any) -> None:
         """Test getting order by ID (returns order with order_id added)."""
         # Use the existing fixture mock that already has the right response
         order = kraken.get_order("OD74VW-UPIQ7-A47XCN")
         assert order["order_id"] == "OD74VW-UPIQ7-A47XCN"
         assert "status" in order
 
-    def test_get_trades(self, kraken):
+    def test_get_trades(self, kraken: Any) -> None:
         """Test getting trades by IDs."""
         trades = kraken.get_trades(["TZX2YO-WCZN5-6GIH3E"])
         assert len(trades) == 1
         assert trades[0]["trade_id"] == "TZX2YO-WCZN5-6GIH3E"
 
-    def test_get_fee(self, kraken, mock_kraken_api):
+    def test_get_fee(
+        self, kraken: Any, mock_kraken_api: responses.RequestsMock
+    ) -> None:
         """Test getting trading fees."""
         mock_kraken_api.add(
             responses.POST,
@@ -459,7 +466,9 @@ class TestKraken:
         fee = kraken.get_fee("XXBTZUSD")
         assert fee == 0.26
 
-    def test_get_ticker(self, kraken, mock_kraken_api):
+    def test_get_ticker(
+        self, kraken: Any, mock_kraken_api: responses.RequestsMock
+    ) -> None:
         """Test getting ticker data."""
         mock_kraken_api.add(
             responses.POST,
@@ -469,7 +478,9 @@ class TestKraken:
         ticker = kraken.get_ticker("XXBTZUSD")
         assert "XXBTZUSD" in ticker
 
-    def test_get_price(self, kraken, mock_kraken_api):
+    def test_get_price(
+        self, kraken: Any, mock_kraken_api: responses.RequestsMock
+    ) -> None:
         """Test getting asset price."""
         mock_kraken_api.add(
             responses.POST,
@@ -479,7 +490,9 @@ class TestKraken:
         price = kraken.get_price("XXBTZUSD")
         assert price == 50000.0
 
-    def test_order_buy(self, kraken, mock_kraken_api):
+    def test_order_buy(
+        self, kraken: Any, mock_kraken_api: responses.RequestsMock
+    ) -> None:
         """Test buy order."""
         mock_kraken_api.add(
             responses.POST,
@@ -489,12 +502,12 @@ class TestKraken:
         result = kraken.order("XXBT", "ZUSD", "buy", 0.01, test=True)
         assert "txid" in result
 
-    def test_get_test_side(self, kraken):
+    def test_get_test_side(self, kraken: Any) -> None:
         """Test getting test order side (opposite for testing)."""
         side = kraken.get_test_side("XXBT", "ZUSD")
         assert side in ["buy", "sell"]
 
-    def test_handle_response_with_error(self, kraken):
+    def test_handle_response_with_error(self, kraken: Any) -> None:
         """Test handling response with API error."""
         mock_response = MagicMock()
         mock_response.json.return_value = {"result": {}, "error": ["Test error"]}
@@ -502,7 +515,9 @@ class TestKraken:
         with pytest.raises(Exception, match="Test error"):
             kraken.handle_response(mock_response)
 
-    def test_make_auth_req(self, kraken, mock_kraken_api):
+    def test_make_auth_req(
+        self, kraken: Any, mock_kraken_api: responses.RequestsMock
+    ) -> None:
         """Test making authenticated request."""
         mock_kraken_api.add(
             responses.POST,
@@ -516,12 +531,12 @@ class TestKraken:
 class TestAlpacaExEdgeCases:
     """Edge case tests for AlpacaEx class."""
 
-    def test_fill_orders_empty(self, alpaca):
+    def test_fill_orders_empty(self, alpaca: Any) -> None:
         """Test fill_orders with empty symbols list."""
         orders = alpaca.fill_orders([], alpaca.create_order, side="buy", notional=10)
         assert orders == []
 
-    def test_create_pair(self, alpaca):
+    def test_create_pair(self, alpaca: Any) -> None:
         """Test pair creation - CEX base class uses no separator."""
         # CEX.create_pair returns base+quote without separator
         assert alpaca.create_pair("BTC", "USD") == "BTCUSD"
@@ -531,7 +546,9 @@ class TestAlpacaExEdgeCases:
 class TestBinanceEdgeCases:
     """Edge case tests for Binance class."""
 
-    def test_order_real_mode(self, binance, mock_binance_client):
+    def test_order_real_mode(
+        self, binance: Any, mock_binance_client: MagicMock
+    ) -> None:
         """Test order in real mode (not test)."""
         mock_binance_client.create_order.return_value = SAMPLE_BINANCE_ORDER.copy()
 
@@ -544,27 +561,31 @@ class TestBinanceEdgeCases:
 class TestAlpacaFillOrders:
     """Tests for AlpacaEx fill_orders with pending orders."""
 
-    def test_fill_orders_with_pending(self, alpaca, mock_alpaca_api):
+    def test_fill_orders_with_pending(
+        self, alpaca: Any, mock_alpaca_api: responses.RequestsMock
+    ) -> None:
         """Test fill_orders adds pending orders to queue (line 52)."""
 
-        def mock_order_func(symbol, **kwargs):
+        def mock_order_func(symbol: str, **kwargs: Any) -> dict[str, Any]:
             return {"id": f"order_{symbol}", "status": "filled", "symbol": symbol}
 
         orders = alpaca.fill_orders(["AAPL", "GOOG"], mock_order_func, side="buy")
         assert len(orders) == 2
 
-    def test_fill_orders_waits_for_pending(self, alpaca, mock_alpaca_api):
+    def test_fill_orders_waits_for_pending(
+        self, alpaca: Any, mock_alpaca_api: responses.RequestsMock
+    ) -> None:
         """Test fill_orders handles pending orders that later fill (lines 52-59)."""
         call_count = {"AAPL": 0}
 
-        def mock_order_func(symbol, **kwargs):
+        def mock_order_func(symbol: str, **kwargs: Any) -> dict[str, Any]:
             # First order is pending, second is filled
             if symbol == "AAPL":
                 return {"id": "order_AAPL", "status": "pending", "symbol": symbol}
             return {"id": f"order_{symbol}", "status": "filled", "symbol": symbol}
 
         # Mock get_order to return filled status after first call
-        def mock_get_order(order_id):
+        def mock_get_order(order_id: str) -> dict[str, str]:
             call_count["AAPL"] += 1
             return {"id": order_id, "status": "filled"}
 
@@ -578,7 +599,9 @@ class TestAlpacaFillOrders:
 class TestAlpacaMissingCredentials:
     """Test for missing credentials exception."""
 
-    def test_init_missing_credentials(self, mock_env_vars, monkeypatch):
+    def test_init_missing_credentials(
+        self, mock_env_vars: None, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test AlpacaEx raises exception with missing credentials (line 40)."""
         # Remove Alpaca credentials
         monkeypatch.delenv("ALPACA", raising=False)

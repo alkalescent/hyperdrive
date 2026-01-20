@@ -8,7 +8,7 @@ Run with: pytest tests/integration/ -v
 class TestStorageIntegration:
     """Integration tests for S3 Storage."""
 
-    def test_s3_connection(self):
+    def test_s3_connection(self) -> None:
         """Test real S3 connection."""
         from hyperdrive.Storage import Store
 
@@ -16,7 +16,7 @@ class TestStorageIntegration:
         keys = store.get_keys()
         assert len(keys) >= 0
 
-    def test_s3_key_exists(self):
+    def test_s3_key_exists(self) -> None:
         """Test real S3 key existence check."""
         from hyperdrive.Storage import Store
 
@@ -25,7 +25,7 @@ class TestStorageIntegration:
         symbols_path = store.finder.get_symbols_path()
         assert store.key_exists(symbols_path) is True
 
-    def test_s3_get_keys(self):
+    def test_s3_get_keys(self) -> None:
         """Test real S3 list keys."""
         from hyperdrive.Storage import Store
 

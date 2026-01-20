@@ -7,6 +7,8 @@ to run without real AWS credentials or network access.
 import json
 import os
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
 import boto3
@@ -39,7 +41,7 @@ SAMPLE_SNIPPET = {
 
 
 @pytest.fixture
-def aws_credentials():
+def aws_credentials() -> None:
     """Mock AWS credentials for moto."""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -50,7 +52,7 @@ def aws_credentials():
 
 
 @pytest.fixture
-def s3_bucket(aws_credentials):
+def s3_bucket(aws_credentials: None) -> Any:
     """Create mock S3 bucket with test data."""
     with mock_aws():
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -65,19 +67,19 @@ def s3_bucket(aws_credentials):
 
 
 @pytest.fixture
-def reader(s3_bucket):
+def reader(s3_bucket: Any) -> FileReader:
     """Create FileReader with mocked S3."""
     return FileReader()
 
 
 @pytest.fixture
-def writer(s3_bucket):
+def writer(s3_bucket: Any) -> FileWriter:
     """Create FileWriter with mocked S3."""
     return FileWriter()
 
 
 @pytest.fixture
-def temp_files(tmp_path):
+def temp_files(tmp_path: Path) -> dict[str, str]:
     """Create temporary file paths."""
     return {
         "json1": str(tmp_path / "test1.json"),
@@ -88,7 +90,7 @@ def temp_files(tmp_path):
 
 
 @pytest.fixture
-def test_dataframes():
+def test_dataframes() -> dict[str, pd.DataFrame]:
     """Create test DataFrames."""
     data_with_snippet = SAMPLE_DATA.copy()
     data_with_snippet.append(SAMPLE_SNIPPET)
@@ -109,12 +111,14 @@ def test_dataframes():
 class TestFileWriter:
     """Unit tests for FileWriter class."""
 
-    def test_init(self, writer):
+    def test_init(self, writer: FileWriter) -> None:
         """Test FileWriter initialization."""
         assert type(writer).__name__ == "FileWriter"
         assert hasattr(writer, "store")
 
-    def test_save_json_empty(self, writer, temp_files):
+    def test_save_json_empty(
+        self, writer: FileWriter, temp_files: dict[str, str]
+    ) -> None:
         """Test saving empty JSON object."""
         writer.store.upload_file = MagicMock()  # Mock S3 upload
 
@@ -127,7 +131,9 @@ class TestFileWriter:
             content = json.load(f)
         assert content == {}
 
-    def test_save_json_with_data(self, writer, temp_files):
+    def test_save_json_with_data(
+        self, writer: FileWriter, temp_files: dict[str, str]
+    ) -> None:
         """Test saving JSON with data."""
         writer.store.upload_file = MagicMock()
 
@@ -140,13 +146,23 @@ class TestFileWriter:
             content = json.load(f)
         assert content == SAMPLE_DATA
 
-    def test_save_csv_empty(self, writer, temp_files, test_dataframes):
+    def test_save_csv_empty(
+        self,
+        writer: FileWriter,
+        temp_files: dict[str, str],
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test saving empty DataFrame returns False."""
         result = writer.save_csv(temp_files["csv1"], test_dataframes["empty_df"])
         assert result is False
         assert not os.path.exists(temp_files["csv1"])
 
-    def test_save_csv_with_data(self, writer, temp_files, test_dataframes):
+    def test_save_csv_with_data(
+        self,
+        writer: FileWriter,
+        temp_files: dict[str, str],
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test saving DataFrame to CSV."""
         writer.store.upload_file = MagicMock()
 
@@ -155,7 +171,13 @@ class TestFileWriter:
         assert result is True
         assert os.path.exists(temp_files["csv2"])
 
-    def test_update_csv_no_change(self, writer, reader, temp_files, test_dataframes):
+    def test_update_csv_no_change(
+        self,
+        writer: FileWriter,
+        reader: FileReader,
+        temp_files: dict[str, str],
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test update_csv doesn't overwrite with smaller data."""
         writer.store.upload_file = MagicMock()
 
@@ -169,7 +191,12 @@ class TestFileWriter:
         df = pd.read_csv(temp_files["csv2"])
         assert len(df) == len(test_dataframes["test_df"])
 
-    def test_update_csv_larger_data(self, writer, temp_files, test_dataframes):
+    def test_update_csv_larger_data(
+        self,
+        writer: FileWriter,
+        temp_files: dict[str, str],
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test update_csv overwrites with larger data."""
         writer.store.upload_file = MagicMock()
 
@@ -183,7 +210,7 @@ class TestFileWriter:
         df = pd.read_csv(temp_files["csv2"])
         assert len(df) == len(test_dataframes["big_df"])
 
-    def test_remove_files(self, writer, tmp_path):
+    def test_remove_files(self, writer: FileWriter, tmp_path: Path) -> None:
         """Test removing files."""
         writer.store.delete_objects = MagicMock()
 
@@ -198,7 +225,7 @@ class TestFileWriter:
         assert not test_file.exists()
         writer.store.delete_objects.assert_called_once()
 
-    def test_rename_file(self, writer, tmp_path):
+    def test_rename_file(self, writer: FileWriter, tmp_path: Path) -> None:
         """Test renaming files."""
         writer.store.rename_key = MagicMock()
 
@@ -218,13 +245,18 @@ class TestFileWriter:
 class TestFileReader:
     """Unit tests for FileReader class."""
 
-    def test_init(self, reader):
+    def test_init(self, reader: FileReader) -> None:
         """Test FileReader initialization."""
         assert type(reader).__name__ == "FileReader"
         assert hasattr(reader, "store")
         assert hasattr(reader, "traveller")
 
-    def test_load_json(self, reader, writer, temp_files):
+    def test_load_json(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        temp_files: dict[str, str],
+    ) -> None:
         """Test loading JSON file."""
         reader.store.download_file = MagicMock()
         writer.store.upload_file = MagicMock()
@@ -237,7 +269,13 @@ class TestFileReader:
 
         assert result == SAMPLE_DATA
 
-    def test_load_csv(self, reader, writer, temp_files, test_dataframes):
+    def test_load_csv(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        temp_files: dict[str, str],
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test loading CSV file."""
         reader.store.download_file = MagicMock()
         writer.store.upload_file = MagicMock()
@@ -251,7 +289,13 @@ class TestFileReader:
         assert len(result) == len(test_dataframes["test_df"])
         assert "symbol" in result.columns
 
-    def test_check_update_same_size(self, reader, writer, temp_files, test_dataframes):
+    def test_check_update_same_size(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        temp_files: dict[str, str],
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test check_update with same size DataFrame."""
         writer.store.upload_file = MagicMock()
         reader.store.download_file = MagicMock()
@@ -261,7 +305,13 @@ class TestFileReader:
         result = reader.check_update(temp_files["csv2"], test_dataframes["test_df"])
         assert result is True
 
-    def test_check_update_smaller(self, reader, writer, temp_files, test_dataframes):
+    def test_check_update_smaller(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        temp_files: dict[str, str],
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test check_update with smaller DataFrame returns False."""
         writer.store.upload_file = MagicMock()
         reader.store.download_file = MagicMock()
@@ -271,7 +321,13 @@ class TestFileReader:
         result = reader.check_update(temp_files["csv2"], test_dataframes["small_df"])
         assert result is False
 
-    def test_check_update_larger(self, reader, writer, temp_files, test_dataframes):
+    def test_check_update_larger(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        temp_files: dict[str, str],
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test check_update with larger DataFrame returns True."""
         writer.store.upload_file = MagicMock()
         reader.store.download_file = MagicMock()
@@ -281,14 +337,14 @@ class TestFileReader:
         result = reader.check_update(temp_files["csv2"], test_dataframes["big_df"])
         assert result is True
 
-    def test_check_file_exists_false(self, reader):
+    def test_check_file_exists_false(self, reader: FileReader) -> None:
         """Test check_file_exists returns False for non-existent file."""
         reader.store.key_exists = MagicMock(return_value=False)
 
         result = reader.check_file_exists("nonexistent.txt")
         assert result is False
 
-    def test_check_file_exists_true(self, reader, tmp_path):
+    def test_check_file_exists_true(self, reader: FileReader, tmp_path: Path) -> None:
         """Test check_file_exists returns True for existing file."""
         reader.store.key_exists = MagicMock(return_value=True)
 
@@ -298,12 +354,14 @@ class TestFileReader:
         result = reader.check_file_exists(str(test_file))
         assert result is True
 
-    def test_should_be_updated_new_file(self, reader):
+    def test_should_be_updated_new_file(self, reader: FileReader) -> None:
         """Test should_be_updated returns True for non-existent file."""
         result = reader.should_be_updated("nonexistent.txt")
         assert result is True
 
-    def test_should_be_updated_old_file(self, reader, tmp_path):
+    def test_should_be_updated_old_file(
+        self, reader: FileReader, tmp_path: Path
+    ) -> None:
         """Test should_be_updated returns True for old file."""
         test_file = tmp_path / "old.txt"
         test_file.write_text("test")
@@ -315,7 +373,9 @@ class TestFileReader:
         result = reader.should_be_updated(str(test_file))
         assert result is True
 
-    def test_should_be_updated_recent_file(self, reader, tmp_path):
+    def test_should_be_updated_recent_file(
+        self, reader: FileReader, tmp_path: Path
+    ) -> None:
         """Test should_be_updated returns False for recent file."""
         test_file = tmp_path / "recent.txt"
         test_file.write_text("test")
@@ -323,7 +383,9 @@ class TestFileReader:
         result = reader.should_be_updated(str(test_file))
         assert result is False
 
-    def test_load_csv_empty_data_error(self, reader, tmp_path):
+    def test_load_csv_empty_data_error(
+        self, reader: FileReader, tmp_path: Path
+    ) -> None:
         """Test load_csv raises EmptyDataError for empty CSV."""
         reader.store.download_file = MagicMock()
 
@@ -334,14 +396,20 @@ class TestFileReader:
         with pytest.raises(pd.errors.EmptyDataError):
             reader.load_csv(str(empty_csv))
 
-    def test_load_csv_file_not_found(self, reader):
+    def test_load_csv_file_not_found(self, reader: FileReader) -> None:
         """Test load_csv raises FileNotFoundError for missing file."""
         reader.store.download_file = MagicMock()
 
         with pytest.raises(FileNotFoundError):
             reader.load_csv("nonexistent_file.csv")
 
-    def test_update_df(self, reader, writer, tmp_path, test_dataframes):
+    def test_update_df(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        tmp_path: Path,
+        test_dataframes: dict[str, pd.DataFrame],
+    ) -> None:
         """Test update_df merges new data with existing."""
         writer.store.upload_file = MagicMock()
         reader.store.download_file = MagicMock()
@@ -368,7 +436,9 @@ class TestFileReader:
         # Should contain data from both old and new
         assert len(result) >= len(new_data)
 
-    def test_update_df_empty_old(self, reader, writer, tmp_path):
+    def test_update_df_empty_old(
+        self, reader: FileReader, writer: FileWriter, tmp_path: Path
+    ) -> None:
         """Test update_df with empty existing data returns new data."""
         reader.store.download_file = MagicMock()
 
@@ -391,9 +461,8 @@ class TestFileReader:
         result = reader.update_df(csv_path, new_data, "date")
         assert len(result) >= 1
 
-    def test_data_in_timeframe(self, reader):
+    def test_data_in_timeframe(self, reader: FileReader) -> None:
         """Test data_in_timeframe filters data correctly."""
-
         # Create test data with dates
         df = pd.DataFrame(
             {
@@ -409,7 +478,7 @@ class TestFileReader:
         assert len(result) <= 31
         assert "date" in result.columns
 
-    def test_data_in_timeframe_no_column(self, reader):
+    def test_data_in_timeframe_no_column(self, reader: FileReader) -> None:
         """Test data_in_timeframe returns unchanged df when column doesn't exist."""
         df = pd.DataFrame(
             {
@@ -422,7 +491,7 @@ class TestFileReader:
         # Should return unchanged since column doesn't exist
         pd.testing.assert_frame_equal(result, df)
 
-    def test_data_in_timeframe_max(self, reader):
+    def test_data_in_timeframe_max(self, reader: FileReader) -> None:
         """Test data_in_timeframe with max timeframe."""
         df = pd.DataFrame(
             {
@@ -434,7 +503,9 @@ class TestFileReader:
         result = reader.data_in_timeframe(df, "date", "max")
         assert len(result) == 30
 
-    def test_load_pickle(self, reader, writer, tmp_path):
+    def test_load_pickle(
+        self, reader: FileReader, writer: FileWriter, tmp_path: Path
+    ) -> None:
         """Test loading pickle file."""
         reader.store.download_file = MagicMock()
         writer.store.upload_file = MagicMock()
@@ -450,7 +521,7 @@ class TestFileReader:
 
         assert result == test_data
 
-    def test_save_pickle(self, writer, tmp_path):
+    def test_save_pickle(self, writer: FileWriter, tmp_path: Path) -> None:
         """Test saving pickle file."""
         writer.store.upload_file = MagicMock()
 
@@ -462,7 +533,9 @@ class TestFileReader:
         assert result is True
         assert os.path.exists(pickle_path)
 
-    def test_load_csv_general_exception(self, reader, tmp_path):
+    def test_load_csv_general_exception(
+        self, reader: FileReader, tmp_path: Path
+    ) -> None:
         """Test load_csv with general exception (lines 52-53)."""
         reader.store.download_file = MagicMock()
 
@@ -474,7 +547,9 @@ class TestFileReader:
         # Should return empty DataFrame on general exception
         assert result.empty
 
-    def test_update_df_with_save_fmt(self, reader, writer, tmp_path):
+    def test_update_df_with_save_fmt(
+        self, reader: FileReader, writer: FileWriter, tmp_path: Path
+    ) -> None:
         """Test update_df with save_fmt parameter (line 70)."""
         reader.store.download_file = MagicMock()
         writer.store.upload_file = MagicMock()
