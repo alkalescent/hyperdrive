@@ -252,3 +252,15 @@ class TestRobinhood:
         assert C.SYMBOL in df.columns
         assert C.NAME in df.columns
         assert "AAPL" in list(df[C.SYMBOL])
+
+    def test_get_hists_with_save(self, rh, mock_robinhood, mock_store):
+        """Test getting historical data with save=True (line 47)."""
+        symbols = ["AAPL"]
+        df = rh.get_hists(symbols, span="year", interval="week", save=True)
+
+        # Verify DataFrame returned
+        assert isinstance(df, pd.DataFrame)
+
+        # Verify save was called
+        mock_store["writer"].save_csv.assert_called()
+

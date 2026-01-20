@@ -105,3 +105,29 @@ class TestHistorian:
         clfs = hist.run_classifiers(X_train, X_test, y_train, y_test)
         for _, clf in clfs:
             assert "score" in clf
+
+    def test_optimize_portfolio_with_time_column(self):
+        """Test optimize_portfolio with TIME column in data (line 53)."""
+        # Create data with TIME column instead of index
+        close_with_time = pd.DataFrame({
+            C.TIME: pd.to_datetime(["2025-01-01", "2025-01-02"]),
+            "AAPL": [200, 100],
+            "META": [25, 50],
+        })
+        indicator = pd.Series.diff
+        stats = hist.optimize_portfolio(close_with_time, indicator, 1, "day", 225).stats()
+        assert "Sortino Ratio" in stats
+
+    def test_unfill_empty(self):
+        """Test unfill with empty list (line 115)."""
+        result = hist.unfill([])
+        assert result == []
+
+    def test_preprocess_no_pca(self):
+        """Test preprocess with num_pca=0 (lines 190, 195)."""
+        result = hist.preprocess(X, y, num_pca=0)
+        X_train = result[0]
+        pca = result[7]  # pca should be None
+        assert len(X_train) > 0
+        assert pca is None
+

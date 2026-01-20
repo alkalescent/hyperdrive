@@ -1013,3 +1013,36 @@ class TestMarketDataGetMethods:
         # Should yield dataframes
         dfs = list(market_data.get_intraday("AAPL", timeframe="1d"))
         assert len(dfs) == 1
+
+
+class TestMarketDataSaveMoreMethods:
+    """Tests for more save methods with file removal."""
+
+    def test_save_unemployment_rate_with_existing(self, market_data, mock_file_ops, tmp_path):
+        """Test save_unemployment_rate when file exists (line 224)."""
+        un_path = tmp_path / "unemployment.csv"
+        un_path.write_text("old,data")
+
+        market_data.finder.get_unemployment_path = lambda: str(un_path)
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_UNEMPLOYMENT.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_unemployment_rate()
+        assert result == str(un_path)
+
+    def test_save_ndx_with_existing(self, market_data, mock_file_ops, tmp_path):
+        """Test save_ndx when file exists (line 398)."""
+        ndx_path = tmp_path / "ndx.csv"
+        ndx_path.write_text("old,data")
+
+        market_data.finder.get_ndx_path = lambda: str(ndx_path)
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_NDX.copy()
+        # Mock get_latest_ndx to return specific data
+        market_data.get_latest_ndx = lambda **kw: SAMPLE_NDX.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_NDX.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = market_data.save_ndx()
+        assert result == str(ndx_path)
+
+
