@@ -42,6 +42,7 @@ dev = [
     "freezegun",
     "qrcode[pil]",
     "PyGithub",
+    "gspread",
 ]
 
 [project.urls]
