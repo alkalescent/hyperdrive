@@ -140,23 +140,36 @@ class Robinhood:
             self.get_holdings()
 
         return list(self.holdings)
-    
+
     def get_dividends(self) -> list[dict[str, Any]]:
         """Get dividends for all stocks in portfolio.
-        
+
         Returns:
             List of dividends.
         """
         if not hasattr(self, "dividends"):
             self.dividends = self.api.get_dividends()
         return self.dividends
-    
+
     def get_options(self) -> list[dict[str, Any]]:
         """Get options for all stocks in portfolio.
-        
+
         Returns:
             List of options.
         """
         if not hasattr(self, "options"):
-            self.options = self.api.get_options()
+            self.options = self.api.get_all_option_orders()
         return self.options
+
+    def get_events(self, symbol: str) -> list[dict[str, Any]]:
+        """Get events for all stocks in portfolio.
+
+        Args:
+            symbol: Stock symbol to get events for.
+
+        Returns:
+            List of events.
+        """
+        if not hasattr(self, "events"):
+            self.events = self.api.get_events(symbol)
+        return self.events

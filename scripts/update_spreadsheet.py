@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta
+
 import gspread
 import pandas as pd
-from datetime import datetime, timedelta
+
 from hyperdrive.Broker import Robinhood
 from hyperdrive.Constants import DATE_FMT
 
@@ -25,22 +27,25 @@ rh = Robinhood()
 div = rh.get_dividends()
 div_df = pd.DataFrame(div)
 
-# Get options
-options = rh.get_options()
-print(options)
+# # Get options
+# opt = rh.get_options()
+# opt_df = pd.DataFrame(opt)
+# evt = rh.get_events()  # this function requires a symbol argument
+# evt_df = pd.DataFrame(evt)
 
-# # Set up indices
-# row_buffer = 2 # account for header and 0 index
-# col_buffer = 1 # account for 0 index
-# col_idxs = {col: idx for idx, col in enumerate(cols)}
 
-# for row_idx, date in enumerate(dates):
-#     end = date
-#     start = end - timedelta(weeks=1)
-#     end = end.strftime(DATE_FMT)
-#     start = start.strftime(DATE_FMT)
-#     # Update dividends
-#     col = "Dividends"
-#     div = div_df[(div_df["payable_date"] >= start) & (div_df["payable_date"] < end)]
-#     div = round(div["amount"].astype(float).sum())
-#     sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, div)
+# Set up indices
+row_buffer = 2  # account for header and 0 index
+col_buffer = 1  # account for 0 index
+col_idxs = {col: idx for idx, col in enumerate(cols)}
+
+for row_idx, date in enumerate(dates):
+    end = date
+    start = end - timedelta(weeks=1)
+    end = end.strftime(DATE_FMT)
+    start = start.strftime(DATE_FMT)
+    # Update dividends
+    col = "Dividends"
+    div = div_df[(div_df["payable_date"] >= start) & (div_df["payable_date"] < end)]
+    div = round(div["amount"].astype(float).sum())
+    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, div)
