@@ -57,7 +57,6 @@ def calculate_options_value(start: str, end: str) -> float:
         return 0.0
 
     # Filter option orders in date range
-    # TODO: check if there is a better field to use than updated_at
     mask = (opt_df["updated_at"] >= start) & (opt_df["updated_at"] < end)
     period_opts = opt_df[mask]
 
@@ -70,7 +69,7 @@ def calculate_options_value(start: str, end: str) -> float:
         # Premium is total for the order (price * 100 * quantity)
         premium = float(order["premium"])
         direction = order["direction"]
-        # TODO: see if there is a field to indicate if order completed vs canceled
+
         if direction == "credit":
             # Sold option - receive premium
             net_value += premium
