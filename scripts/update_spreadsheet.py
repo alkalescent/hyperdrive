@@ -32,11 +32,9 @@ div_df = pd.DataFrame(div)
 opt = rh.get_options()
 opt_df = pd.DataFrame(opt)
 # Filter to filled orders
-if not opt_df.empty:
-    opt_df = opt_df[opt_df["state"] == "filled"]
-    opt_df["updated_at"] = pd.to_datetime(
-        opt_df["updated_at"]
-    ).dt.tz_localize(None)
+opt_df = opt_df[opt_df["state"] == "filled"]
+opt_df["updated_at"] = pd.to_datetime(
+    opt_df["updated_at"]).dt.strftime(DATE_FMT)
 
 
 def calculate_options_value(start: str, end: str) -> float:
