@@ -213,10 +213,6 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
-    - uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
-    
     - name: Wait for TestPyPI indexing
       run: |
         NAME="${{ github.event.repository.name }}"
@@ -235,6 +231,10 @@ jobs:
         done
         echo "Timed out waiting for package after $((MAX_ATTEMPTS * SLEEP_SECONDS)) seconds"
         exit 1
+    
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
     
     - name: Install from TestPyPI
       run: |
