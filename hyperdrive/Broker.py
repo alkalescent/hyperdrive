@@ -150,3 +150,13 @@ class Robinhood:
         if not hasattr(self, "dividends"):
             self.dividends = self.api.get_dividends()
         return self.dividends
+    
+    def get_options(self) -> list[dict[str, Any]]:
+        """Get options for all stocks in portfolio.
+        
+        Returns:
+            List of options.
+        """
+        if not hasattr(self, "options"):
+            self.options = self.api.get_options()
+        return self.options

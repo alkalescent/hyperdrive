@@ -218,7 +218,23 @@ jobs:
         python-version: '3.11'
     
     - name: Wait for TestPyPI indexing
-      run: sleep 180
+      run: |
+        NAME="${{ github.event.repository.name }}"
+        VERSION="${{ needs.version.outputs.pypi_version }}"
+        MAX_ATTEMPTS=40
+        SLEEP_SECONDS=15
+        
+        echo "Waiting for ${NAME}==${VERSION} to be available on TestPyPI..."
+        for i in $(seq 1 $MAX_ATTEMPTS); do
+          if curl -sf "https://test.pypi.org/pypi/${NAME}/${VERSION}/json" > /dev/null 2>&1; then
+            echo "Package available after $((i * SLEEP_SECONDS)) seconds"
+            exit 0
+          fi
+          echo "Attempt $i/$MAX_ATTEMPTS: Package not yet available, waiting ${SLEEP_SECONDS}s..."
+          sleep $SLEEP_SECONDS
+        done
+        echo "Timed out waiting for package after $((MAX_ATTEMPTS * SLEEP_SECONDS)) seconds"
+        exit 1
     
     - name: Install from TestPyPI
       run: |
