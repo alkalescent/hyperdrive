@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
+import os
 
 import gspread
 import pandas as pd
+import requests
 
 from hyperdrive.Broker import Robinhood
 from hyperdrive.Constants import DATE_FMT
@@ -43,6 +45,10 @@ def calculate_options_value(start: str, end: str) -> float:
     Scenarios:
     1. Expired: profit = sold option premium (credit)
     2. Rolled: profit = sold option - bought option (credit - debit)
+    3. Assignment + Rebuy: After assignment, stock is rebought and a new
+       longer-dated option is sold. The new option premium should NOT be
+       counted as profit since it's reinvesting capital, not realized gains.
+       Heuristic: Ignore credits for options with expiration >12 days out.
 
     Args:
         start: Start date string (exclusive)
@@ -68,7 +74,18 @@ def calculate_options_value(start: str, end: str) -> float:
         premium = float(order["premium"])
         direction = order["direction"]
 
+        # Scenario 3 heuristic: Ignore credits for options expiring >12 days out
+        # These are likely replacement calls after assignment, not realized profit
         if direction == "credit":
+            order_date = pd.to_datetime(order["updated_at"])
+            # Get expiration from first leg
+            legs = order.get("legs", [])
+            if legs:
+                exp_date = pd.to_datetime(legs[0].get("expiration_date"))
+                days_to_expiry = (exp_date - order_date).days
+                if days_to_expiry > 12:
+                    # Skip long-dated options (Scenario 3 - rebuy after assignment)
+                    continue
             # Sold option - receive premium
             net_value += premium
         else:  # debit
@@ -102,3 +119,24 @@ for row_idx, date in enumerate(dates):
     opt_val = round(calculate_options_value(start_str, end_str))
     sh.update_cell(df.index[row_idx] + row_buffer,
                    col_idxs[col] + col_buffer, opt_val)
+
+    # Update crypto
+    col = "Crypto"
+    url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
+    payload = {
+        "validator": {"validator_identifiers": [690345]},
+        "range": {"evaluation_window": "7d"},
+        "chain": "mainnet"
+    }
+    headers = {
+        "Authorization": f"Bearer {os.environ['BEACONCHAIN']}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+    data = response.json()
+    amt = float(f"0.{data['data']['total']}")
+    # TODO: Convert ETH to USD (use rh?)
+    # Update spreadsheet with ETH amount for now
+    sh.update_cell(df.index[row_idx] + row_buffer,
+                   col_idxs[col] + col_buffer, round(amt))
