@@ -1,0 +1,46 @@
+# This workflow will automatically update the FIRE spreadsheet
+# For more information see: https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule
+
+name: Spreadsheet
+
+on:
+  schedule:
+    - cron: "0 21 * * 1"
+    # 4:00pm EST / 5:00pm EDT on Mondays
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: make ci
+
+      - name: Set up Google credentials
+        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT }}' > /tmp/service_account.json
+
+      - name: Update spreadsheet
+        env:
+          RH_USERNAME: ${{ secrets.RH_USERNAME }}
+          RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
+          RH_2FA: ${{ secrets.RH_2FA }}
+          BEACONCHAIN: ${{ secrets.BEACONCHAIN }}
+          POLYGON: ${{ secrets.POLYGON }}
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/service_account.json
+        run: uv run python scripts/update_spreadsheet.py
