@@ -33,7 +33,9 @@ jobs:
         run: make ci
 
       - name: Set up Google credentials
-        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT }}' > /tmp/service_account.json
+        run: |
+          mkdir -p ~/.config/gspread
+          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT }}' > ~/.config/gspread/service_account.json
 
       - name: Update spreadsheet
         env:
@@ -42,5 +44,4 @@ jobs:
           RH_2FA: ${{ secrets.RH_2FA }}
           BEACONCHAIN: ${{ secrets.BEACONCHAIN }}
           POLYGON: ${{ secrets.POLYGON }}
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/service_account.json
         run: uv run python scripts/update_spreadsheet.py
