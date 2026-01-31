@@ -1,12 +1,12 @@
-from datetime import datetime, timedelta
 import os
+from datetime import datetime, timedelta
 
 import gspread
 import pandas as pd
 import requests
 
 from hyperdrive.Broker import Robinhood
-from hyperdrive.Constants import DATE_FMT, CLOSE
+from hyperdrive.Constants import CLOSE, DATE_FMT
 from hyperdrive.DataSource import MarketData
 
 # Open spreadsheet
@@ -36,8 +36,7 @@ opt = rh.get_options()
 opt_df = pd.DataFrame(opt)
 # Filter to filled orders
 opt_df = opt_df[opt_df["state"] == "filled"]
-opt_df["updated_at"] = pd.to_datetime(
-    opt_df["updated_at"]).dt.strftime(DATE_FMT)
+opt_df["updated_at"] = pd.to_datetime(opt_df["updated_at"]).dt.strftime(DATE_FMT)
 
 
 def calculate_crypto_value() -> float:
@@ -53,11 +52,11 @@ def calculate_crypto_value() -> float:
     payload = {
         "validator": {"validator_identifiers": [690345]},
         "range": {"evaluation_window": "7d"},
-        "chain": "mainnet"
+        "chain": "mainnet",
     }
     headers = {
         "Authorization": f"Bearer {os.environ['BEACONCHAIN']}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     response = requests.post(url, json=payload, headers=headers)
@@ -137,20 +136,20 @@ for row_idx, date in enumerate(dates):
 
     # Update dividends
     col = "Dividends"
-    div = div_df[(div_df["payable_date"] >= start_str)
-                 & (div_df["payable_date"] < end_str)]
+    div = div_df[
+        (div_df["payable_date"] >= start_str) & (div_df["payable_date"] < end_str)
+    ]
     div_val = round(div["amount"].astype(float).sum())
-    sh.update_cell(df.index[row_idx] + row_buffer,
-                   col_idxs[col] + col_buffer, div_val)
+    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, div_val)
 
     # Update options
     col = "Options"
     opt_val = round(calculate_options_value(start_str, end_str))
-    sh.update_cell(df.index[row_idx] + row_buffer,
-                   col_idxs[col] + col_buffer, opt_val)
+    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, opt_val)
 
     # Update crypto
     col = "Crypto"
     crypto_val = round(calculate_crypto_value())
-    sh.update_cell(df.index[row_idx] + row_buffer,
-                   col_idxs[col] + col_buffer, crypto_val)
+    sh.update_cell(
+        df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, crypto_val
+    )

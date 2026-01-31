@@ -79,8 +79,7 @@ class MarketData:
         """
         retries = kwargs.get("retries", C.DEFAULT_RETRIES)
         delay = kwargs.get("delay", C.DEFAULT_DELAY)
-        func_args = {k: v for k, v in kwargs.items() if k not in {
-            "retries", "delay"}}
+        func_args = {k: v for k, v in kwargs.items() if k not in {"retries", "delay"}}
         for retry in range(retries):
             try:
                 return func(**func_args)
@@ -110,8 +109,7 @@ class MarketData:
         Returns:
             DataFrame with dividend history.
         """
-        df = self.reader.load_csv(
-            self.finder.get_dividends_path(symbol, self.provider))
+        df = self.reader.load_csv(self.finder.get_dividends_path(symbol, self.provider))
         filtered = self.reader.data_in_timeframe(df, C.EX, timeframe)
         return filtered
 
@@ -202,8 +200,7 @@ class MarketData:
         Returns:
             DataFrame with split history.
         """
-        df = self.reader.load_csv(
-            self.finder.get_splits_path(symbol, self.provider))
+        df = self.reader.load_csv(self.finder.get_splits_path(symbol, self.provider))
         filtered = self.reader.data_in_timeframe(df, C.EX, timeframe)
         return filtered
 
@@ -263,8 +260,7 @@ class MarketData:
         """
         full_mapping = dict(
             zip(
-                ["date", "open", "high", "low", "close",
-                    "volume", "average", "trades"],
+                ["date", "open", "high", "low", "close", "volume", "average", "trades"],
                 [C.TIME, C.OPEN, C.HIGH, C.LOW, C.CLOSE, C.VOL, C.AVG, C.TRADES],
                 strict=True,
             )
@@ -273,14 +269,12 @@ class MarketData:
         filename = filename or self.finder.get_ohlc_path(symbol, self.provider)
 
         df = self.standardize(
-            df, full_mapping, filename, [
-                C.TIME, C.OPEN, C.HIGH, C.LOW, C.CLOSE], 0
+            df, full_mapping, filename, [C.TIME, C.OPEN, C.HIGH, C.LOW, C.CLOSE], 0
         )
 
         for col in [C.VOL, C.TRADES]:
             if col in df:
-                df[col] = df[col].apply(
-                    lambda val: 0 if pd.isnull(val) else int(val))
+                df[col] = df[col].apply(lambda val: 0 if pd.isnull(val) else int(val))
 
         return df
 
@@ -294,8 +288,7 @@ class MarketData:
         Returns:
             DataFrame with OHLC price history.
         """
-        df = self.reader.load_csv(
-            self.finder.get_ohlc_path(symbol, self.provider))
+        df = self.reader.load_csv(self.finder.get_ohlc_path(symbol, self.provider))
         filtered = self.reader.data_in_timeframe(df, C.TIME, timeframe)
         return filtered
 
@@ -360,8 +353,7 @@ class MarketData:
 
         for df in dfs:
             date = df[C.TIME].iloc[0].strftime(C.DATE_FMT)
-            filename = self.finder.get_intraday_path(
-                symbol, date, self.provider)
+            filename = self.finder.get_intraday_path(symbol, date, self.provider)
             if os.path.exists(filename):
                 os.remove(filename)
             save_fmt = f"{C.DATE_FMT} {C.TIME_FMT}"
@@ -787,11 +779,9 @@ class AlpacaData(MarketData):
         if secret is None:
             secret = os.environ.get("ALPACA_SECRET")
         self.base = "https://data.alpaca.markets"
-        self.token = os.environ.get(
-            "ALPACA_PAPER") if paper or C.TEST else token
+        self.token = os.environ.get("ALPACA_PAPER") if paper or C.TEST else token
         self.secret = (
-            os.environ.get(
-                "ALPACA_PAPER_SECRET") if paper or C.TEST else secret
+            os.environ.get("ALPACA_PAPER_SECRET") if paper or C.TEST else secret
         )
         if not (self.token and self.secret):
             raise Exception("missing Alpaca credentials")
@@ -837,8 +827,7 @@ class AlpacaData(MarketData):
             while True:
                 self.obey_free_limit(C.ALPACA_FREE_DELAY)
                 try:
-                    post_params = {
-                        "page_token": page_token} if page_token else {}
+                    post_params = {"page_token": page_token} if page_token else {}
                     params = pre_params | post_params
                     response = requests.get(url, params, headers=headers)
                     if not response.ok:
@@ -869,8 +858,7 @@ class AlpacaData(MarketData):
             }
             df = df.rename(columns=columns)
             df["date"] = (
-                pd.to_datetime(df["date"]).dt.tz_convert(
-                    C.TZ).dt.tz_localize(None)
+                pd.to_datetime(df["date"]).dt.tz_convert(C.TZ).dt.tz_localize(None)
             )
             df = self.standardize_ohlc(symbol, df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
@@ -1000,8 +988,7 @@ class Polygon(MarketData):
 
         def _get_ohlc(symbol: str, timeframe: str = "max") -> pd.DataFrame:
             is_crypto = symbol.find("X%3A") == 0
-            formatted_start, formatted_end = self.traveller.convert_dates(
-                timeframe)
+            formatted_start, formatted_end = self.traveller.convert_dates(timeframe)
             self.obey_free_limit(C.POLY_FREE_DELAY)
             try:
                 response = self.client.get_aggs(
@@ -1017,8 +1004,7 @@ class Polygon(MarketData):
                 self.log_api_call_time()
 
             raw = [vars(item) for item in response]
-            columns = {"timestamp": "date",
-                       "vwap": "average", "transactions": "trades"}
+            columns = {"timestamp": "date", "vwap": "average", "transactions": "trades"}
             df = pd.DataFrame(raw).rename(columns=columns)
             if is_crypto:
                 df["date"] = pd.to_datetime(df["date"], unit="ms")
@@ -1088,8 +1074,7 @@ class Polygon(MarketData):
                         .dt.tz_convert(C.TZ)
                         .dt.tz_localize(None)
                     )
-                filename = self.finder.get_intraday_path(
-                    symbol, date, self.provider)
+                filename = self.finder.get_intraday_path(symbol, date, self.provider)
                 df = self.standardize_ohlc(symbol, df, filename)
                 df = df[df[C.TIME].dt.strftime(C.DATE_FMT) == date]
                 yield df
@@ -1124,8 +1109,7 @@ class LaborStats(MarketData):
         def _get_unemployment_rate(timeframe: str) -> pd.DataFrame:
             start, end = self.traveller.convert_dates(timeframe, "%Y")
 
-            parts = [self.base, "publicAPI",
-                     self.version, "timeseries", "data"]
+            parts = [self.base, "publicAPI", self.version, "timeseries", "data"]
             url = "/".join(parts)
             params = {
                 "registrationkey": self.token,
@@ -1213,8 +1197,7 @@ class Glassnode(MarketData):
         sleep(5)
 
         raw_logs = driver.get_log("performance")
-        logs = [json.loads(raw_log["message"])["message"]
-                for raw_log in raw_logs]
+        logs = [json.loads(raw_log["message"])["message"] for raw_log in raw_logs]
 
         def log_filter(log_: dict[str, Any]) -> bool:
             return (
@@ -1252,8 +1235,7 @@ class Glassnode(MarketData):
             params["api_key"] = self.token
             headers = {}
             cookies = {}
-        response = requests.get(
-            url, params=params, headers=headers, cookies=cookies)
+        response = requests.get(url, params=params, headers=headers, cookies=cookies)
         sleep(random() * 5)
         return response
 
@@ -1363,8 +1345,7 @@ class Glassnode(MarketData):
             if response.ok:
                 data = response.json()
             else:
-                raise Exception(
-                    "Invalid response from Glassnode for SOPR", response)
+                raise Exception("Invalid response from Glassnode for SOPR", response)
 
             if data == []:
                 return empty

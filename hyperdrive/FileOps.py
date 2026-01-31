@@ -87,8 +87,7 @@ class FileReader:
             df_pl = pl.read_csv(filename)
             df = df_pl.to_pandas()
             # Round numeric columns to avoid floating point precision issues
-            numeric_cols = df.select_dtypes(
-                include=["float64", "float32"]).columns
+            numeric_cols = df.select_dtypes(include=["float64", "float32"]).columns
             df[numeric_cols] = df[numeric_cols].round(10)
         except pl.exceptions.NoDataError:
             print(f"{filename} is an empty csv file.")
