@@ -9,6 +9,7 @@ import json
 import os
 from collections.abc import Callable, Generator, Iterable
 from datetime import datetime
+from io import StringIO
 from random import random
 from time import sleep, time
 from typing import Any
@@ -660,11 +661,12 @@ class MarketData:
         """
 
         def _get_latest_ndx() -> pd.DataFrame:
-            url = "https://en.wikipedia.org/wiki/Nasdaq-100#Components"
-            res = requests.get(url)
+            url = "https://en.wikipedia.org/wiki/Nasdaq-100"
+            headers = {"User-Agent": '"Google Chrome";"Chromium"'}
+            res = requests.get(url, headers=headers)
             soup = BeautifulSoup(res.text, "html.parser")
             html = soup.select("table#constituents")[0]
-            df = pd.read_html(str(html))[0]
+            df = pd.read_html(StringIO(str(html)))[0]
             symbols = df["Ticker"]
             today = datetime.today().strftime(C.DATE_FMT)
             return pd.DataFrame(
