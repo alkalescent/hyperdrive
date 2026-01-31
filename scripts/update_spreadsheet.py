@@ -40,6 +40,34 @@ opt_df["updated_at"] = pd.to_datetime(
     opt_df["updated_at"]).dt.strftime(DATE_FMT)
 
 
+def calculate_crypto_value() -> float:
+    """Calculate crypto staking rewards for the past week.
+
+    Fetches ETH validator rewards from Beaconchain API and converts
+    to USD using current ETH price.
+
+    Returns:
+        Staking rewards value in USD.
+    """
+    url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
+    payload = {
+        "validator": {"validator_identifiers": [690345]},
+        "range": {"evaluation_window": "7d"},
+        "chain": "mainnet"
+    }
+    headers = {
+        "Authorization": f"Bearer {os.environ['BEACONCHAIN']}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, json=payload, headers=headers)
+    data = response.json()
+    amt = float(f"0.{data['data']['total']}")
+    md = MarketData()
+    cost = md.calculator.avg(md.get_ohlc("X%3AETHUSD", "7d")[CLOSE])
+    return amt * cost
+
+
 def calculate_options_value(start: str, end: str) -> float:
     """Calculate net options value for a date range.
 
@@ -123,22 +151,6 @@ for row_idx, date in enumerate(dates):
 
     # Update crypto
     col = "Crypto"
-    url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
-    payload = {
-        "validator": {"validator_identifiers": [690345]},
-        "range": {"evaluation_window": "7d"},
-        "chain": "mainnet"
-    }
-    headers = {
-        "Authorization": f"Bearer {os.environ['BEACONCHAIN']}",
-        "Content-Type": "application/json"
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    data = response.json()
-    amt = float(f"0.{data['data']['total']}")
-    md = MarketData()
-    cost = md.calculator.avg(md.get_ohlc("X%3AETHUSD", "7d")[CLOSE])
-    val = amt * cost
+    crypto_val = round(calculate_crypto_value())
     sh.update_cell(df.index[row_idx] + row_buffer,
-                   col_idxs[col] + col_buffer, round(val))
+                   col_idxs[col] + col_buffer, crypto_val)
