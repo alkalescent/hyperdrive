@@ -6,7 +6,8 @@ import pandas as pd
 import requests
 
 from hyperdrive.Broker import Robinhood
-from hyperdrive.Constants import DATE_FMT
+from hyperdrive.Constants import DATE_FMT, CLOSE
+from hyperdrive.DataSource import MarketData
 
 # Open spreadsheet
 gc = gspread.service_account()
@@ -136,7 +137,8 @@ for row_idx, date in enumerate(dates):
     response = requests.post(url, json=payload, headers=headers)
     data = response.json()
     amt = float(f"0.{data['data']['total']}")
-    # TODO: Convert ETH to USD (use rh?)
-    # Update spreadsheet with ETH amount for now
+    md = MarketData()
+    cost = md.calculator.avg(md.get_ohlc("X%3AETHUSD", "7d")[CLOSE])
+    val = amt * cost
     sh.update_cell(df.index[row_idx] + row_buffer,
-                   col_idxs[col] + col_buffer, round(amt))
+                   col_idxs[col] + col_buffer, round(val))

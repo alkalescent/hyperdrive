@@ -87,7 +87,8 @@ class FileReader:
             df_pl = pl.read_csv(filename)
             df = df_pl.to_pandas()
             # Round numeric columns to avoid floating point precision issues
-            numeric_cols = df.select_dtypes(include=["float64", "float32"]).columns
+            numeric_cols = df.select_dtypes(
+                include=["float64", "float32"]).columns
             df[numeric_cols] = df[numeric_cols].round(10)
         except pl.exceptions.NoDataError:
             print(f"{filename} is an empty csv file.")
@@ -102,21 +103,6 @@ class FileReader:
         except BaseException:
             df = pd.DataFrame()
         return df
-
-    def load_csv_polars(self, filename: str) -> pl.DataFrame:
-        """Load a CSV file as a Polars DataFrame.
-
-        For internal use where polars DataFrames are preferred.
-
-        Args:
-            filename: Path to the CSV file.
-
-        Returns:
-            Polars DataFrame containing the CSV data.
-        """
-        if self.should_be_updated(filename):
-            self.store.download_file(filename)
-        return pl.read_csv(filename)
 
     def check_update(self, filename: str, df: pd.DataFrame) -> bool:
         """Check if a CSV file needs to be updated with new data.
