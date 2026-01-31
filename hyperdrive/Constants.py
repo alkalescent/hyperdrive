@@ -119,7 +119,6 @@ SELL = "SELL"
 
 # API
 BAL = "Bal"
-NAME = "Name"
 ABS_TOL = vbt.utils.math_.abs_tol
 
 # Model
@@ -163,7 +162,8 @@ ALPACA_FREE_DELAY = 0.5
 # Exchanges
 BINANCE = "BINANCE"
 KRAKEN = "KRAKEN"
-PREF_EXCHANGE = os.environ.get("PREF_EXCHANGE") and os.environ["PREF_EXCHANGE"].upper()
+PREF_EXCHANGE = os.environ.get(
+    "PREF_EXCHANGE") and os.environ["PREF_EXCHANGE"].upper()
 
 # fee is 0.1%
 BINANCE_FEE = 0.001
@@ -251,7 +251,8 @@ class PathFinder:
             Path to the intraday CSV file.
         """
         return os.path.join(
-            DATA_DIR, INTRA_DIR, folders[provider], symbol.upper(), f"{date}.csv"
+            DATA_DIR, INTRA_DIR, folders[provider], symbol.upper(
+            ), f"{date}.csv"
         )
 
     def get_unemployment_path(self) -> str:
@@ -349,8 +350,10 @@ class PathFinder:
         paths = []
         for root, _, files in os.walk(path):
             for file in files:
-                curr_path = os.path.join(root, file)[len(path) + 1 if truncate else 0 :]
-                to_skip = ["__pycache__/", ".pytest", ".git/", ".ipynb", ".env"]
+                curr_path = os.path.join(root, file)[
+                    len(path) + 1 if truncate else 0:]
+                to_skip = ["__pycache__/", ".pytest",
+                           ".git/", ".ipynb", ".env"]
                 keep = [skip not in curr_path for skip in to_skip]
                 # remove caches but keep workflows
                 if all(keep) or ".github" in curr_path:

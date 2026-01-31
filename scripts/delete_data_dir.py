@@ -20,10 +20,10 @@ def chunks(lst: list[Any], size: int) -> list[list[Any]]:
         List of sublists, each with at most 'size' elements.
     """
     size = max(1, size)
-    return [lst[i : i + size] for i in range(0, len(lst), size)]
+    return [lst[i: i + size] for i in range(0, len(lst), size)]
 
 
-keys = [obj.key for obj in bucket.objects.filter(Prefix="data\\")]
+keys = [obj.key for obj in bucket.objects.filter(Prefix="data/")]
 keys = chunks(keys, 500)
 for key in keys:
     store.delete_objects(key)

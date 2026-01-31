@@ -36,7 +36,8 @@ opt = rh.get_options()
 opt_df = pd.DataFrame(opt)
 # Filter to filled orders
 opt_df = opt_df[opt_df["state"] == "filled"]
-opt_df["updated_at"] = pd.to_datetime(opt_df["updated_at"]).dt.strftime(DATE_FMT)
+opt_df["updated_at"] = pd.to_datetime(
+    opt_df["updated_at"]).dt.strftime(DATE_FMT)
 
 
 def calculate_crypto_value() -> float:
@@ -109,11 +110,13 @@ def calculate_options_value(start: str, end: str) -> float:
             # Get expiration from first leg
             legs = order.get("legs", [])
             if legs:
-                exp_date = pd.to_datetime(legs[0].get("expiration_date"))
-                days_to_expiry = (exp_date - order_date).days
-                if days_to_expiry > 12:
-                    # Skip long-dated options (Scenario 3 - rebuy after assignment)
-                    continue
+                exp_date_str = legs[0].get("expiration_date")
+                if exp_date_str:
+                    exp_date = pd.to_datetime(exp_date_str)
+                    days_to_expiry = (exp_date - order_date).days
+                    if days_to_expiry > 12:
+                        # Skip long-dated options (Scenario 3 - rebuy after assignment)
+                        continue
             # Sold option - receive premium
             net_value += premium
         else:  # debit
@@ -137,15 +140,18 @@ for row_idx, date in enumerate(dates):
     # Update dividends
     col = "Dividends"
     div = div_df[
-        (div_df["payable_date"] >= start_str) & (div_df["payable_date"] < end_str)
+        (div_df["payable_date"] >= start_str) & (
+            div_df["payable_date"] < end_str)
     ]
     div_val = round(div["amount"].astype(float).sum())
-    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, div_val)
+    sh.update_cell(df.index[row_idx] + row_buffer,
+                   col_idxs[col] + col_buffer, div_val)
 
     # Update options
     col = "Options"
     opt_val = round(calculate_options_value(start_str, end_str))
-    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, opt_val)
+    sh.update_cell(df.index[row_idx] + row_buffer,
+                   col_idxs[col] + col_buffer, opt_val)
 
     # Update crypto
     col = "Crypto"

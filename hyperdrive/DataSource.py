@@ -88,7 +88,6 @@ class MarketData:
                     raise e
                 else:
                     sleep(delay)
-        return None
 
     def get_symbols(self) -> list[str]:
         """Get cached list of tradable symbols.

@@ -22,13 +22,13 @@ def chunks(lst: list[Any], size: int) -> list[list[Any]]:
         List of sublists, each with at most 'size' elements.
     """
     size = max(1, size)
-    return [lst[i : i + size] for i in range(0, len(lst), size)]
+    return [lst[i: i + size] for i in range(0, len(lst), size)]
 
 
 for symbol in symbols:
     keys = [
         obj.key
-        for obj in bucket.objects.filter(Prefix=f"data/intraday/polygon/{symbol}\\")
+        for obj in bucket.objects.filter(Prefix=f"data/intraday/polygon/{symbol}/")
     ]
     keys = chunks(keys, 500)
     for key in keys:
