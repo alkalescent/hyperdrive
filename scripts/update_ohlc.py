@@ -34,7 +34,9 @@ def update_poly_ohlc() -> None:
 
 
 def update_alpc_ohlc() -> None:
-    """Update OHLC data from Alpaca API for all symbols."""
+    """Update OHLC data from Alpaca API for stocks and crypto."""
+    finder = PathFinder()
+    # Stocks
     for symbol in alpc_symbols:
         try:
             alpc.save_ohlc(symbol=symbol, timeframe=C.FEW_DAYS, retries=1)
@@ -44,28 +46,21 @@ def update_alpc_ohlc() -> None:
             print(f"Alpaca OHLC update failed for {symbol}.")
             print(e)
         finally:
-            filename = PathFinder().get_ohlc_path(symbol=symbol, provider=alpc.provider)
+            filename = finder.get_ohlc_path(
+                symbol=symbol, provider=alpc.provider)
             if C.CI and os.path.exists(filename):
                 os.remove(filename)
-
-
-def update_alpc_crypto_ohlc() -> None:
-    """Update crypto OHLC data from Alpaca API using Polygon symbol names.
-
-    Fetches crypto data using Alpaca symbols (e.g., 'BTC/USD') but saves
-    files using Polygon symbol names (e.g., 'X%3ABTCUSD') to avoid S3 path issues.
-    """
-    finder = PathFinder()
+    # Crypto - fetch with Alpaca symbol, save with Polygon symbol for S3-safe paths
     for alpc_symbol in alpc_crypto_symbols:
         poly_symbol = C.ALPC_TO_POLY_CRYPTO.get(alpc_symbol)
         if not poly_symbol:
             print(f"No Polygon mapping for {alpc_symbol}, skipping.")
             continue
         try:
-            # Fetch data using Alpaca symbol
-            df = alpc.get_ohlc(symbol=alpc_symbol, timeframe=C.FEW_DAYS, retries=1)
-            # Save using Polygon symbol for S3-safe path
-            filename = finder.get_ohlc_path(symbol=poly_symbol, provider=alpc.provider)
+            df = alpc.get_ohlc(symbol=alpc_symbol,
+                               timeframe=C.FEW_DAYS, retries=1)
+            filename = finder.get_ohlc_path(
+                symbol=poly_symbol, provider=alpc.provider)
             if os.path.exists(filename):
                 os.remove(filename)
             df = alpc.reader.update_df(filename, df, C.TIME, C.DATE_FMT)
@@ -76,7 +71,8 @@ def update_alpc_crypto_ohlc() -> None:
             print(f"Alpaca crypto OHLC update failed for {alpc_symbol}.")
             print(e)
         finally:
-            filename = finder.get_ohlc_path(symbol=poly_symbol, provider=alpc.provider)
+            filename = finder.get_ohlc_path(
+                symbol=poly_symbol, provider=alpc.provider)
             if C.CI and os.path.exists(filename):
                 os.remove(filename)
 
@@ -84,14 +80,12 @@ def update_alpc_crypto_ohlc() -> None:
 if __name__ == "__main__":
     p1 = Process(target=update_poly_ohlc)
     p2 = Process(target=update_alpc_ohlc)
-    p3 = Process(target=update_alpc_crypto_ohlc)
     p1.start()
     p2.start()
-    p3.start()
     p1.join()
     p2.join()
-    p3.join()
 
-    total_symbols = len(poly_symbols) + len(alpc_symbols) + len(alpc_crypto_symbols)
+    total_symbols = len(poly_symbols) + len(alpc_symbols) + \
+        len(alpc_crypto_symbols)
     if counter.value / total_symbols < 0.95:
         exit(1)
