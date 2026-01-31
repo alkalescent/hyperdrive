@@ -32,8 +32,8 @@ def aws_credentials() -> None:
 
 
 @pytest.fixture
-def s3_bucket(aws_credentials: None) -> Any:
-    """Create a mock S3 bucket using moto."""
+def mock_s3(aws_credentials: None) -> Any:
+    """Create a mock S3 environment using moto."""
     with mock_aws():
         # Create the S3 bucket
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -45,13 +45,21 @@ def s3_bucket(aws_credentials: None) -> Any:
         bucket.put_object(Key="data/symbols.csv", Body=b"Symbol,Name\nAAPL,Apple")
         bucket.put_object(Key="README.md", Body=b"# Test README")
 
-        yield bucket
+        # Create the store within the mock context
+        store = Store()
+        yield store, bucket
 
 
 @pytest.fixture
-def store(s3_bucket: Any) -> Store:
+def store(mock_s3: Any) -> Store:
     """Create a Store instance with mocked S3."""
-    return Store()
+    return mock_s3[0]
+
+
+@pytest.fixture
+def s3_bucket(mock_s3: Any) -> Any:
+    """Get the mocked S3 bucket."""
+    return mock_s3[1]
 
 
 @pytest.fixture

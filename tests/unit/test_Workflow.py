@@ -24,7 +24,11 @@ class TestWorkFlow:
 
     def test_is_workflow_running(self) -> None:
         """Test checking if a workflow is currently running."""
-        assert not flow.is_workflow_running("unrate")
+        with patch("hyperdrive.Workflow.MarketData") as MockMD:
+            md = MagicMock()
+            md.get_symbols.return_value = ["AAPL", "AMZN"]
+            MockMD.return_value = md
+            assert not flow.is_workflow_running("unrate")
 
     def test_is_workflow_running_ohlc(self) -> None:
         """Test is_workflow_running with ohlc workflow."""
