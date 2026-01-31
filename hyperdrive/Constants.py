@@ -136,6 +136,13 @@ POLY_CRYPTO_SYMBOLS = [
 
 ALPC_CRYPTO_SYMBOLS = ["BTC/USD", "ETH/USD", "LTC/USD"]
 
+# Mapping from Alpaca crypto symbols to Polygon symbols (for S3-safe paths)
+ALPC_TO_POLY_CRYPTO = {
+    "BTC/USD": "X%3ABTCUSD",
+    "ETH/USD": "X%3AETHUSD",
+    "LTC/USD": "X%3ALTCUSD",
+}
+
 SENTIMENT_SYMBOLS_IGNORE = {
     "SPYD",
     "VWDRY",
