@@ -36,8 +36,7 @@ opt = rh.get_options()
 opt_df = pd.DataFrame(opt)
 # Filter to filled orders
 opt_df = opt_df[opt_df["state"] == "filled"]
-opt_df["updated_at"] = pd.to_datetime(
-    opt_df["updated_at"]).dt.strftime(DATE_FMT)
+opt_df["updated_at"] = pd.to_datetime(opt_df["updated_at"]).dt.strftime(DATE_FMT)
 
 
 def calculate_crypto_value() -> float:
@@ -140,18 +139,15 @@ for row_idx, date in enumerate(dates):
     # Update dividends
     col = "Dividends"
     div = div_df[
-        (div_df["payable_date"] >= start_str) & (
-            div_df["payable_date"] < end_str)
+        (div_df["payable_date"] >= start_str) & (div_df["payable_date"] < end_str)
     ]
     div_val = round(div["amount"].astype(float).sum())
-    sh.update_cell(df.index[row_idx] + row_buffer,
-                   col_idxs[col] + col_buffer, div_val)
+    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, div_val)
 
     # Update options
     col = "Options"
     opt_val = round(calculate_options_value(start_str, end_str))
-    sh.update_cell(df.index[row_idx] + row_buffer,
-                   col_idxs[col] + col_buffer, opt_val)
+    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, opt_val)
 
     # Update crypto
     col = "Crypto"
