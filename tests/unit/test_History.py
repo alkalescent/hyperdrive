@@ -21,7 +21,7 @@ unfilled_ns = [
     None,
     True,
     None,
-]  # Last is None (duplicate)
+]  # Last is None because unfill removes consecutive duplicates; index 8 repeats index 7 (True)
 arr = np.array(ls)
 test_ffill = np.array(fs)
 test_nfill = np.array(ns)
@@ -36,8 +36,10 @@ data = np.arange(total)
 X = pd.DataFrame({"i": data, "j": data})
 y = np.array([True] * majority + [False] * minority)
 
-orders_index = pd.to_datetime(pd.Series(["2025-01-01", "2025-01-02"], name=C.TIME))
-orders_close = pd.DataFrame({"AAPL": [200, 100], "META": [25, 50]}, index=orders_index)
+orders_index = pd.to_datetime(
+    pd.Series(["2025-01-01", "2025-01-02"], name=C.TIME))
+orders_close = pd.DataFrame(
+    {"AAPL": [200, 100], "META": [25, 50]}, index=orders_index)
 
 
 class TestHistorian:
@@ -55,14 +57,16 @@ class TestHistorian:
 
     def test_from_orders(self) -> None:
         """Test creating portfolio from order data."""
-        size = pd.DataFrame({"AAPL": [1, 0], "META": [0, 1]}, index=orders_index)
+        size = pd.DataFrame(
+            {"AAPL": [1, 0], "META": [0, 1]}, index=orders_index)
         stats = hist.from_orders(orders_close, size).stats()
         assert "Sortino Ratio" in stats
 
     def test_optimize_portfolio(self) -> None:
         """Test portfolio optimization with indicator."""
         indicator = pd.Series.diff
-        stats = hist.optimize_portfolio(orders_close, indicator, 1, "day", 225).stats()
+        stats = hist.optimize_portfolio(
+            orders_close, indicator, 1, "day", 225).stats()
         assert "Sortino Ratio" in stats
 
     def test_fill(self) -> None:
