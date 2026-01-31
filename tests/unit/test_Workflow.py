@@ -20,7 +20,7 @@ class TestWorkFlow:
             now.year, now.month, 1, 12
         )
         with pytest.raises(AttributeError):
-            assert flow.get_workflow_start_time("test")
+            flow.get_workflow_start_time("test")
 
     def test_is_workflow_running(self) -> None:
         """Test checking if a workflow is currently running."""
