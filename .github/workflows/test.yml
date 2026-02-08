@@ -30,6 +30,9 @@ jobs:
     
     - name: Lint
       run: make lint
+
+    - name: Type check
+      run: make type
     
     - name: Test with coverage
       run: make cov

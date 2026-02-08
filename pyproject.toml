@@ -43,6 +43,7 @@ dev = [
     "qrcode[pil]",
     "PyGithub",
     "gspread",
+    "ty",
 ]
 
 [project.urls]
@@ -93,6 +94,10 @@ convention = "google"
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.ty]
+[tool.ty.environment]
+python-version = "3.11"
 
 [tool.pytest.ini_options]
 addopts = "-n auto -m 'not integration'"

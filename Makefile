@@ -4,7 +4,7 @@ NAME := $(shell basename $(CURDIR))
 UV_SYNC := uv sync $(if $(DEV),--dev,--no-dev)
 UV_SYNC_FROZEN := uv sync --frozen $(if $(DEV),--dev,--no-dev)
 
-.PHONY: install ci lint format smoke test cov clean qr help all
+.PHONY: install ci lint format type smoke test cov clean qr help all
 
 help:
 	@echo "Available targets:"
@@ -12,12 +12,13 @@ help:
 	@echo "  ci      - Install with frozen lock file (DEV=1 for dev deps)"
 	@echo "  lint    - Run ruff linter and formatter check"
 	@echo "  format  - Run ruff formatter"
+	@echo "  type    - Run type checking with ty"
 	@echo "  smoke   - Run smoke tests"
 	@echo "  test    - Run unit tests with pytest"
 	@echo "  cov     - Run tests with pytest and coverage"
 	@echo "  qr      - Generate QR codes for donation addresses"
 	@echo "  clean   - Remove build artifacts"
-	@echo "  all     - Run lint, test, and cov"
+	@echo "  all     - Run lint, type, test, and cov"
 
 install:
 	$(UV_SYNC)
@@ -32,6 +33,9 @@ lint:
 format:
 	uv run ruff check . --fix
 	uv run ruff format .
+
+type:
+	uv run ty check hyperdrive
 
 test:
 	uv run python -m pytest
@@ -51,4 +55,4 @@ clean:
 	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
 
-all: lint test cov
+all: lint type test cov
