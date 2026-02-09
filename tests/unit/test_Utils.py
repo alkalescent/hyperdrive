@@ -30,9 +30,10 @@ class TestSwissArmyKnife:
         assert ex.var == "old"
         knife.replace_attr(ex, "var", "new")
         assert ex.var == "new"
-        knife.replace_attr(ex, "absent", "present")
+        attr_name = "absent"
+        knife.replace_attr(ex, attr_name, "present")
         with pytest.raises(AttributeError):
-            _ = ex.absent
+            _ = getattr(ex, attr_name)
 
     def test_use_dev(self) -> None:
         """Test switching to dev bucket configuration."""
