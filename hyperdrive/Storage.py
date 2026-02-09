@@ -181,13 +181,12 @@ class Store:
             key: S3 key to check.
 
         Returns:
-            The last modified datetime (timezone-naive UTC).
+            The last modified datetime (timezone-aware UTC).
         """
         key = key.replace("\\", "/")
         bucket = self.get_bucket()
         obj = bucket.Object(key)
-        then = obj.last_modified.replace(tzinfo=None)
-        return then
+        return obj.last_modified  # S3 returns timezone-aware UTC datetime
 
     def modified_delta(self, key: str) -> timedelta:
         """Get time since an S3 object was last modified.
@@ -200,5 +199,5 @@ class Store:
         """
         key = key.replace("\\", "/")
         then = self.last_modified(key)
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        now = datetime.now(timezone.utc)
         return now - then

@@ -98,12 +98,13 @@ class MarketData:
         symbols_path = self.finder.get_symbols_path()
         return list(self.reader.load_csv(symbols_path)[C.SYMBOL])
 
-    def get_dividends(self, symbol: str, timeframe: str = "max") -> pd.DataFrame:
+    def get_dividends(self, symbol: str = "", timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached dividend data for a symbol.
 
         Args:
             symbol: The stock symbol.
             timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments for subclass implementations.
 
         Returns:
             DataFrame with dividend history.
@@ -189,12 +190,13 @@ class MarketData:
             return filename
         return None
 
-    def get_splits(self, symbol: str, timeframe: str = "max") -> pd.DataFrame:
+    def get_splits(self, symbol: str = "", timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached split data for a symbol.
 
         Args:
             symbol: The stock symbol.
             timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments for subclass implementations.
 
         Returns:
             DataFrame with split history.
@@ -277,12 +279,13 @@ class MarketData:
 
         return df
 
-    def get_ohlc(self, symbol: str, timeframe: str = "max") -> pd.DataFrame:
+    def get_ohlc(self, symbol: str = "", timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached OHLC data for a symbol.
 
         Args:
             symbol: The stock/crypto symbol.
             timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments for subclass implementations.
 
         Returns:
             DataFrame with OHLC price history.
@@ -314,11 +317,12 @@ class MarketData:
 
     def get_intraday(
         self,
-        symbol: str,
+        symbol: str = "",
         min: int = 1,  # noqa: A002
         timeframe: str = "max",
         extra_hrs: bool = False,
-    ) -> Generator[pd.DataFrame, None, None]:
+        **kwargs: Any,
+    ) -> Generator[pd.DataFrame, None, None] | None:
         """Get cached intraday data for a symbol.
 
         Args:
@@ -326,6 +330,7 @@ class MarketData:
             min: Minute interval for data (default: 1).
             timeframe: Time range for data (default: "max").
             extra_hrs: Include extended hours data (default: False).
+            **kwargs: Additional arguments for subclass implementations.
 
         Yields:
             DataFrames with intraday OHLC data for each date.
@@ -351,6 +356,9 @@ class MarketData:
         dfs = self.get_intraday(**kwargs)
         filenames = []
 
+        if dfs is None:
+            return filenames
+
         for df in dfs:
             date = df[C.TIME].iloc[0].strftime(C.DATE_FMT)
             filename = self.finder.get_intraday_path(symbol, date, self.provider)
@@ -363,11 +371,12 @@ class MarketData:
                 filenames.append(filename)
         return filenames
 
-    def get_unemployment_rate(self, timeframe: str = "max") -> pd.DataFrame:
+    def get_unemployment_rate(self, timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached unemployment rate data.
 
         Args:
             timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments for subclass implementations.
 
         Returns:
             DataFrame with unemployment rate history.
@@ -437,11 +446,12 @@ class MarketData:
         )
         return df[self.get_indexer({C.TIME, C.HALVING, C.RATIO}, df.columns)]
 
-    def get_s2f_ratio(self, timeframe: str = "max") -> pd.DataFrame:
+    def get_s2f_ratio(self, timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached stock-to-flow ratio data.
 
         Args:
             timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments for subclass implementations.
 
         Returns:
             DataFrame with S2F ratio history.
@@ -505,11 +515,12 @@ class MarketData:
         df = self.standardize(df, full_mapping, filename, [C.TIME] + C.MAs, 0)
         return df[self.get_indexer(set([C.TIME] + C.MAs), df.columns)]
 
-    def get_diff_ribbon(self, timeframe: str = "max") -> pd.DataFrame:
+    def get_diff_ribbon(self, timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached difficulty ribbon data.
 
         Args:
             timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments for subclass implementations.
 
         Returns:
             DataFrame with difficulty ribbon moving averages.
@@ -563,11 +574,12 @@ class MarketData:
         df = self.standardize(df, full_mapping, filename, [C.TIME, C.SOPR], 1)
         return df[self.get_indexer({C.TIME, C.SOPR}, df.columns)]
 
-    def get_sopr(self, timeframe: str = "max") -> pd.DataFrame:
+    def get_sopr(self, timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached SOPR data.
 
         Args:
             timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments for subclass implementations.
 
         Returns:
             DataFrame with SOPR history.
@@ -788,11 +800,15 @@ class AlpacaData(MarketData):
         self.provider = "alpaca"
         self.free = free
 
-    def get_ohlc(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
+    def get_ohlc(
+        self, symbol: str = "", timeframe: str = "max", **kwargs: Any
+    ) -> pd.DataFrame:
         """Fetch OHLC data from Alpaca API.
 
         Args:
-            **kwargs: Must include 'symbol'. Optional 'timeframe' (default: "max").
+            symbol: The stock/crypto symbol.
+            timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments.
 
         Returns:
             DataFrame with OHLC price history.
@@ -863,7 +879,7 @@ class AlpacaData(MarketData):
             df = self.standardize_ohlc(symbol, df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(func=_get_ohlc, **kwargs)
+        return self.try_again(func=_get_ohlc, symbol=symbol, timeframe=timeframe, **kwargs)
 
 
 class Polygon(MarketData):
@@ -906,11 +922,15 @@ class Polygon(MarketData):
             results.append(apply(item))
         return results
 
-    def get_dividends(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
+    def get_dividends(
+        self, symbol: str = "", timeframe: str = "max", **kwargs: Any
+    ) -> pd.DataFrame:
         """Fetch dividend data from Polygon API.
 
         Args:
-            **kwargs: Must include 'symbol'. Optional 'timeframe' (default: "max").
+            symbol: The stock symbol.
+            timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments.
 
         Returns:
             DataFrame with dividend history.
@@ -941,13 +961,17 @@ class Polygon(MarketData):
             df = self.standardize_dividends(symbol, raw)
             return self.reader.data_in_timeframe(df, C.EX, timeframe)
 
-        return self.try_again(func=_get_dividends, **kwargs)
+        return self.try_again(func=_get_dividends, symbol=symbol, timeframe=timeframe, **kwargs)
 
-    def get_splits(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
+    def get_splits(
+        self, symbol: str = "", timeframe: str = "max", **kwargs: Any
+    ) -> pd.DataFrame:
         """Fetch split data from Polygon API.
 
         Args:
-            **kwargs: Must include 'symbol'. Optional 'timeframe' (default: "max").
+            symbol: The stock symbol.
+            timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments.
 
         Returns:
             DataFrame with split history.
@@ -976,13 +1000,17 @@ class Polygon(MarketData):
             df = self.standardize_splits(symbol, raw)
             return self.reader.data_in_timeframe(df, C.EX, timeframe)
 
-        return self.try_again(func=_get_splits, **kwargs)
+        return self.try_again(func=_get_splits, symbol=symbol, timeframe=timeframe, **kwargs)
 
-    def get_ohlc(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
+    def get_ohlc(
+        self, symbol: str = "", timeframe: str = "max", **kwargs: Any
+    ) -> pd.DataFrame:
         """Fetch OHLC data from Polygon API.
 
         Args:
-            **kwargs: Must include 'symbol'. Optional 'timeframe' (default: "max").
+            symbol: The stock/crypto symbol.
+            timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments.
 
         Returns:
             DataFrame with OHLC price history.
@@ -1020,14 +1048,24 @@ class Polygon(MarketData):
             df = self.standardize_ohlc(symbol, df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(func=_get_ohlc, **kwargs)
+        return self.try_again(func=_get_ohlc, symbol=symbol, timeframe=timeframe, **kwargs)
 
-    def get_intraday(  # type: ignore[override]
-        self, **kwargs: Any
+    def get_intraday(
+        self,
+        symbol: str = "",
+        min: int = 1,  # noqa: A002
+        timeframe: str = "max",
+        extra_hrs: bool = False,
+        **kwargs: Any,
     ) -> Generator[pd.DataFrame, None, None] | None:
         """Fetch intraday data from Polygon API.
 
         Args:
+            symbol: The stock/crypto symbol.
+            min: Minute interval for data (default: 1).
+            timeframe: Time range for data (default: \"max\").
+            extra_hrs: Include extended hours data (default: False).
+            **kwargs: Additional arguments.
             **kwargs: Must include 'symbol'. Optional 'min', 'timeframe', 'extra_hrs'.
 
         Returns:
@@ -1083,7 +1121,14 @@ class Polygon(MarketData):
                 df = df[df[C.TIME].dt.strftime(C.DATE_FMT) == date]
                 yield df
 
-        return self.try_again(func=_get_intraday, **kwargs)
+        return self.try_again(
+            func=_get_intraday,
+            symbol=symbol,
+            min=min,
+            timeframe=timeframe,
+            extra_hrs=extra_hrs,
+            **kwargs,
+        )
 
 
 class LaborStats(MarketData):
@@ -1097,11 +1142,14 @@ class LaborStats(MarketData):
         self.token = os.environ.get("BLS")
         self.provider = "bls"
 
-    def get_unemployment_rate(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
+    def get_unemployment_rate(
+        self, timeframe: str = "max", **kwargs: Any
+    ) -> pd.DataFrame:
         """Fetch unemployment rate from BLS API.
 
         Args:
-            **kwargs: Must include 'timeframe'.
+            timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments.
 
         Returns:
             DataFrame with unemployment rate history.
@@ -1147,7 +1195,7 @@ class LaborStats(MarketData):
             df = self.standardize_unemployment(df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(func=_get_unemployment_rate, **kwargs)
+        return self.try_again(func=_get_unemployment_rate, timeframe=timeframe, **kwargs)
 
 
 class Glassnode(MarketData):
@@ -1243,11 +1291,12 @@ class Glassnode(MarketData):
         sleep(random() * 5)
         return response
 
-    def get_s2f_ratio(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
+    def get_s2f_ratio(self, timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Fetch stock-to-flow ratio from Glassnode API.
 
         Args:
-            **kwargs: Must include 'timeframe'.
+            timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments.
 
         Returns:
             DataFrame with S2F ratio history.
@@ -1283,13 +1332,14 @@ class Glassnode(MarketData):
             df = self.standardize_s2f_ratio(df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(func=_get_s2f_ratio, **kwargs)
+        return self.try_again(func=_get_s2f_ratio, timeframe=timeframe, **kwargs)
 
-    def get_diff_ribbon(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
+    def get_diff_ribbon(self, timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Fetch difficulty ribbon from Glassnode API.
 
         Args:
-            **kwargs: Must include 'timeframe'.
+            timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments.
 
         Returns:
             DataFrame with difficulty ribbon moving averages.
@@ -1325,13 +1375,14 @@ class Glassnode(MarketData):
             df = self.standardize_diff_ribbon(df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(func=_get_diff_ribbon, **kwargs)
+        return self.try_again(func=_get_diff_ribbon, timeframe=timeframe, **kwargs)
 
-    def get_sopr(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
+    def get_sopr(self, timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Fetch SOPR from Glassnode API.
 
         Args:
-            **kwargs: Must include 'timeframe'.
+            timeframe: Time range for data (default: "max").
+            **kwargs: Additional arguments.
 
         Returns:
             DataFrame with SOPR history.
@@ -1359,4 +1410,4 @@ class Glassnode(MarketData):
             df = self.standardize_sopr(df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(func=_get_sopr, **kwargs)
+        return self.try_again(func=_get_sopr, timeframe=timeframe, **kwargs)

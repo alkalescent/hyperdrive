@@ -1,14 +1,18 @@
 """Mathematical and geometric calculation utilities."""
 
 import math
+from collections.abc import Sequence
 from itertools import permutations
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from icosphere import icosphere
 from numpy.linalg import norm
 from scipy.signal import savgol_filter
+
+# Type alias for 3D point coordinates (can be tuple, list, or array-like)
+Point3D = Sequence[float] | np.ndarray
 
 
 class Calculator:
@@ -152,9 +156,9 @@ class Calculator:
 
     def find_plane(
         self,
-        pt1: np.ndarray | tuple[float, ...],
-        pt2: np.ndarray | tuple[float, ...],
-        pt3: np.ndarray | tuple[float, ...],
+        pt1: Point3D,
+        pt2: Point3D,
+        pt3: Point3D,
     ) -> tuple[float, float, float, float]:
         """Find plane equation coefficients from three points.
 
@@ -178,7 +182,7 @@ class Calculator:
         return a, b, c, d
 
     def eval_plane(
-        self, pt: tuple[float, float, float], coeffs: tuple[float, float, float, float]
+        self, pt: Point3D, coeffs: tuple[float, float, float, float]
     ) -> float:
         """Evaluate a point against a plane equation.
 
@@ -189,7 +193,7 @@ class Calculator:
         Returns:
             Value of ax + by + cz + d (0 if on plane).
         """
-        x, y, z = pt
+        x, y, z = pt[0], pt[1], pt[2]
         a, b, c, d = coeffs
         return a * x + b * y + c * z + d
 
@@ -210,8 +214,8 @@ class Calculator:
 
     def same_plane_side(
         self,
-        pt1: tuple[float, float, float] | list[float],
-        pt2: tuple[float, float, float] | list[float],
+        pt1: Point3D,
+        pt2: Point3D,
         plane: tuple[float, float, float, float],
     ) -> bool:
         """Check if two points are on the same side of a plane.
@@ -224,10 +228,8 @@ class Calculator:
         Returns:
             True if both points are on the same side.
         """
-        pt1_tuple = tuple(pt1) if isinstance(pt1, list) else pt1
-        pt2_tuple = tuple(pt2) if isinstance(pt2, list) else pt2
-        pt1_side = self.eval_plane(pt1_tuple, plane)  # type: ignore[arg-type]
-        pt2_side = self.eval_plane(pt2_tuple, plane)  # type: ignore[arg-type]
+        pt1_side = self.eval_plane(pt1, plane)
+        pt2_side = self.eval_plane(pt2, plane)
         plane_side = (pt1_side == abs(pt1_side)) == (pt2_side == abs(pt2_side))
         return plane_side
 
@@ -294,7 +296,7 @@ class Calculator:
         return True
 
     def generate_icosphere(
-        self, radius: float, center: np.ndarray | tuple[float, ...], refinement: int
+        self, radius: float, center: Point3D, refinement: int
     ) -> tuple[np.ndarray, np.ndarray]:
         """Generate an icosphere mesh.
 
@@ -311,7 +313,7 @@ class Calculator:
         vertices = vertices / length * radius + center
         return vertices, faces
 
-    def generate_octahedron(self, radius: float, center: np.ndarray | tuple[float, ...]) -> np.ndarray:
+    def generate_octahedron(self, radius: float, center: Point3D) -> np.ndarray:
         """Generate octahedron vertices.
 
         Args:

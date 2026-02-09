@@ -18,6 +18,7 @@ from moto import mock_aws
 
 from hyperdrive.FileOps import FileReader, FileWriter
 
+
 # ============================================================
 # Test Data
 # ============================================================
@@ -120,7 +121,7 @@ class TestFileWriter:
         self, writer: FileWriter, temp_files: dict[str, str]
     ) -> None:
         """Test saving empty JSON object."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
 
         result = writer.save_json(temp_files["json1"], {})
 
@@ -135,7 +136,7 @@ class TestFileWriter:
         self, writer: FileWriter, temp_files: dict[str, str]
     ) -> None:
         """Test saving JSON with data."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
 
         result = writer.save_json(temp_files["json2"], SAMPLE_DATA)
 
@@ -164,7 +165,7 @@ class TestFileWriter:
         test_dataframes: dict[str, pd.DataFrame],
     ) -> None:
         """Test saving DataFrame to CSV."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
 
         result = writer.save_csv(temp_files["csv2"], test_dataframes["test_df"])
 
@@ -179,7 +180,7 @@ class TestFileWriter:
         test_dataframes: dict[str, pd.DataFrame],
     ) -> None:
         """Test update_csv doesn't overwrite with smaller data."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
 
         # First save
         writer.save_csv(temp_files["csv2"], test_dataframes["test_df"])
@@ -198,7 +199,7 @@ class TestFileWriter:
         test_dataframes: dict[str, pd.DataFrame],
     ) -> None:
         """Test update_csv overwrites with larger data."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
 
         # First save
         writer.save_csv(temp_files["csv2"], test_dataframes["test_df"])
@@ -212,7 +213,8 @@ class TestFileWriter:
 
     def test_remove_files(self, writer: FileWriter, tmp_path: Path) -> None:
         """Test removing files."""
-        writer.store.delete_objects = MagicMock()  # type: ignore[method-assign]
+        mock_delete = MagicMock()
+        setattr(writer.store, "delete_objects", mock_delete)
 
         # Create test file
         test_file = tmp_path / "to_remove.txt"
@@ -223,11 +225,12 @@ class TestFileWriter:
         writer.remove_files([str(test_file)])
 
         assert not test_file.exists()
-        writer.store.delete_objects.assert_called_once()
+        mock_delete.assert_called_once()
 
     def test_rename_file(self, writer: FileWriter, tmp_path: Path) -> None:
         """Test renaming files."""
-        writer.store.rename_key = MagicMock()  # type: ignore[method-assign]
+        mock_rename = MagicMock()
+        setattr(writer.store, "rename_key", mock_rename)
 
         # Create test file
         src = tmp_path / "source.txt"
@@ -239,7 +242,7 @@ class TestFileWriter:
 
         assert not src.exists()
         assert dst.exists()
-        writer.store.rename_key.assert_called_once()
+        mock_rename.assert_called_once()
 
 
 class TestFileReader:
@@ -258,8 +261,8 @@ class TestFileReader:
         temp_files: dict[str, str],
     ) -> None:
         """Test loading JSON file."""
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(reader.store, "download_file", MagicMock())
+        setattr(writer.store, "upload_file", MagicMock())
 
         # Save first
         writer.save_json(temp_files["json1"], SAMPLE_DATA)
@@ -277,8 +280,8 @@ class TestFileReader:
         test_dataframes: dict[str, pd.DataFrame],
     ) -> None:
         """Test loading CSV file."""
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(reader.store, "download_file", MagicMock())
+        setattr(writer.store, "upload_file", MagicMock())
 
         # Save first
         writer.save_csv(temp_files["csv2"], test_dataframes["test_df"])
@@ -297,8 +300,8 @@ class TestFileReader:
         test_dataframes: dict[str, pd.DataFrame],
     ) -> None:
         """Test check_update with same size DataFrame."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
+        setattr(reader.store, "download_file", MagicMock())
 
         writer.save_csv(temp_files["csv2"], test_dataframes["test_df"])
 
@@ -313,8 +316,8 @@ class TestFileReader:
         test_dataframes: dict[str, pd.DataFrame],
     ) -> None:
         """Test check_update with smaller DataFrame returns False."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
+        setattr(reader.store, "download_file", MagicMock())
 
         writer.save_csv(temp_files["csv2"], test_dataframes["test_df"])
 
@@ -329,8 +332,8 @@ class TestFileReader:
         test_dataframes: dict[str, pd.DataFrame],
     ) -> None:
         """Test check_update with larger DataFrame returns True."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
+        setattr(reader.store, "download_file", MagicMock())
 
         writer.save_csv(temp_files["csv2"], test_dataframes["test_df"])
 
@@ -339,14 +342,14 @@ class TestFileReader:
 
     def test_check_file_exists_false(self, reader: FileReader) -> None:
         """Test check_file_exists returns False for non-existent file."""
-        reader.store.key_exists = MagicMock(return_value=False)  # type: ignore[method-assign]
+        setattr(reader.store, "key_exists", MagicMock(return_value=False))
 
         result = reader.check_file_exists("nonexistent.txt")
         assert result is False
 
     def test_check_file_exists_true(self, reader: FileReader, tmp_path: Path) -> None:
         """Test check_file_exists returns True for existing file."""
-        reader.store.key_exists = MagicMock(return_value=True)  # type: ignore[method-assign]
+        setattr(reader.store, "key_exists", MagicMock(return_value=True))
 
         test_file = tmp_path / "exists.txt"
         test_file.write_text("test")
@@ -387,7 +390,7 @@ class TestFileReader:
         self, reader: FileReader, tmp_path: Path
     ) -> None:
         """Test load_csv raises EmptyDataError for empty CSV."""
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
+        setattr(reader.store, "download_file", MagicMock())
 
         # Create an empty CSV file
         empty_csv = tmp_path / "empty.csv"
@@ -398,7 +401,7 @@ class TestFileReader:
 
     def test_load_csv_file_not_found(self, reader: FileReader) -> None:
         """Test load_csv raises FileNotFoundError for missing file."""
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
+        setattr(reader.store, "download_file", MagicMock())
 
         with pytest.raises(FileNotFoundError):
             reader.load_csv("nonexistent_file.csv")
@@ -411,8 +414,8 @@ class TestFileReader:
         test_dataframes: dict[str, pd.DataFrame],
     ) -> None:
         """Test update_df merges new data with existing."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
+        setattr(reader.store, "download_file", MagicMock())
 
         # Save initial data
         csv_path = str(tmp_path / "update_test.csv")
@@ -440,7 +443,7 @@ class TestFileReader:
         self, reader: FileReader, writer: FileWriter, tmp_path: Path
     ) -> None:
         """Test update_df with empty existing data returns new data."""
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
+        setattr(reader.store, "download_file", MagicMock())
 
         # Create CSV with just headers
         csv_path = str(tmp_path / "empty_update.csv")
@@ -507,8 +510,8 @@ class TestFileReader:
         self, reader: FileReader, writer: FileWriter, tmp_path: Path
     ) -> None:
         """Test loading pickle file."""
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(reader.store, "download_file", MagicMock())
+        setattr(writer.store, "upload_file", MagicMock())
 
         pickle_path = str(tmp_path / "test.pkl")
         test_data = {"key": "value", "list": [1, 2, 3]}
@@ -523,7 +526,7 @@ class TestFileReader:
 
     def test_save_pickle(self, writer: FileWriter, tmp_path: Path) -> None:
         """Test saving pickle file."""
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(writer.store, "upload_file", MagicMock())
 
         pickle_path = str(tmp_path / "test_save.pkl")
         test_data = {"key": "value", "list": [1, 2, 3]}
@@ -537,7 +540,7 @@ class TestFileReader:
         self, reader: FileReader, tmp_path: Path
     ) -> None:
         """Test load_csv with general exception (lines 52-53)."""
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
+        setattr(reader.store, "download_file", MagicMock())
 
         # Create a malformed CSV that will cause a general exception during read
         bad_csv = tmp_path / "bad.csv"
@@ -551,8 +554,8 @@ class TestFileReader:
         self, reader: FileReader, writer: FileWriter, tmp_path: Path
     ) -> None:
         """Test update_df with save_fmt parameter (line 70)."""
-        reader.store.download_file = MagicMock()  # type: ignore[method-assign]
-        writer.store.upload_file = MagicMock()  # type: ignore[method-assign]
+        setattr(reader.store, "download_file", MagicMock())
+        setattr(writer.store, "upload_file", MagicMock())
 
         # Create initial CSV
         csv_path = str(tmp_path / "test_fmt.csv")
