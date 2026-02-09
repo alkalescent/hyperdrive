@@ -35,7 +35,7 @@ format:
 	uv run ruff format .
 
 type:
-	uv run ty check hyperdrive
+	uv run ty check hyperdrive tests
 
 test:
 	uv run python -m pytest
