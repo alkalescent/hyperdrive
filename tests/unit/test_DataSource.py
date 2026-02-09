@@ -239,9 +239,7 @@ def indices(mock_file_ops: dict[str, MagicMock]) -> Any:
 
 
 @pytest.fixture
-def mock_alpaca_api(
-    mock_env_vars: None,
-) -> Generator[responses.RequestsMock, None, None]:
+def mock_alpaca_api(mock_env_vars: None) -> Generator[responses.RequestsMock, None, None]:
     """Mock Alpaca data API."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://data.alpaca.markets/v2"
@@ -320,9 +318,7 @@ def labor_stats(
 
 
 @pytest.fixture
-def mock_glassnode_api(
-    mock_env_vars: None,
-) -> Generator[responses.RequestsMock, None, None]:
+def mock_glassnode_api(mock_env_vars: None) -> Generator[responses.RequestsMock, None, None]:
     """Mock Glassnode API."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://api.glassnode.com/v1"

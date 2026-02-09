@@ -1,7 +1,6 @@
 """Time manipulation utilities for date calculations and scheduling."""
 
-from datetime import datetime, timedelta, tzinfo
-from datetime import time as dt_time
+from datetime import datetime, time as dt_time, timedelta, tzinfo
 from time import sleep
 
 from .Constants import DATE_FMT, PRECISE_TIME_FMT, TIME_FMT, TZ, UTC
@@ -35,11 +34,7 @@ class TimeTraveller:
         """
         d2_resolved: FlexibleDate = d2 if d2 is not None else datetime.now()
         d1_dt = datetime.strptime(d1, format) if isinstance(d1, str) else d1
-        d2_dt = (
-            datetime.strptime(d2_resolved, format)
-            if isinstance(d2_resolved, str)
-            else d2_resolved
-        )
+        d2_dt = datetime.strptime(d2_resolved, format) if isinstance(d2_resolved, str) else d2_resolved
 
         return abs(d2_dt - d1_dt)
 

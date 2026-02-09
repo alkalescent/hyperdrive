@@ -1,7 +1,7 @@
 """AWS S3 storage utilities for file operations."""
 
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from multiprocessing import Pool
 from typing import Any
 
@@ -199,5 +199,5 @@ class Store:
         """
         key = key.replace("\\", "/")
         then = self.last_modified(key)
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         return now - then

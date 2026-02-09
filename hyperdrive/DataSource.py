@@ -18,7 +18,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from dotenv import find_dotenv, load_dotenv
-from polygon import RESTClient
+from polygon import RESTClient, exceptions
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.by import By
@@ -98,9 +98,7 @@ class MarketData:
         symbols_path = self.finder.get_symbols_path()
         return list(self.reader.load_csv(symbols_path)[C.SYMBOL])
 
-    def get_dividends(
-        self, symbol: str = "", timeframe: str = "max", **kwargs: Any
-    ) -> pd.DataFrame:
+    def get_dividends(self, symbol: str = "", timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached dividend data for a symbol.
 
         Args:
@@ -192,9 +190,7 @@ class MarketData:
             return filename
         return None
 
-    def get_splits(
-        self, symbol: str = "", timeframe: str = "max", **kwargs: Any
-    ) -> pd.DataFrame:
+    def get_splits(self, symbol: str = "", timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached split data for a symbol.
 
         Args:
@@ -283,9 +279,7 @@ class MarketData:
 
         return df
 
-    def get_ohlc(
-        self, symbol: str = "", timeframe: str = "max", **kwargs: Any
-    ) -> pd.DataFrame:
+    def get_ohlc(self, symbol: str = "", timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached OHLC data for a symbol.
 
         Args:
@@ -377,9 +371,7 @@ class MarketData:
                 filenames.append(filename)
         return filenames
 
-    def get_unemployment_rate(
-        self, timeframe: str = "max", **kwargs: Any
-    ) -> pd.DataFrame:
+    def get_unemployment_rate(self, timeframe: str = "max", **kwargs: Any) -> pd.DataFrame:
         """Get cached unemployment rate data.
 
         Args:
@@ -887,9 +879,7 @@ class AlpacaData(MarketData):
             df = self.standardize_ohlc(symbol, df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(
-            func=_get_ohlc, symbol=symbol, timeframe=timeframe, **kwargs
-        )
+        return self.try_again(func=_get_ohlc, symbol=symbol, timeframe=timeframe, **kwargs)
 
 
 class Polygon(MarketData):
@@ -971,9 +961,7 @@ class Polygon(MarketData):
             df = self.standardize_dividends(symbol, raw)
             return self.reader.data_in_timeframe(df, C.EX, timeframe)
 
-        return self.try_again(
-            func=_get_dividends, symbol=symbol, timeframe=timeframe, **kwargs
-        )
+        return self.try_again(func=_get_dividends, symbol=symbol, timeframe=timeframe, **kwargs)
 
     def get_splits(
         self, symbol: str = "", timeframe: str = "max", **kwargs: Any
@@ -1012,9 +1000,7 @@ class Polygon(MarketData):
             df = self.standardize_splits(symbol, raw)
             return self.reader.data_in_timeframe(df, C.EX, timeframe)
 
-        return self.try_again(
-            func=_get_splits, symbol=symbol, timeframe=timeframe, **kwargs
-        )
+        return self.try_again(func=_get_splits, symbol=symbol, timeframe=timeframe, **kwargs)
 
     def get_ohlc(
         self, symbol: str = "", timeframe: str = "max", **kwargs: Any
@@ -1062,9 +1048,7 @@ class Polygon(MarketData):
             df = self.standardize_ohlc(symbol, df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(
-            func=_get_ohlc, symbol=symbol, timeframe=timeframe, **kwargs
-        )
+        return self.try_again(func=_get_ohlc, symbol=symbol, timeframe=timeframe, **kwargs)
 
     def get_intraday(
         self,
@@ -1079,7 +1063,7 @@ class Polygon(MarketData):
         Args:
             symbol: The stock/crypto symbol.
             min: Minute interval for data (default: 1).
-            timeframe: Time range for data (default: "max").
+            timeframe: Time range for data (default: \"max\").
             extra_hrs: Include extended hours data (default: False).
             **kwargs: Additional arguments.
             **kwargs: Must include 'symbol'. Optional 'min', 'timeframe', 'extra_hrs'.
@@ -1111,9 +1095,7 @@ class Polygon(MarketData):
                         adjusted=True,
                         limit=C.POLY_MAX_AGGS_LIMIT,
                     )
-                except (
-                    Exception
-                ):  # NoResultsError may not be available in all polygon versions
+                except Exception:  # NoResultsError may not be available in all polygon versions
                     continue
                 finally:
                     self.log_api_call_time()
@@ -1213,9 +1195,7 @@ class LaborStats(MarketData):
             df = self.standardize_unemployment(df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
-        return self.try_again(
-            func=_get_unemployment_rate, timeframe=timeframe, **kwargs
-        )
+        return self.try_again(func=_get_unemployment_rate, timeframe=timeframe, **kwargs)
 
 
 class Glassnode(MarketData):

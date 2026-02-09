@@ -32,7 +32,7 @@ class TestSwissArmyKnife:
         assert ex.var == "new"
         knife.replace_attr(ex, "absent", "present")
         with pytest.raises(AttributeError):
-            _ = ex.absent
+            _ = getattr(ex, "absent")
 
     def test_use_dev(self) -> None:
         """Test switching to dev bucket configuration."""

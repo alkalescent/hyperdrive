@@ -42,7 +42,8 @@ def mock_s3(aws_credentials: None) -> Any:
 
         # Upload some initial test files
         bucket = conn.Bucket(bucket_name)
-        bucket.put_object(Key="data/symbols.csv", Body=b"Symbol,Name\nAAPL,Apple")
+        bucket.put_object(Key="data/symbols.csv",
+                          Body=b"Symbol,Name\nAAPL,Apple")
         bucket.put_object(Key="README.md", Body=b"# Test README")
 
         # Create the store within the mock context
@@ -166,7 +167,8 @@ class TestStore:
         assert not download_path.exists()
 
         # Download the file
-        store.download_file(str(download_path).replace(str(tmp_path) + "/", ""))
+        store.download_file(
+            str(download_path).replace(str(tmp_path) + "/", ""))
 
         # Note: In the real Store, this would create the file locally
         # For unit tests, we verify the S3 interaction worked

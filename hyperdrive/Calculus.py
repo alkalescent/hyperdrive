@@ -246,9 +246,7 @@ class Calculator:
         """
         tuple_points: list[tuple[float, ...]] = [tuple(point) for point in points]
         shortest_dist = self.find_shortest_dist(list(points))
-        plane_sets: set[
-            tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]
-        ] = set()
+        plane_sets: set[tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]] = set()
         for i, pt1 in enumerate(tuple_points):
             for j, pt2 in enumerate(tuple_points):
                 for k, pt3 in enumerate(tuple_points):
