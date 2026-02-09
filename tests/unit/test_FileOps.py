@@ -583,7 +583,8 @@ class TestFileReader:
         """Test save_csv with polars DataFrame (lines 246-251)."""
         import polars as pl
 
-        setattr(writer.store, "upload_file", MagicMock())
+        mock_upload = MagicMock()
+        setattr(writer.store, "upload_file", mock_upload)
 
         csv_path = str(tmp_path / "test_polars.csv")
         df_pl = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
@@ -592,13 +593,14 @@ class TestFileReader:
 
         assert result is True
         assert os.path.exists(csv_path)
-        writer.store.upload_file.assert_called_once()
+        mock_upload.assert_called_once()
 
     def test_save_csv_polars_empty(self, writer: FileWriter, tmp_path: Path) -> None:
         """Test save_csv with empty polars DataFrame returns False."""
         import polars as pl
 
-        setattr(writer.store, "upload_file", MagicMock())
+        mock_upload = MagicMock()
+        setattr(writer.store, "upload_file", mock_upload)
 
         csv_path = str(tmp_path / "test_empty_polars.csv")
         df_pl = pl.DataFrame({"a": [], "b": []})
@@ -606,7 +608,7 @@ class TestFileReader:
         result = writer.save_csv(csv_path, df_pl)
 
         assert result is False
-        writer.store.upload_file.assert_not_called()
+        mock_upload.assert_not_called()
 
     def test_load_json_needs_update(self, reader: FileReader, tmp_path: Path) -> None:
         """Test load_json when file needs to be updated from S3 (line 63)."""
@@ -617,12 +619,13 @@ class TestFileReader:
             json.dump({"key": "value"}, f)
 
         # Mock should_be_updated to return True
+        mock_download = MagicMock()
         setattr(reader, "should_be_updated", MagicMock(return_value=True))
-        setattr(reader.store, "download_file", MagicMock())
+        setattr(reader.store, "download_file", mock_download)
 
         result = reader.load_json(json_path)
 
-        reader.store.download_file.assert_called_once_with(json_path)
+        mock_download.assert_called_once_with(json_path)
         assert result == {"key": "value"}
 
     def test_load_pickle_needs_update(self, reader: FileReader, tmp_path: Path) -> None:
@@ -635,10 +638,11 @@ class TestFileReader:
             pickle.dump(test_data, f)
 
         # Mock should_be_updated to return True
+        mock_download = MagicMock()
         setattr(reader, "should_be_updated", MagicMock(return_value=True))
-        setattr(reader.store, "download_file", MagicMock())
+        setattr(reader.store, "download_file", mock_download)
 
         result = reader.load_pickle(pickle_path)
 
-        reader.store.download_file.assert_called_once_with(pickle_path)
+        mock_download.assert_called_once_with(pickle_path)
         assert result == {"key": "value"}
