@@ -1,7 +1,7 @@
 """Tests for the TimeMachine module."""
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from time import time
 
 import pytest
@@ -61,7 +61,7 @@ class TestTimeTraveller:
 
         # sched > curr case
         start = time()
-        curr = datetime.now(timezone.utc)
+        curr = datetime.now(UTC)
         sched = curr + timedelta(seconds=num_sec)
         traveller.sleep_until(sched.strftime(PRECISE_TIME_FMT))
         end = time()
@@ -69,7 +69,7 @@ class TestTimeTraveller:
 
         # sched < curr case
         start = time()
-        curr = datetime.now(timezone.utc)
+        curr = datetime.now(UTC)
         sched = curr - timedelta(seconds=num_sec)
         traveller.sleep_until(sched.strftime(PRECISE_TIME_FMT))
         end = time()

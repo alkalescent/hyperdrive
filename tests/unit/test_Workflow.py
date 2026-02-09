@@ -1,6 +1,6 @@
 """Tests for the Workflow module."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +8,7 @@ import pytest
 from hyperdrive.Workflow import Flow
 
 flow = Flow()
-now = datetime.now(timezone.utc)
+now = datetime.now(UTC)
 
 
 class TestWorkFlow:
@@ -17,7 +17,7 @@ class TestWorkFlow:
     def test_get_workflow_start_time(self) -> None:
         """Test getting scheduled start time for workflows."""
         assert flow.get_workflow_start_time("dividends") == datetime(
-            now.year, now.month, 1, 12, tzinfo=timezone.utc
+            now.year, now.month, 1, 12, tzinfo=UTC
         )
         with pytest.raises(AttributeError):
             flow.get_workflow_start_time("test")
@@ -34,7 +34,7 @@ class TestWorkFlow:
         """Test is_workflow_running with ohlc workflow."""
         # Mock to control time and symbols
         with patch.object(flow, "get_workflow_start_time") as mock_time:
-            mock_time.return_value = datetime.now(timezone.utc)  # Now, aware
+            mock_time.return_value = datetime.now(UTC)  # Now, aware
 
             with patch("hyperdrive.Workflow.MarketData") as MockMD:
                 md = MagicMock()
@@ -50,7 +50,7 @@ class TestWorkFlow:
         """Test is_workflow_running with dividends workflow."""
         with patch.object(flow, "get_workflow_start_time") as mock_time:
             # Set start time to far in the past (timezone-aware)
-            mock_time.return_value = datetime(2020, 1, 1, 0, 0, tzinfo=timezone.utc)
+            mock_time.return_value = datetime(2020, 1, 1, 0, 0, tzinfo=UTC)
 
             with patch("hyperdrive.Workflow.MarketData") as MockMD:
                 md = MagicMock()
@@ -64,7 +64,7 @@ class TestWorkFlow:
     def test_is_workflow_running_splits(self) -> None:
         """Test is_workflow_running with splits workflow."""
         with patch.object(flow, "get_workflow_start_time") as mock_time:
-            mock_time.return_value = datetime(2020, 1, 1, 0, 0, tzinfo=timezone.utc)
+            mock_time.return_value = datetime(2020, 1, 1, 0, 0, tzinfo=UTC)
 
             with patch("hyperdrive.Workflow.MarketData") as MockMD:
                 md = MagicMock()
@@ -77,7 +77,7 @@ class TestWorkFlow:
     def test_is_workflow_running_intraday(self) -> None:
         """Test is_workflow_running with intraday workflow."""
         with patch.object(flow, "get_workflow_start_time") as mock_time:
-            mock_time.return_value = datetime(2020, 1, 1, 0, 0, tzinfo=timezone.utc)
+            mock_time.return_value = datetime(2020, 1, 1, 0, 0, tzinfo=UTC)
 
             with patch("hyperdrive.Workflow.MarketData") as MockMD:
                 md = MagicMock()

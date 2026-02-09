@@ -100,7 +100,9 @@ class Oracle:
         dimensions: int,
         refinement: int,
         increase_percent: float = 0,
-    ) -> tuple[list[dict[str, list[Any]]], list[float], float, list[np.ndarray], np.ndarray]:
+    ) -> tuple[
+        list[dict[str, list[Any]]], list[float], float, list[np.ndarray], np.ndarray
+    ]:
         """Visualize decision boundaries using PCA reduction.
 
         Args:
