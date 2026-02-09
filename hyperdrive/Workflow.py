@@ -1,7 +1,7 @@
 """Workflow scheduling utilities for GitHub Actions coordination."""
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from .Constants import FEW, POLY_CRYPTO_SYMBOLS, POLY_FREE_DELAY
 from .DataSource import MarketData
@@ -36,7 +36,7 @@ class Flow:
             )
         cron_line = match.group(1)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         default_times = [now.minute, now.hour, now.day, now.month]
         times = [
             default_times[idx] if time == "*" else int(time)
@@ -45,7 +45,7 @@ class Flow:
 
         minute, hour, day, month = times
         # Return timezone-aware datetime in UTC for consistent comparisons
-        return datetime(now.year, month, day, hour, minute, tzinfo=timezone.utc)
+        return datetime(now.year, month, day, hour, minute, tzinfo=UTC)
 
     def is_workflow_running(self, workflow_name: str, buffer_min: int = 30) -> bool:
         """Check if a workflow is currently running.
@@ -65,7 +65,7 @@ class Flow:
         num_stock = len(md.get_symbols())
         num_crypto = len(POLY_CRYPTO_SYMBOLS)
         duration = timedelta(seconds=POLY_FREE_DELAY)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if workflow_name in {"ohlc", "intraday"}:
             duration *= (num_stock + num_crypto) * FEW
