@@ -34,6 +34,8 @@ def aws_credentials() -> None:
 @pytest.fixture
 def mock_s3(aws_credentials: None) -> Any:
     """Create a mock S3 environment using moto."""
+    from unittest.mock import patch
+
     with mock_aws():
         # Create the S3 bucket
         conn = boto3.resource("s3", region_name="us-east-1")
@@ -45,9 +47,11 @@ def mock_s3(aws_credentials: None) -> Any:
         bucket.put_object(Key="data/symbols.csv", Body=b"Symbol,Name\nAAPL,Apple")
         bucket.put_object(Key="README.md", Body=b"# Test README")
 
-        # Create the store within the mock context
-        store = Store()
-        yield store, bucket
+        # Patch C.DEV since the constant is evaluated at import time
+        with patch("hyperdrive.Storage.C.DEV", True):
+            # Create the store within the mock context
+            store = Store()
+            yield store, bucket
 
 
 @pytest.fixture
