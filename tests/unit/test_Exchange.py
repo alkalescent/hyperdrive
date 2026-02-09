@@ -4,6 +4,7 @@ This test file mocks all external API calls to Binance, Kraken, and Alpaca
 for fast, deterministic, offline testing.
 """
 
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -88,7 +89,7 @@ def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def mock_binance_client(mock_env_vars: None) -> MagicMock:
+def mock_binance_client(mock_env_vars: None) -> Generator[MagicMock, None, None]:
     """Mock Binance Client."""
     with patch("hyperdrive.Exchange.Client") as MockClient:
         client = MagicMock()
@@ -130,7 +131,7 @@ def binance(mock_binance_client: MagicMock) -> Any:
 
 
 @pytest.fixture
-def mock_kraken_api(mock_env_vars: None) -> responses.RequestsMock:
+def mock_kraken_api(mock_env_vars: None) -> Generator[responses.RequestsMock, None, None]:
     """Mock Kraken API responses."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://api.kraken.com"
@@ -205,7 +206,7 @@ def kraken(mock_env_vars: None, mock_kraken_api: responses.RequestsMock) -> Any:
 
 
 @pytest.fixture
-def mock_alpaca_api(mock_env_vars: None) -> responses.RequestsMock:
+def mock_alpaca_api(mock_env_vars: None) -> Generator[responses.RequestsMock, None, None]:
     """Mock Alpaca API responses."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://paper-api.alpaca.markets/v2"

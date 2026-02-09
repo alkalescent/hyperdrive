@@ -250,7 +250,7 @@ class Kraken(CEX):
         encoded = (str(data["nonce"]) + postdata).encode()
         message = urlpath.encode() + hashlib.sha256(encoded).digest()
 
-        mac = hmac.new(base64.b64decode(self.secret), message, hashlib.sha512)
+        mac = hmac.new(base64.b64decode(self.secret or ""), message, hashlib.sha512)
         sigdigest = base64.b64encode(mac.digest())
         return sigdigest.decode()
 
@@ -268,7 +268,7 @@ class Kraken(CEX):
             data = {}
         data["nonce"] = self.gen_nonce()
         headers: dict[str, str] = {}
-        headers["API-Key"] = self.key
+        headers["API-Key"] = self.key or ""
         headers["API-Sign"] = self.get_signature(uri_path, data)
         response = requests.post((self.api_url + uri_path), headers=headers, data=data)
         return self.handle_response(response)
@@ -641,6 +641,8 @@ class Binance(CEX):
         order_type = self.client.ORDER_TYPE_MARKET
         params: dict[str, Any] = {"symbol": pair, "type": order_type}
         symbol_info = self.client.get_symbol_info(pair)
+        if symbol_info is None:
+            raise Exception(f"Symbol info not found for {pair}")
 
         if side == C.SELL:
             side = self.client.SIDE_SELL

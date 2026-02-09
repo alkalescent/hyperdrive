@@ -27,13 +27,14 @@ test_ffill = np.array(fs)
 test_nfill = np.array(ns)
 
 
-close = np.array([3, 2, 5, 1, 100, 75, 50, 25, 1])
+close = pd.Series([3, 2, 5, 1, 100, 75, 50, 25, 1])
+close_arr = np.array([3, 2, 5, 1, 100, 75, 50, 25, 1])
 
 total = 100
 majority = 80
 minority = total - majority
 data = np.arange(total)
-X = pd.DataFrame({"i": data, "j": data})
+X = np.column_stack([data, data])  # ndarray instead of DataFrame
 y = np.array([True] * majority + [False] * minority)
 
 orders_index = pd.to_datetime(pd.Series(["2025-01-01", "2025-01-02"], name=C.TIME))
@@ -46,24 +47,24 @@ class TestHistorian:
     def test_from_holding(self) -> None:
         """Test creating portfolio from holding strategy."""
         stats = hist.from_holding(close).stats()
-        assert "Sortino Ratio" in stats
+        assert stats is not None and "Sortino Ratio" in stats
 
     def test_from_signals(self) -> None:
         """Test creating portfolio from trading signals."""
-        stats = hist.from_signals(close, test_ffill).stats()
-        assert "Sortino Ratio" in stats
+        stats = hist.from_signals(close, pd.Series(test_ffill)).stats()
+        assert stats is not None and "Sortino Ratio" in stats
 
     def test_from_orders(self) -> None:
         """Test creating portfolio from order data."""
         size = pd.DataFrame({"AAPL": [1, 0], "META": [0, 1]}, index=orders_index)
         stats = hist.from_orders(orders_close, size).stats()
-        assert "Sortino Ratio" in stats
+        assert stats is not None and "Sortino Ratio" in stats
 
     def test_optimize_portfolio(self) -> None:
         """Test portfolio optimization with indicator."""
         indicator = pd.Series.diff
         stats = hist.optimize_portfolio(orders_close, indicator, 1, "day", 225).stats()
-        assert "Sortino Ratio" in stats
+        assert stats is not None and "Sortino Ratio" in stats
 
     def test_fill(self) -> None:
         """Test filling signal gaps with ffill and nearest methods."""
@@ -135,7 +136,7 @@ class TestHistorian:
         stats = hist.optimize_portfolio(
             close_with_time, indicator, 1, "day", 225
         ).stats()
-        assert "Sortino Ratio" in stats
+        assert stats is not None and "Sortino Ratio" in stats
 
     def test_unfill_empty(self) -> None:
         """Test unfill with empty list (line 115)."""

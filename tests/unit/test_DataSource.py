@@ -4,6 +4,7 @@ This test file mocks all external API calls to Polygon, Alpaca,
 Glassnode, and LaborStats for fast, deterministic, offline testing.
 """
 
+from collections.abc import Generator
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -123,7 +124,7 @@ def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def mock_file_ops(mock_env_vars: None) -> dict[str, MagicMock]:
+def mock_file_ops(mock_env_vars: None) -> Generator[dict[str, MagicMock], None, None]:
     """Mock file operations (FileReader, FileWriter, Store)."""
     with (
         patch("hyperdrive.DataSource.FileWriter") as MockWriter,
@@ -157,7 +158,7 @@ def mock_file_ops(mock_env_vars: None) -> dict[str, MagicMock]:
 
 
 @pytest.fixture
-def mock_polygon_client(mock_env_vars: None) -> MagicMock:
+def mock_polygon_client(mock_env_vars: None) -> Generator[MagicMock, None, None]:
     """Mock Polygon RESTClient."""
     with patch("hyperdrive.DataSource.RESTClient") as MockClient:
         client = MagicMock()
@@ -238,7 +239,7 @@ def indices(mock_file_ops: dict[str, MagicMock]) -> Any:
 
 
 @pytest.fixture
-def mock_alpaca_api(mock_env_vars: None) -> responses.RequestsMock:
+def mock_alpaca_api(mock_env_vars: None) -> Generator[responses.RequestsMock, None, None]:
     """Mock Alpaca data API."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://data.alpaca.markets/v2"
@@ -279,7 +280,7 @@ def alpaca_data(
 
 
 @pytest.fixture
-def mock_bls_api(mock_env_vars: None) -> responses.RequestsMock:
+def mock_bls_api(mock_env_vars: None) -> Generator[responses.RequestsMock, None, None]:
     """Mock Bureau of Labor Statistics API."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         rsps.add(
@@ -317,7 +318,7 @@ def labor_stats(
 
 
 @pytest.fixture
-def mock_glassnode_api(mock_env_vars: None) -> responses.RequestsMock:
+def mock_glassnode_api(mock_env_vars: None) -> Generator[responses.RequestsMock, None, None]:
     """Mock Glassnode API."""
     with responses.RequestsMock(assert_all_requests_are_fired=False) as rsps:
         base = "https://api.glassnode.com/v1"

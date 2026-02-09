@@ -119,7 +119,7 @@ SELL = "SELL"
 
 # API
 BAL = "Bal"
-ABS_TOL = vbt.utils.math_.abs_tol
+ABS_TOL = vbt.utils.math_.abs_tol  # type: ignore[attr-defined]
 
 # Model
 MAX_MODEL_AGE_DAYS = 90  # 3 months

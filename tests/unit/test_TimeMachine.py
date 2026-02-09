@@ -1,7 +1,7 @@
 """Tests for the TimeMachine module."""
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from time import time
 
 import pytest
@@ -42,8 +42,8 @@ class TestTimeTraveller:
         """Test converting timeframe to date range strings."""
         pattern = "[0-9]{4}-[0-9]{2}-[0-9]{2}"
         start, end = traveller.convert_dates("7d")
-        assert re.match(pattern, start)
-        assert re.match(pattern, end)
+        assert re.match(pattern, str(start))
+        assert re.match(pattern, str(end))
 
     def test_dates_in_range(self) -> None:
         """Test getting list of dates in a timeframe."""
@@ -61,7 +61,7 @@ class TestTimeTraveller:
 
         # sched > curr case
         start = time()
-        curr = datetime.utcnow()
+        curr = datetime.now(timezone.utc)
         sched = curr + timedelta(seconds=num_sec)
         traveller.sleep_until(sched.strftime(PRECISE_TIME_FMT))
         end = time()
@@ -69,7 +69,7 @@ class TestTimeTraveller:
 
         # sched < curr case
         start = time()
-        curr = datetime.utcnow()
+        curr = datetime.now(timezone.utc)
         sched = curr - timedelta(seconds=num_sec)
         traveller.sleep_until(sched.strftime(PRECISE_TIME_FMT))
         end = time()

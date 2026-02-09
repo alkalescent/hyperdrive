@@ -63,30 +63,34 @@ class Oracle:
         filename = self.get_filename(name)
         return self.reader.load_pickle(filename)
 
-    def save_model_pickle(self, name: str, data: Any) -> None:
+    def save_model_pickle(self, name: str, data: Any) -> bool | None:
         """Save a model as pickle.
 
         Args:
             name: Name of the model file (without extension).
             data: Model object to save.
+
+        Returns:
+            True if saved successfully, None otherwise.
         """
         filename = self.get_filename(name)
         return self.writer.save_pickle(filename, data)
 
-    def predict(self, data: pd.DataFrame | TabularDataset) -> pd.Series:
+    def predict(self, data: pd.DataFrame | TabularDataset) -> pd.Series | np.ndarray:
         """Make predictions using the AutoGluon model.
 
         Args:
             data: Input data for prediction.
 
         Returns:
-            Series of predictions.
+            Series or array of predictions.
         """
         model_path = "models/latest/autogluon"
         self.reader.store.download_dir(model_path)
         model = TabularPredictor.load(model_path)
-        if isinstance(model, TabularPredictor) and not isinstance(data, TabularDataset):
-            data = TabularDataset(data)
+        # AutoGluon predict accepts DataFrame, use the DataFrame directly
+        if isinstance(data, TabularDataset):
+            return model.predict(pd.DataFrame(data))
         return model.predict(data)
 
     def visualize(
@@ -96,9 +100,7 @@ class Oracle:
         dimensions: int,
         refinement: int,
         increase_percent: float = 0,
-    ) -> tuple[
-        list[dict[str, list[Any]]], np.ndarray, float, list[np.ndarray], np.ndarray
-    ]:
+    ) -> tuple[list[dict[str, list[Any]]], list[float], float, list[np.ndarray], np.ndarray]:
         """Visualize decision boundaries using PCA reduction.
 
         Args:
@@ -144,7 +146,11 @@ class Oracle:
         metadata = self.load_metadata()
         features = metadata["features"]
         data = pd.DataFrame(unreduced, columns=features[: unreduced.shape[1]])
-        preds = self.predict(data).astype(int).to_numpy()
+        predictions = self.predict(data)
+        if isinstance(predictions, pd.Series):
+            preds = predictions.astype(int).to_numpy()
+        else:
+            preds = predictions.astype(int)
         actual = [
             {
                 C.BUY: [datum for idx, datum in enumerate(component) if y[idx]],

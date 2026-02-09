@@ -1,5 +1,6 @@
 """Unit tests for Precognition module with mocked S3."""
 
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -24,7 +25,7 @@ def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def mock_file_ops(mock_env_vars: None) -> dict[str, MagicMock]:
+def mock_file_ops(mock_env_vars: None) -> Generator[dict[str, MagicMock], None, None]:
     """Mock file operations (FileReader, FileWriter, Store)."""
     with (
         patch("hyperdrive.Precognition.FileWriter") as MockWriter,

@@ -13,31 +13,31 @@ class NumpyEncoder(json.JSONEncoder):
     Handles integers, floats, complex numbers, arrays, booleans, and void types.
     """
 
-    def default(self, obj: Any) -> Any:
+    def default(self, o: Any) -> Any:
         """Convert numpy types to JSON-serializable Python types.
 
         Args:
-            obj: Object to encode. If a numpy type, converts to Python equivalent.
+            o: Object to encode. If a numpy type, converts to Python equivalent.
 
         Returns:
             JSON-serializable Python object.
         """
-        if isinstance(obj, np.integer):
-            return int(obj)
+        if isinstance(o, np.integer):
+            return int(o)
 
-        elif isinstance(obj, np.floating):
-            return float(obj)
+        elif isinstance(o, np.floating):
+            return float(o)
 
-        elif isinstance(obj, np.complexfloating):
-            return {"real": float(obj.real), "imag": float(obj.imag)}
+        elif isinstance(o, np.complexfloating):
+            return {"real": float(o.real), "imag": float(o.imag)}
 
-        elif isinstance(obj, (np.ndarray,)):
-            return obj.tolist()
+        elif isinstance(o, (np.ndarray,)):
+            return o.tolist()
 
-        elif isinstance(obj, (np.bool_)):
-            return bool(obj)
+        elif isinstance(o, (np.bool_)):
+            return bool(o)
 
-        elif isinstance(obj, (np.void)):
+        elif isinstance(o, (np.void)):
             return None
 
-        return json.JSONEncoder.default(self, obj)
+        return json.JSONEncoder.default(self, o)

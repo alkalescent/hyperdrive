@@ -1,7 +1,7 @@
 """Backtesting and machine learning utilities for trading strategies."""
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -202,7 +202,7 @@ class Historian:
         return new
 
     def get_optimal_signals(
-        self, close: np.ndarray, n: int = 10, method: str = "ffill"
+        self, close: np.ndarray | pd.Series, n: int = 10, method: str = "ffill"
     ) -> np.ndarray:
         """Find optimal buy/sell signals based on local extrema.
 
@@ -214,11 +214,11 @@ class Historian:
         Returns:
             Boolean array of buy signals.
         """
-        close = np.array(close)
-        mins = argrelextrema(close, np.less_equal, order=n)[0]
-        maxs = argrelextrema(close, np.greater_equal, order=n)[0]
+        close_arr = np.array(close)
+        mins = argrelextrema(close_arr, np.less_equal, order=n)[0]
+        maxs = argrelextrema(close_arr, np.greater_equal, order=n)[0]
 
-        signals = np.empty_like(close, dtype="object")
+        signals = np.empty_like(close_arr, dtype="object")
         signals[:] = np.nan
         signals[mins] = True
         signals[maxs] = False
@@ -244,14 +244,14 @@ class Historian:
         prob = self.get_optimal_signals(close).mean()
 
         for _ in range(num_strats):
-            signals = pd.DataFrame.vbt.signals.generate_random(
+            signals = pd.DataFrame.vbt.signals.generate_random(  # type: ignore[attr-defined]
                 (len(close), 1), prob=prob
             )[0]
             portfolio = vbt.Portfolio.from_signals(
                 close, signals, ~signals, init_cash=1000, freq="D"
             )
-            sortinos.append(portfolio.sortino_ratio())
-            calmars.append(portfolio.calmar_ratio())
+            sortinos.append(portfolio.sortino_ratio())  # type: ignore[attr-defined]
+            calmars.append(portfolio.calmar_ratio())  # type: ignore[attr-defined]
             good_signals.append(signals)
             portfolios.append(portfolio)
 
@@ -314,14 +314,23 @@ class Historian:
         X = df.drop("y", axis=1).to_numpy()
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
         X_train, y_train = self.oversample(X_train, y_train)
-        X_train, X_test, scaler = self.standardize(X_train, X_test)
+        X_train, X_test, scaler = cast(
+            tuple[np.ndarray, np.ndarray, StandardScaler],
+            self.standardize(X_train, X_test),
+        )
         if num_pca:
-            X_train, X_test, pca = self.pca(X_train, num_pca, X_test)
+            X_train, X_test, pca = cast(
+                tuple[np.ndarray, np.ndarray, PCA],
+                self.pca(X_train, num_pca, X_test),
+            )
         else:
             pca = None
-        X, full_scaler = self.standardize(X)
+        X, full_scaler = cast(
+            tuple[np.ndarray, StandardScaler],
+            self.standardize(X),
+        )
         if num_pca:
-            X, full_pca = self.pca(X, num_pca)
+            X, full_pca = cast(tuple[np.ndarray, PCA], self.pca(X, num_pca))
         else:
             full_pca = None
 
@@ -387,10 +396,16 @@ class Historian:
         X_train = np.array(X_train_new)
         y_train = np.array(y_train_new)
 
-        X_train, X_test, scaler = self.standardize(X_train, X_test)
-        X_train, X_test, pca = self.pca(X_train, n, X_test)
-        X, full_scaler = self.standardize(X)
-        X, full_pca = self.pca(X, n)
+        X_train, X_test, scaler = cast(
+            tuple[np.ndarray, np.ndarray, StandardScaler],
+            self.standardize(X_train, X_test),
+        )
+        X_train, X_test, pca = cast(
+            tuple[np.ndarray, np.ndarray, PCA],
+            self.pca(X_train, n, X_test),
+        )
+        X, full_scaler = cast(tuple[np.ndarray, StandardScaler], self.standardize(X))
+        X, full_pca = cast(tuple[np.ndarray, PCA], self.pca(X, n))
 
         return (
             X_train,

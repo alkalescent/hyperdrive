@@ -213,12 +213,12 @@ class FileWriter:
         """Initialize the FileWriter with storage utilities."""
         self.store = Store()
 
-    def save_json(self, filename: str, data: dict[str, Any]) -> bool:
+    def save_json(self, filename: str, data: dict[str, Any] | list[Any]) -> bool:
         """Save data as a JSON file and upload to S3.
 
         Args:
             filename: Path to save the JSON file.
-            data: Dictionary data to save.
+            data: Dictionary or list data to save.
 
         Returns:
             True on success.

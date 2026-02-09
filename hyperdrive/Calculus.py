@@ -2,7 +2,7 @@
 
 import math
 from itertools import permutations
-from typing import Any
+from typing import Any, Sequence
 
 import numpy as np
 import pandas as pd
@@ -98,7 +98,7 @@ class Calculator:
         return minus, plus
 
     def derive(
-        self, y: np.ndarray, x: np.ndarray | pd.Series | None = None
+        self, y: np.ndarray | pd.Series, x: np.ndarray | pd.Series | None = None
     ) -> np.ndarray:
         """Compute the numerical derivative of y with respect to x.
 
@@ -152,9 +152,9 @@ class Calculator:
 
     def find_plane(
         self,
-        pt1: np.ndarray,
-        pt2: np.ndarray,
-        pt3: np.ndarray,
+        pt1: np.ndarray | tuple[float, ...],
+        pt2: np.ndarray | tuple[float, ...],
+        pt3: np.ndarray | tuple[float, ...],
     ) -> tuple[float, float, float, float]:
         """Find plane equation coefficients from three points.
 
@@ -166,11 +166,11 @@ class Calculator:
         Returns:
             Tuple (a, b, c, d) for plane equation ax + by + cz + d = 0.
         """
-        pt1, pt2, pt3 = [np.array(pt) for pt in [pt1, pt2, pt3]]
-        u = pt2 - pt1
-        v = pt3 - pt1
+        pt1_arr, pt2_arr, pt3_arr = [np.array(pt) for pt in [pt1, pt2, pt3]]
+        u = pt2_arr - pt1_arr
+        v = pt3_arr - pt1_arr
 
-        point = np.array(pt1)
+        point = np.array(pt1_arr)
         normal = np.cross(u, v)
         a, b, c = normal
         d = -point.dot(normal)
@@ -193,7 +193,9 @@ class Calculator:
         a, b, c, d = coeffs
         return a * x + b * y + c * z + d
 
-    def find_shortest_dist(self, points: list[np.ndarray]) -> float:
+    def find_shortest_dist(
+        self, points: Sequence[np.ndarray | tuple[float, ...]]
+    ) -> float:
         """Find the shortest distance from first point to any other.
 
         Args:
@@ -208,8 +210,8 @@ class Calculator:
 
     def same_plane_side(
         self,
-        pt1: tuple[float, float, float],
-        pt2: tuple[float, float, float],
+        pt1: tuple[float, float, float] | list[float],
+        pt2: tuple[float, float, float] | list[float],
         plane: tuple[float, float, float, float],
     ) -> bool:
         """Check if two points are on the same side of a plane.
@@ -222,14 +224,16 @@ class Calculator:
         Returns:
             True if both points are on the same side.
         """
-        pt1_side = self.eval_plane(pt1, plane)
-        pt2_side = self.eval_plane(pt2, plane)
+        pt1_tuple = tuple(pt1) if isinstance(pt1, list) else pt1
+        pt2_tuple = tuple(pt2) if isinstance(pt2, list) else pt2
+        pt1_side = self.eval_plane(pt1_tuple, plane)  # type: ignore[arg-type]
+        pt2_side = self.eval_plane(pt2_tuple, plane)  # type: ignore[arg-type]
         plane_side = (pt1_side == abs(pt1_side)) == (pt2_side == abs(pt2_side))
         return plane_side
 
     def get_plane_pts(
-        self, points: list[np.ndarray]
-    ) -> list[tuple[tuple[float, ...], ...]]:
+        self, points: Sequence[np.ndarray | tuple[float, ...]]
+    ) -> list[tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]]:
         """Find sets of three equidistant points forming plane faces.
 
         Args:
@@ -238,12 +242,12 @@ class Calculator:
         Returns:
             List of point triplets that define planar faces.
         """
-        points = [tuple(point) for point in points]
-        shortest_dist = self.find_shortest_dist(points)
-        plane_sets: set[tuple[Any, ...]] = set()
-        for i, pt1 in enumerate(points):
-            for j, pt2 in enumerate(points):
-                for k, pt3 in enumerate(points):
+        tuple_points: list[tuple[float, ...]] = [tuple(point) for point in points]
+        shortest_dist = self.find_shortest_dist(list(points))
+        plane_sets: set[tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]] = set()
+        for i, pt1 in enumerate(tuple_points):
+            for j, pt2 in enumerate(tuple_points):
+                for k, pt3 in enumerate(tuple_points):
                     # further optimizations by making sure k >= j and j >= i
                     if i == j or j == k or i == k or k < j or j < i:
                         continue
@@ -281,7 +285,8 @@ class Calculator:
             True if point is inside the shape.
         """
         centroid = self.find_centroid(vertices)
-        plane_pts = self.get_plane_pts(vertices)
+        vertices_list: list[np.ndarray] = list(vertices)
+        plane_pts = self.get_plane_pts(vertices_list)
         planes = [self.find_plane(*pts) for pts in plane_pts]
         for plane in planes:
             if not self.same_plane_side(centroid, point, plane):
@@ -289,7 +294,7 @@ class Calculator:
         return True
 
     def generate_icosphere(
-        self, radius: float, center: np.ndarray, refinement: int
+        self, radius: float, center: np.ndarray | tuple[float, ...], refinement: int
     ) -> tuple[np.ndarray, np.ndarray]:
         """Generate an icosphere mesh.
 
@@ -306,7 +311,7 @@ class Calculator:
         vertices = vertices / length * radius + center
         return vertices, faces
 
-    def generate_octahedron(self, radius: float, center: np.ndarray) -> np.ndarray:
+    def generate_octahedron(self, radius: float, center: np.ndarray | tuple[float, ...]) -> np.ndarray:
         """Generate octahedron vertices.
 
         Args:

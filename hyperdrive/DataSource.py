@@ -7,7 +7,7 @@ BLS, and Glassnode.
 
 import json
 import os
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Callable, Generator, Iterable, Iterator
 from datetime import datetime
 from io import StringIO
 from random import random
@@ -332,8 +332,9 @@ class MarketData:
         """
         dates = self.traveller.dates_in_range(timeframe)
         for date in dates:
+            date_str = date if isinstance(date, str) else date.strftime("%Y-%m-%d")
             df = self.reader.load_csv(
-                self.finder.get_intraday_path(symbol, date, self.provider)
+                self.finder.get_intraday_path(symbol, date_str, self.provider)
             )
             yield self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
@@ -610,7 +611,7 @@ class MarketData:
             Standardized DataFrame with current NDX constituents.
         """
         if df.empty:
-            df = pd.DataFrame(columns=[C.TIME, C.SYMBOL, C.DELTA])
+            df = pd.DataFrame(columns=pd.Index([C.TIME, C.SYMBOL, C.DELTA]))
         df = df.sort_values(by=[C.TIME, C.SYMBOL]).drop_duplicates(
             C.SYMBOL, keep="last"
         )
@@ -718,7 +719,7 @@ class MarketData:
         Args:
             free_delay: Minimum seconds between API calls.
         """
-        if self.free and hasattr(self, "last_api_call_time"):
+        if hasattr(self, "free") and self.free and hasattr(self, "last_api_call_time"):
             time_since_last_call = time() - self.last_api_call_time
             delay = free_delay - time_since_last_call
             if delay > 0:
@@ -787,7 +788,7 @@ class AlpacaData(MarketData):
         self.provider = "alpaca"
         self.free = free
 
-    def get_ohlc(self, **kwargs: Any) -> pd.DataFrame:
+    def get_ohlc(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
         """Fetch OHLC data from Alpaca API.
 
         Args:
@@ -883,12 +884,14 @@ class Polygon(MarketData):
         self.free = free
 
     def paginate(
-        self, gen: Generator[Any, None, None], apply: Callable[[Any], dict[str, Any]]
+        self,
+        gen: Generator[Any, None, None] | Iterator[Any],
+        apply: Callable[[Any], dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Paginate through API results with rate limiting.
 
         Args:
-            gen: Generator yielding API response items.
+            gen: Generator or iterator yielding API response items.
             apply: Function to transform each item.
 
         Returns:
@@ -903,7 +906,7 @@ class Polygon(MarketData):
             results.append(apply(item))
         return results
 
-    def get_dividends(self, **kwargs: Any) -> pd.DataFrame:
+    def get_dividends(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
         """Fetch dividend data from Polygon API.
 
         Args:
@@ -940,7 +943,7 @@ class Polygon(MarketData):
 
         return self.try_again(func=_get_dividends, **kwargs)
 
-    def get_splits(self, **kwargs: Any) -> pd.DataFrame:
+    def get_splits(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
         """Fetch split data from Polygon API.
 
         Args:
@@ -975,7 +978,7 @@ class Polygon(MarketData):
 
         return self.try_again(func=_get_splits, **kwargs)
 
-    def get_ohlc(self, **kwargs: Any) -> pd.DataFrame:
+    def get_ohlc(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
         """Fetch OHLC data from Polygon API.
 
         Args:
@@ -1019,7 +1022,9 @@ class Polygon(MarketData):
 
         return self.try_again(func=_get_ohlc, **kwargs)
 
-    def get_intraday(self, **kwargs: Any) -> Generator[pd.DataFrame, None, None] | None:
+    def get_intraday(  # type: ignore[override]
+        self, **kwargs: Any
+    ) -> Generator[pd.DataFrame, None, None] | None:
         """Fetch intraday data from Polygon API.
 
         Args:
@@ -1052,7 +1057,7 @@ class Polygon(MarketData):
                         adjusted=True,
                         limit=C.POLY_MAX_AGGS_LIMIT,
                     )
-                except exceptions.NoResultsError:
+                except Exception:  # NoResultsError may not be available in all polygon versions
                     continue
                 finally:
                     self.log_api_call_time()
@@ -1092,7 +1097,7 @@ class LaborStats(MarketData):
         self.token = os.environ.get("BLS")
         self.provider = "bls"
 
-    def get_unemployment_rate(self, **kwargs: Any) -> pd.DataFrame:
+    def get_unemployment_rate(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
         """Fetch unemployment rate from BLS API.
 
         Args:
@@ -1126,7 +1131,7 @@ class LaborStats(MarketData):
                 else:
                     raise Exception(
                         f"""
-                        Invalid response from BLS because {data["message"][0]}
+                        Invalid response from BLS because {payload.get("message", ["Unknown error"])[0]}
                         """
                     )
             else:
@@ -1231,14 +1236,14 @@ class Glassnode(MarketData):
             headers = self.headers
             cookies = self.cookies
         else:
-            params["api_key"] = self.token
+            params["api_key"] = self.token or ""
             headers = {}
             cookies = {}
         response = requests.get(url, params=params, headers=headers, cookies=cookies)
         sleep(random() * 5)
         return response
 
-    def get_s2f_ratio(self, **kwargs: Any) -> pd.DataFrame:
+    def get_s2f_ratio(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
         """Fetch stock-to-flow ratio from Glassnode API.
 
         Args:
@@ -1280,7 +1285,7 @@ class Glassnode(MarketData):
 
         return self.try_again(func=_get_s2f_ratio, **kwargs)
 
-    def get_diff_ribbon(self, **kwargs: Any) -> pd.DataFrame:
+    def get_diff_ribbon(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
         """Fetch difficulty ribbon from Glassnode API.
 
         Args:
@@ -1322,7 +1327,7 @@ class Glassnode(MarketData):
 
         return self.try_again(func=_get_diff_ribbon, **kwargs)
 
-    def get_sopr(self, **kwargs: Any) -> pd.DataFrame:
+    def get_sopr(self, **kwargs: Any) -> pd.DataFrame:  # type: ignore[override]
         """Fetch SOPR from Glassnode API.
 
         Args:

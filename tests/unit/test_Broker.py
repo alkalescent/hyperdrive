@@ -4,6 +4,7 @@ This test file mocks all robin_stocks API calls for fast,
 deterministic, offline testing.
 """
 
+from collections.abc import Generator
 from typing import Any
 from unittest.mock import MagicMock, patch
 
@@ -81,7 +82,7 @@ def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def mock_robinhood(mock_env_vars: None) -> MagicMock:
+def mock_robinhood(mock_env_vars: None) -> Generator[MagicMock, None, None]:
     """Mock robin_stocks.robinhood module."""
     with patch("hyperdrive.Broker.rh") as mock_rh:
         # Mock login
@@ -107,7 +108,7 @@ def mock_robinhood(mock_env_vars: None) -> MagicMock:
 
 
 @pytest.fixture
-def mock_store() -> dict[str, MagicMock]:
+def mock_store() -> Generator[dict[str, MagicMock], None, None]:
     """Mock Store for file operations."""
     with (
         patch("hyperdrive.Broker.FileReader") as MockReader,

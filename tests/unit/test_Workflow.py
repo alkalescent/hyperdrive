@@ -1,6 +1,6 @@
 """Tests for the Workflow module."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,7 +8,7 @@ import pytest
 from hyperdrive.Workflow import Flow
 
 flow = Flow()
-now = datetime.utcnow()
+now = datetime.now(timezone.utc)
 
 
 class TestWorkFlow:
@@ -34,7 +34,7 @@ class TestWorkFlow:
         """Test is_workflow_running with ohlc workflow."""
         # Mock to control time and symbols
         with patch.object(flow, "get_workflow_start_time") as mock_time:
-            mock_time.return_value = datetime.utcnow()  # Now
+            mock_time.return_value = datetime.now(timezone.utc).replace(tzinfo=None)  # Now, naive
 
             with patch("hyperdrive.Workflow.MarketData") as MockMD:
                 md = MagicMock()

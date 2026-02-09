@@ -1,7 +1,7 @@
 """AWS S3 storage utilities for file operations."""
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from multiprocessing import Pool
 from typing import Any
 
@@ -36,11 +36,12 @@ class Store:
         Returns:
             The production or dev bucket name depending on C.DEV setting.
         """
-        return (
+        bucket = (
             os.environ.get("S3_BUCKET")
             if not C.DEV
             else os.environ.get("S3_DEV_BUCKET")
         )
+        return bucket or ""
 
     def get_bucket(self) -> Any:
         """Get the S3 bucket resource.
@@ -199,5 +200,5 @@ class Store:
         """
         key = key.replace("\\", "/")
         then = self.last_modified(key)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         return now - then
