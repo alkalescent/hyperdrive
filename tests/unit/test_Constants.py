@@ -1,7 +1,5 @@
 """Tests for the Constants module."""
 
-import os
-
 import pytest
 
 from hyperdrive.Constants import PathFinder, get_env_int
