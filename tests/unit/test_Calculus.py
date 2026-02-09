@@ -146,7 +146,8 @@ class TestCalculator:
         """Test cv with 2D numpy array (line 50)."""
         arr = np.array([[2, 4, 6], [1, 2, 3]])
         cvd = calc.cv(x=arr, ddof=0)
-        assert len(cvd) == 2  # type: ignore[arg-type]  # One cv per row
+        assert isinstance(cvd, np.ndarray)
+        assert len(cvd) == 2  # One cv per row
 
     def test_fib_edge_cases(self) -> None:
         """Test fib with edge cases (lines 54-56)."""

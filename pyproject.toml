@@ -101,9 +101,9 @@ python-version = "3.11"
 
 [[tool.ty.overrides]]
 include = ["tests/**"]
-rules.invalid-assignment = "warn"
-rules.invalid-return-type = "warn"
-rules.deprecated = "warn"
+
+[tool.ty.overrides.rules]
+invalid-assignment = "warn"
 
 [tool.pytest.ini_options]
 addopts = "-n auto -m 'not integration'"

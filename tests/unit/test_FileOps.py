@@ -447,7 +447,7 @@ class TestFileReader:
 
         # Create CSV with just headers
         csv_path = str(tmp_path / "empty_update.csv")
-        empty_df = pd.DataFrame(columns=["symbol", "open", "volume", "date"])  # type: ignore[arg-type]
+        empty_df = pd.DataFrame(columns=pd.Index(["symbol", "open", "volume", "date"]))
         empty_df.to_csv(csv_path, index=False)
 
         new_data = pd.DataFrame(
