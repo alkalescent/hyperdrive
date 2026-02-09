@@ -49,6 +49,13 @@ class TestTimeTraveller:
         """Test getting list of dates in a timeframe."""
         assert len(traveller.dates_in_range("1m")) > 20
 
+    def test_dates_in_range_no_format(self) -> None:
+        """Test dates_in_range returns datetime objects when format is empty."""
+        dates = traveller.dates_in_range("1w", format="")
+        assert len(dates) == 7
+        # Should be datetime objects, not strings
+        assert all(isinstance(d, datetime) for d in dates)
+
     def test_combine_date_time(self) -> None:
         """Test combining date and time strings into datetime."""
         dt = traveller.combine_date_time("2020-01-02", "09:30")

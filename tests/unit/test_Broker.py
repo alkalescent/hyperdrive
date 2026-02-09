@@ -104,6 +104,21 @@ def mock_robinhood(mock_env_vars: None) -> Generator[MagicMock, None, None]:
         # Mock build_holdings
         mock_rh.build_holdings.return_value = SAMPLE_HOLDINGS.copy()
 
+        # Mock get_dividends
+        mock_rh.get_dividends.return_value = [
+            {"symbol": "AAPL", "amount": "0.22", "payable_date": "2024-01-15"}
+        ]
+
+        # Mock get_all_option_orders
+        mock_rh.get_all_option_orders.return_value = [
+            {"symbol": "AAPL", "type": "call", "quantity": "1"}
+        ]
+
+        # Mock get_events
+        mock_rh.get_events.return_value = [
+            {"symbol": "AAPL", "event_type": "dividend", "date": "2024-01-15"}
+        ]
+
         yield mock_rh
 
 
@@ -271,3 +286,52 @@ class TestRobinhood:
 
         # Verify save was called
         mock_store["writer"].save_csv.assert_called()
+
+    def test_get_dividends(self, rh: Any, mock_robinhood: MagicMock) -> None:
+        """Test getting dividends."""
+        dividends = rh.get_dividends()
+
+        mock_robinhood.get_dividends.assert_called_once()
+        assert len(dividends) == 1
+        assert dividends[0]["symbol"] == "AAPL"
+
+    def test_get_dividends_cached(self, rh: Any, mock_robinhood: MagicMock) -> None:
+        """Test that dividends are cached after first call."""
+        rh.get_dividends()
+        rh.get_dividends()
+
+        # Should only call API once
+        assert mock_robinhood.get_dividends.call_count == 1
+
+    def test_get_options(self, rh: Any, mock_robinhood: MagicMock) -> None:
+        """Test getting options."""
+        options = rh.get_options()
+
+        mock_robinhood.get_all_option_orders.assert_called_once()
+        assert len(options) == 1
+        assert options[0]["symbol"] == "AAPL"
+        assert options[0]["type"] == "call"
+
+    def test_get_options_cached(self, rh: Any, mock_robinhood: MagicMock) -> None:
+        """Test that options are cached after first call."""
+        rh.get_options()
+        rh.get_options()
+
+        # Should only call API once
+        assert mock_robinhood.get_all_option_orders.call_count == 1
+
+    def test_get_events(self, rh: Any, mock_robinhood: MagicMock) -> None:
+        """Test getting events for a symbol."""
+        events = rh.get_events("AAPL")
+
+        mock_robinhood.get_events.assert_called_once_with("AAPL")
+        assert len(events) == 1
+        assert events[0]["symbol"] == "AAPL"
+
+    def test_get_events_cached(self, rh: Any, mock_robinhood: MagicMock) -> None:
+        """Test that events are cached after first call."""
+        rh.get_events("AAPL")
+        rh.get_events("AAPL")
+
+        # Should only call API once
+        assert mock_robinhood.get_events.call_count == 1

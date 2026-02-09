@@ -79,6 +79,8 @@ SAMPLE_KRAKEN_TRADE = {
 @pytest.fixture
 def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set up mock environment variables."""
+    monkeypatch.setenv("BINANCE_KEY", "test_key")
+    monkeypatch.setenv("BINANCE_SECRET", "test_secret")
     monkeypatch.setenv("BINANCE_TESTNET_KEY", "test_key")
     monkeypatch.setenv("BINANCE_TESTNET_SECRET", "test_secret")
     monkeypatch.setenv("KRAKEN_KEY", "test_kraken_key")
@@ -357,6 +359,16 @@ class TestBinance:
         assert hasattr(binance, "key")
         assert hasattr(binance, "secret")
         assert hasattr(binance, "client")
+
+    def test_init_mainnet(
+        self, mock_env_vars: None, mock_binance_client: MagicMock
+    ) -> None:
+        """Test Binance initialization with testnet=False."""
+        from hyperdrive.Exchange import Binance
+
+        b = Binance(testnet=False)
+        assert b.key == "test_key"
+        assert b.secret == "test_secret"
 
     def test_create_pair(self, binance: Any) -> None:
         """Test pair creation."""

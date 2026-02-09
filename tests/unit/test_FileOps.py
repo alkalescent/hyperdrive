@@ -6,6 +6,7 @@ to run without real AWS credentials or network access.
 
 import json
 import os
+import pickle
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -577,3 +578,67 @@ class TestFileReader:
         assert len(result) >= 1
         # Check that date is formatted as string
         assert isinstance(result["date"].iloc[0], str)
+
+    def test_save_csv_polars(self, writer: FileWriter, tmp_path: Path) -> None:
+        """Test save_csv with polars DataFrame (lines 246-251)."""
+        import polars as pl
+
+        writer.store.upload_file = MagicMock()
+
+        csv_path = str(tmp_path / "test_polars.csv")
+        df_pl = pl.DataFrame({"a": [1, 2, 3], "b": ["x", "y", "z"]})
+
+        result = writer.save_csv(csv_path, df_pl)
+
+        assert result is True
+        assert os.path.exists(csv_path)
+        writer.store.upload_file.assert_called_once()
+
+    def test_save_csv_polars_empty(self, writer: FileWriter, tmp_path: Path) -> None:
+        """Test save_csv with empty polars DataFrame returns False."""
+        import polars as pl
+
+        writer.store.upload_file = MagicMock()
+
+        csv_path = str(tmp_path / "test_empty_polars.csv")
+        df_pl = pl.DataFrame({"a": [], "b": []})
+
+        result = writer.save_csv(csv_path, df_pl)
+
+        assert result is False
+        writer.store.upload_file.assert_not_called()
+
+    def test_load_json_needs_update(self, reader: FileReader, tmp_path: Path) -> None:
+        """Test load_json when file needs to be updated from S3 (line 63)."""
+        json_path = str(tmp_path / "needs_update.json")
+
+        # Create a valid JSON file locally
+        with open(json_path, "w") as f:
+            json.dump({"key": "value"}, f)
+
+        # Mock should_be_updated to return True
+        reader.should_be_updated = MagicMock(return_value=True)
+        reader.store.download_file = MagicMock()
+
+        result = reader.load_json(json_path)
+
+        reader.store.download_file.assert_called_once_with(json_path)
+        assert result == {"key": "value"}
+
+    def test_load_pickle_needs_update(self, reader: FileReader, tmp_path: Path) -> None:
+        """Test load_pickle when file needs to be updated from S3 (line 197)."""
+        pickle_path = str(tmp_path / "needs_update.pkl")
+
+        # Create a valid pickle file locally
+        test_data = {"key": "value"}
+        with open(pickle_path, "wb") as f:
+            pickle.dump(test_data, f)
+
+        # Mock should_be_updated to return True
+        reader.should_be_updated = MagicMock(return_value=True)
+        reader.store.download_file = MagicMock()
+
+        result = reader.load_pickle(pickle_path)
+
+        reader.store.download_file.assert_called_once_with(pickle_path)
+        assert result == {"key": "value"}
