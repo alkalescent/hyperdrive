@@ -28,9 +28,8 @@ class TestPathFinder:
         assert finder.get_dividends_path("AMD") == os.path.join(
             "data", "dividends", "polygon", "AMD.csv"
         )
-        assert (
-            finder.get_dividends_path("TSLA", "polygon")
-            == "data/dividends/polygon/TSLA.csv"
+        assert finder.get_dividends_path("TSLA", "polygon") == os.path.join(
+            "data", "dividends", "polygon", "TSLA.csv"
         )
 
     def test_get_splits_path(self) -> None:
