@@ -280,19 +280,19 @@ jobs:
     - name: Update indices
       run: uv run python scripts/update_indices.py
 
-  update-unrate:
-    name: Update Unemployment
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
-    - uses: astral-sh/setup-uv@v7
-    - run: make install
-    - name: Update unemployment
-      run: uv run python scripts/update_unrate.py
+  # update-unrate:
+  #   name: Update Unemployment
+  #   needs: test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v5
+  #   - uses: actions/setup-python@v6
+  #     with:
+  #       python-version: '3.11'
+  #   - uses: astral-sh/setup-uv@v7
+  #   - run: make install
+  #   - name: Update unemployment
+  #     run: uv run python scripts/update_unrate.py
 
   # # update-dividends:
   # #   name: Update Dividends
