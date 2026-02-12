@@ -646,3 +646,24 @@ class TestFileReader:
 
         mock_download.assert_called_once_with(pickle_path)
         assert result == {"key": "value"}
+
+    def test_load_csv_pandas_empty_data_error(
+        self, reader: FileReader, tmp_path: Path
+    ) -> None:
+        """Test load_csv re-raises pd.errors.EmptyDataError from pandas (line 101)."""
+        from unittest.mock import patch as mock_patch
+
+        reader.store.download_file = MagicMock()
+
+        # Create a valid CSV so polars doesn't fail
+        csv_path = str(tmp_path / "test_pandas_empty.csv")
+        Path(csv_path).write_text("a,b\n1,2\n")
+
+        # Mock polars read_csv to succeed, but mock to_pandas to raise EmptyDataError
+        with mock_patch("hyperdrive.FileOps.pl.read_csv") as mock_read:
+            mock_df = MagicMock()
+            mock_df.to_pandas.side_effect = pd.errors.EmptyDataError("empty")
+            mock_read.return_value = mock_df
+
+            with pytest.raises(pd.errors.EmptyDataError):
+                reader.load_csv(csv_path)

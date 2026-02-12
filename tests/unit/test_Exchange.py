@@ -439,6 +439,21 @@ class TestKraken:
         assert "lot_decimals" in pair_info
         assert pair_info["lot_decimals"] == 8
 
+    def test_order_invalid_side(self, kraken: Any) -> None:
+        """Test order with invalid side raises exception."""
+        with pytest.raises(Exception, match="Need to specify BUY or SELL"):
+            kraken.order("XXBT", "ZUSD", "invalid", 0.01)
+
+    def test_standardize_order_buy(self, kraken: Any) -> None:
+        """Test standardize_order with BUY side adjusts origQty."""
+        buy_order = SAMPLE_KRAKEN_ORDER.copy()
+        buy_order["descr"] = {**buy_order["descr"], "type": "buy"}
+        trades = [SAMPLE_KRAKEN_TRADE.copy()]
+        std = kraken.standardize_order(buy_order, trades)
+        assert std["side"] == "BUY"
+        # BUY adjusts origQty by dividing by price
+        assert std["origQty"] != float(buy_order["vol"])
+
     def test_order_with_test_flag(self, kraken: Any) -> None:
         """Test order with validation (test) flag."""
         result = kraken.order("XXBT", "ZUSD", "sell", 0.005, test=True)
@@ -573,6 +588,14 @@ class TestBinanceEdgeCases:
 
         mock_binance_client.create_order.assert_called_once()
         assert "orderId" in result
+
+    def test_order_symbol_info_none(
+        self, binance: Any, mock_binance_client: MagicMock
+    ) -> None:
+        """Test order raises when symbol_info is None."""
+        mock_binance_client.get_symbol_info.return_value = None
+        with pytest.raises(Exception, match="Symbol info not found"):
+            binance.order("INVALID", "USD", "buy", 0.01)
 
 
 class TestAlpacaFillOrders:
