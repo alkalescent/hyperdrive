@@ -325,7 +325,7 @@ jobs:
   # Wave 2: OHLC update (depends on symbols and indices)
   update-ohlc:
     name: Update OHLC
-    needs: [update-symbols, update-indices]
+    needs: [update-indices]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
