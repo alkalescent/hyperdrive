@@ -135,7 +135,7 @@ class TestStore:
             store.upload_dir(path=str(test_dir))
 
         # Verify files were uploaded
-        keys = store.get_keys(str(test_dir))
+        keys = store.get_keys(str(test_dir).replace(os.sep, "/"))
         assert len(keys) >= 2
 
     def test_get_keys(self, store: Store, s3_bucket: Any) -> None:
@@ -170,7 +170,8 @@ class TestStore:
         assert not download_path.exists()
 
         # Download the file
-        store.download_file(str(download_path).replace(str(tmp_path) + "/", ""))
+        s3_key = os.path.relpath(download_path, tmp_path).replace(os.sep, "/")
+        store.download_file(s3_key)
 
         # Note: In the real Store, this would create the file locally
         # For unit tests, we verify the S3 interaction worked
