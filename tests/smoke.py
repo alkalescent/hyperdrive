@@ -67,7 +67,7 @@ def test_core_classes() -> None:
         ("DataSource", "MarketData"),
         ("Exchange", "Binance"),
         ("History", "Historian"),
-        ("Storage", "S3"),
+        ("Storage", "Store"),
     ]
 
     for module_name, class_name in classes_to_test:
