@@ -244,3 +244,211 @@ jobs:
     
     - name: Run smoke tests
       run: python tests/smoke.py
+
+  # =============================================================================
+  # Data Pipeline Jobs (parallelized after test matrix)
+  # =============================================================================
+
+  # Wave 1: Independent data fetches (run in parallel)
+  update-symbols:
+    name: Update Symbols
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Update symbols
+      run: uv run python scripts/update_symbols.py
+
+  update-indices:
+    name: Update Indices
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Update indices
+      run: uv run python scripts/update_indices.py
+
+  update-unrate:
+    name: Update Unemployment
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Update unemployment
+      run: uv run python scripts/update_unrate.py
+
+  # # update-dividends:
+  # #   name: Update Dividends
+  # #   needs: test
+  # #   runs-on: ubuntu-latest
+  # #   steps:
+  # #   - uses: actions/checkout@v5
+  # #   - uses: actions/setup-python@v6
+  # #     with:
+  # #       python-version: '3.11'
+  # #   - uses: astral-sh/setup-uv@v7
+  # #   - run: make install
+  # #   - name: Update dividends
+  # #     run: uv run python scripts/update_dividends.py
+
+  # # update-splits:
+  # #   name: Update Splits
+  # #   needs: test
+  # #   runs-on: ubuntu-latest
+  # #   steps:
+  # #   - uses: actions/checkout@v5
+  # #   - uses: actions/setup-python@v6
+  # #     with:
+  # #       python-version: '3.11'
+  # #   - uses: astral-sh/setup-uv@v7
+  # #   - run: make install
+  # #   - name: Update splits
+  # #     run: uv run python scripts/update_splits.py
+
+  # Wave 2: OHLC update (depends on symbols and indices)
+  update-ohlc:
+    name: Update OHLC
+    needs: [update-symbols, update-indices]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Update OHLC
+      run: uv run python scripts/update_ohlc.py
+
+  # # update-intraday:
+  # #   name: Update Intraday
+  # #   needs: [update-symbols, update-indices]
+  # #   runs-on: ubuntu-latest
+  # #   steps:
+  # #   - uses: actions/checkout@v5
+  # #   - uses: actions/setup-python@v6
+  # #     with:
+  # #       python-version: '3.11'
+  # #   - uses: astral-sh/setup-uv@v7
+  # #   - run: make install
+  # #   - name: Update intraday
+  # #     run: uv run python scripts/update_intraday.py
+
+  # Wave 3: Model creation and portfolio optimization (parallel, depend on OHLC)
+  create-model:
+    name: Create Model
+    needs: update-ohlc
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Decrypt scripts
+      env:
+        SALT: ${{ secrets.SALT }}
+      run: uv run python util/decrypt.py encrypted/create_model.py
+    - name: Create model
+      run: uv run python encrypted/create_model.py
+
+  optimize-portfolio:
+    name: Optimize Portfolio
+    needs: update-ohlc
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Decrypt scripts
+      env:
+        SALT: ${{ secrets.SALT }}
+      run: uv run python util/decrypt.py encrypted/optimize_portfolio.py
+    - name: Optimize portfolio
+      run: uv run python encrypted/optimize_portfolio.py
+
+  # Wave 4: Visualization and prediction (parallel, depend on model)
+  visualize:
+    name: Create Visualization
+    needs: create-model
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Create visualization
+      run: uv run python scripts/visualize.py
+
+  predict-signal:
+    name: Predict Signal
+    needs: create-model
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Decrypt scripts
+      env:
+        SALT: ${{ secrets.SALT }}
+      run: uv run python util/decrypt.py encrypted/predict_signal.py
+    - name: Predict signal
+      env:
+        SALT: ${{ secrets.SALT }}
+        EMIT_SECRET: ${{ secrets.DEV_EMIT_SECRET }}
+      run: uv run python encrypted/predict_signal.py
+
+  # Wave 5: API update and order execution (parallel, depend on signal prediction)
+  update-api:
+    name: Update API
+    needs: predict-signal
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Update API
+      env:
+        SYMBOL: ${{ secrets.SYMBOL }}
+      run: uv run python scripts/update_api.py
+
+  execute-order:
+    name: Execute Order
+    needs: predict-signal
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+    - uses: astral-sh/setup-uv@v7
+    - run: make install
+    - name: Execute order
+      run: uv run python scripts/execute_order.py
