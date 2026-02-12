@@ -252,19 +252,19 @@ jobs:
   # =============================================================================
 
   # Wave 1: Independent data fetches (run in parallel)
-  update-symbols:
-    name: Update Symbols
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v5
-    - uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
-    - uses: astral-sh/setup-uv@v7
-    - run: make install
-    - name: Update symbols
-      run: uv run python scripts/update_symbols.py
+  # update-symbols:
+  #   name: Update Symbols
+  #   needs: test
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v5
+  #   - uses: actions/setup-python@v6
+  #     with:
+  #       python-version: '3.11'
+  #   - uses: astral-sh/setup-uv@v7
+  #   - run: make install
+  #   - name: Update symbols
+  #     run: uv run python scripts/update_symbols.py
 
   update-indices:
     name: Update Indices
