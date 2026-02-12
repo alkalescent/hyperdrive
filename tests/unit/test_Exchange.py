@@ -447,12 +447,15 @@ class TestKraken:
     def test_standardize_order_buy(self, kraken: Any) -> None:
         """Test standardize_order with BUY side adjusts origQty."""
         buy_order = SAMPLE_KRAKEN_ORDER.copy()
-        buy_order["descr"] = {**buy_order["descr"], "type": "buy"}
+        descr = dict(SAMPLE_KRAKEN_ORDER["descr"])  # type: ignore[arg-type]
+        descr["type"] = "buy"
+        buy_order["descr"] = descr
         trades = [SAMPLE_KRAKEN_TRADE.copy()]
         std = kraken.standardize_order(buy_order, trades)
         assert std["side"] == "BUY"
         # BUY adjusts origQty by dividing by price
-        assert std["origQty"] != float(buy_order["vol"])
+        vol = str(buy_order["vol"])
+        assert std["origQty"] != float(vol)
 
     def test_order_with_test_flag(self, kraken: Any) -> None:
         """Test order with validation (test) flag."""
