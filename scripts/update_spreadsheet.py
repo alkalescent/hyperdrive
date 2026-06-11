@@ -48,6 +48,7 @@ def calculate_crypto_value() -> float:
     Returns:
         Staking rewards value in USD.
     """
+    windows = ["24h", "7d", "30d", "90d"]
     url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
     payload = {
         "validator": {"validator_identifiers": [690345]},
