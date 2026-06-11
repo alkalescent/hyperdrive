@@ -1,5 +1,5 @@
-import os
 import math
+import os
 from datetime import datetime, timedelta
 
 import gspread
@@ -9,7 +9,6 @@ import requests
 from hyperdrive.Broker import Robinhood
 from hyperdrive.Constants import CLOSE, DATE_FMT
 from hyperdrive.DataSource import MarketData
-
 
 # Open spreadsheet
 gc = gspread.service_account()
