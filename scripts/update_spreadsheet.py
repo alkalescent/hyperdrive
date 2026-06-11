@@ -39,20 +39,33 @@ opt_df = opt_df[opt_df["state"] == "filled"]
 opt_df["updated_at"] = pd.to_datetime(opt_df["updated_at"]).dt.strftime(DATE_FMT)
 
 
-def calculate_crypto_value() -> float:
-    """Calculate crypto staking rewards for the past week.
+def calculate_crypto_value(days_since_update: int) -> float:
+    """Calculate crypto staking rewards estimated per week.
 
-    Fetches ETH validator rewards from Beaconchain API and converts
-    to USD using current ETH price.
+    Selects the largest Beaconchain evaluation window that fits within
+    the time since the last update, fetches aggregate ETH validator
+    rewards for that window, and scales to a weekly estimate using the
+    aggregate average.
+
+    Args:
+        days_since_update: Number of days since the last spreadsheet update.
 
     Returns:
-        Staking rewards value in USD.
+        Estimated weekly staking rewards value in USD.
     """
-    windows = ["24h", "7d", "30d", "90d"]
+    # Beaconchain windows mapped to their duration in days
+    windows = [("24h", 1), ("7d", 7), ("30d", 30), ("90d", 90)]
+
+    # Pick the largest window that fits within the elapsed time
+    window, window_days = windows[0]
+    for w, d in windows:
+        if d <= days_since_update:
+            window, window_days = w, d
+
     url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
     payload = {
         "validator": {"validator_identifiers": [690345]},
-        "range": {"evaluation_window": "7d"},
+        "range": {"evaluation_window": window},
         "chain": "mainnet",
     }
     headers = {
@@ -62,10 +75,15 @@ def calculate_crypto_value() -> float:
 
     response = requests.post(url, json=payload, headers=headers)
     data = response.json()
-    amt = float(f"0.{data['data']['total']}")
+    total_amt = float(f"0.{data['data']['total']}")
+
+    # Scale aggregate rewards to a weekly estimate
+    weekly_amt = total_amt / window_days * 7
+
     md = MarketData()
-    cost = md.calculator.avg(md.get_ohlc("X%3AETHUSD", "7d")[CLOSE])
-    return amt * cost
+    ohlc_timeframe = f"{window_days}d"
+    cost = md.calculator.avg(md.get_ohlc("X%3AETHUSD", ohlc_timeframe)[CLOSE])
+    return weekly_amt * cost
 
 
 def calculate_options_value(start: str, end: str) -> float:
@@ -130,6 +148,7 @@ def calculate_options_value(start: str, end: str) -> float:
 row_buffer = 2  # account for header and 0 index
 col_buffer = 1  # account for 0 index
 col_idxs = {col: idx for idx, col in enumerate(cols)}
+days_since_update = (today - dates.min()).days
 
 for row_idx, date in enumerate(dates):
     end = date
@@ -152,7 +171,7 @@ for row_idx, date in enumerate(dates):
 
     # Update crypto
     col = "Crypto"
-    crypto_val = round(calculate_crypto_value())
+    crypto_val = round(calculate_crypto_value(days_since_update))
     sh.update_cell(
         df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, crypto_val
     )
