@@ -10,6 +10,7 @@ from hyperdrive.Broker import Robinhood
 from hyperdrive.Constants import CLOSE, DATE_FMT
 from hyperdrive.DataSource import MarketData
 
+
 # Open spreadsheet
 gc = gspread.service_account()
 sh = gc.open("FIRE").get_worksheet(0)
@@ -31,8 +32,6 @@ rh = Robinhood()
 # Get dividends
 div = rh.get_dividends()
 div_df = pd.DataFrame(div)
-print(div_df)
-quit()
 
 # Get option orders
 opt = rh.get_options()
@@ -63,7 +62,6 @@ def calculate_crypto_value(days_since_update: int) -> float:
     window, window_days = min(
         windows, key=lambda wd: abs(math.log(wd[1] / max(days_since_update, 1)))
     )
-    print("window: ", window, "window_days: ", window_days)
     url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
     payload = {
         "validator": {"validator_identifiers": [690345]},
@@ -77,7 +75,6 @@ def calculate_crypto_value(days_since_update: int) -> float:
 
     response = requests.post(url, json=payload, headers=headers)
     data = response.json()
-    print("data: ", data)
     total_amt = float(f"0.{data['data']['total']}")
 
     # Scale aggregate rewards to a weekly estimate
@@ -87,9 +84,6 @@ def calculate_crypto_value(days_since_update: int) -> float:
     md.provider = "polygon"
     ohlc_timeframe = f"{window_days}d"
     cost = md.calculator.avg(md.get_ohlc("X%3AETHUSD", ohlc_timeframe)[CLOSE])
-    print("cost: ", cost)
-    print("weekly_amt: ", weekly_amt)
-    print("weekly_amt * cost: ", weekly_amt * cost)
     return weekly_amt * cost
 
 
@@ -157,6 +151,9 @@ col_buffer = 1  # account for 0 index
 col_idxs = {col: idx for idx, col in enumerate(cols)}
 days_since_update = (today - dates.min()).days
 
+# weekly estimate
+crypto_val = round(calculate_crypto_value(days_since_update))
+
 for row_idx, date in enumerate(dates):
     end = date
     start = end - timedelta(weeks=1)
@@ -178,7 +175,6 @@ for row_idx, date in enumerate(dates):
 
     # Update crypto
     col = "Crypto"
-    crypto_val = round(calculate_crypto_value(days_since_update))
     sh.update_cell(
         df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, crypto_val
     )
