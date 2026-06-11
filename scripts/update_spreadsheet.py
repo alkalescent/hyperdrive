@@ -31,6 +31,8 @@ rh = Robinhood()
 # Get dividends
 div = rh.get_dividends()
 div_df = pd.DataFrame(div)
+print(div_df)
+quit()
 
 # Get option orders
 opt = rh.get_options()
@@ -61,7 +63,7 @@ def calculate_crypto_value(days_since_update: int) -> float:
     window, window_days = min(
         windows, key=lambda wd: abs(math.log(wd[1] / max(days_since_update, 1)))
     )
-
+    print("window: ", window, "window_days: ", window_days)
     url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
     payload = {
         "validator": {"validator_identifiers": [690345]},
@@ -75,14 +77,19 @@ def calculate_crypto_value(days_since_update: int) -> float:
 
     response = requests.post(url, json=payload, headers=headers)
     data = response.json()
+    print("data: ", data)
     total_amt = float(f"0.{data['data']['total']}")
 
     # Scale aggregate rewards to a weekly estimate
     weekly_amt = total_amt / window_days * 7
 
     md = MarketData()
+    md.provider = "polygon"
     ohlc_timeframe = f"{window_days}d"
     cost = md.calculator.avg(md.get_ohlc("X%3AETHUSD", ohlc_timeframe)[CLOSE])
+    print("cost: ", cost)
+    print("weekly_amt: ", weekly_amt)
+    print("weekly_amt * cost: ", weekly_amt * cost)
     return weekly_amt * cost
 
 
