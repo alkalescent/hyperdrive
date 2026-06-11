@@ -1,4 +1,5 @@
 import os
+import math
 from datetime import datetime, timedelta
 
 import gspread
@@ -56,11 +57,10 @@ def calculate_crypto_value(days_since_update: int) -> float:
     # Beaconchain windows mapped to their duration in days
     windows = [("24h", 1), ("7d", 7), ("30d", 30), ("90d", 90)]
 
-    # Pick the largest window that fits within the elapsed time
-    window, window_days = windows[0]
-    for w, d in windows:
-        if d <= days_since_update:
-            window, window_days = w, d
+    # Pick the closest window based on the last update
+    window, window_days = min(
+        windows, key=lambda wd: abs(math.log(wd[1] / max(days_since_update, 1)))
+    )
 
     url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
     payload = {
