@@ -578,7 +578,7 @@ class MarketData:
                 strict=True,
             )
         )
-        filename = self.finder.get_diff_ribbon_path()
+        filename = self.finder.get_sopr_path()
         df = self.standardize(df, full_mapping, filename, [C.TIME, C.SOPR], 1)
         return df[self.get_indexer({C.TIME, C.SOPR}, df.columns)]
 
@@ -884,12 +884,31 @@ class AlpacaData(MarketData):
             df["date"] = (
                 pd.to_datetime(df["date"]).dt.tz_convert(C.TZ).dt.tz_localize(None)
             )
-            df = self.standardize_ohlc(symbol, df)
+            storage_symbol = C.ALPC_TO_POLY_CRYPTO.get(symbol, symbol)
+            df = self.standardize_ohlc(storage_symbol, df)
             return self.reader.data_in_timeframe(df, C.TIME, timeframe)
 
         return self.try_again(
             func=_get_ohlc, symbol=symbol, timeframe=timeframe, **kwargs
         )
+
+    def save_ohlc(self, **kwargs: Any) -> str | None:
+        """Save OHLC data, converting Alpaca crypto symbols to Polygon format.
+
+        Overrides base save_ohlc to convert Alpaca crypto symbols
+        (e.g., 'BTC/USD') to Polygon format (e.g., 'X%3ABTCUSD')
+        for S3-safe file paths.
+
+        Args:
+            **kwargs: Must include 'symbol'. Other args passed to parent.
+
+        Returns:
+            Path to saved file, or None if save failed.
+        """
+        kwargs["symbol"] = C.ALPC_TO_POLY_CRYPTO.get(
+            kwargs["symbol"], kwargs["symbol"]
+        )
+        return super().save_ohlc(**kwargs)
 
 
 class Polygon(MarketData):

@@ -1208,3 +1208,154 @@ class TestMarketDataEmptyDataFrames:
 
         result = market_data.save_intraday(symbol="AAPL")
         assert len(result) == 1
+
+
+class TestAlpacaDataCryptoOHLC:
+    """Tests for AlpacaData crypto symbol conversion in OHLC methods."""
+
+    def test_get_ohlc_crypto_uses_polygon_symbol_for_storage(
+        self,
+        alpaca_data: Any,
+        mock_alpaca_api: responses.RequestsMock,
+        mock_file_ops: dict[str, MagicMock],
+    ) -> None:
+        """Test that get_ohlc converts crypto symbols for standardize_ohlc."""
+        # Mock the crypto bars endpoint
+        mock_alpaca_api.add(
+            responses.GET,
+            "https://data.alpaca.markets/v1beta3/crypto/us/bars",
+            json={
+                "bars": {
+                    "BTC/USD": [
+                        {
+                            "t": "2024-01-01T00:00:00Z",
+                            "o": 42000.0,
+                            "h": 43000.0,
+                            "l": 41000.0,
+                            "c": 42500.0,
+                            "v": 100,
+                            "vw": 42200.0,
+                            "n": 50,
+                        }
+                    ]
+                },
+                "next_page_token": None,
+            },
+        )
+        mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
+
+        # Track what symbol gets passed to get_ohlc_path
+        path_symbols: list[str] = []
+        original_get_ohlc_path = alpaca_data.finder.get_ohlc_path
+
+        def tracking_get_ohlc_path(
+            symbol: str, provider: str = "polygon"
+        ) -> str:
+            path_symbols.append(symbol)
+            return original_get_ohlc_path(symbol, provider)
+
+        alpaca_data.finder.get_ohlc_path = tracking_get_ohlc_path
+
+        df = alpaca_data.get_ohlc(symbol="BTC/USD", timeframe="1m")
+        assert C.TIME in df.columns
+
+        # Verify that the Polygon-format symbol was used for the path,
+        # not the raw Alpaca symbol
+        assert any(
+            "X%3ABTCUSD" == s for s in path_symbols
+        ), f"Expected 'X%3ABTCUSD' in path symbols, got {path_symbols}"
+        assert not any(
+            "BTC/USD" == s for s in path_symbols
+        ), "Raw Alpaca symbol 'BTC/USD' should not be used for file paths"
+
+    def test_save_ohlc_crypto_converts_symbol(
+        self,
+        alpaca_data: Any,
+        mock_file_ops: dict[str, MagicMock],
+        tmp_path: Path,
+    ) -> None:
+        """Test that save_ohlc converts crypto symbols for file paths."""
+        ohlc_path = tmp_path / "ohlc.csv"
+
+        # Track what symbol gets passed to get_ohlc_path
+        path_symbols: list[str] = []
+
+        def tracking_get_ohlc_path(
+            symbol: str, provider: str = "polygon"
+        ) -> str:
+            path_symbols.append(symbol)
+            return str(ohlc_path)
+
+        alpaca_data.finder.get_ohlc_path = tracking_get_ohlc_path
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_OHLC.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_OHLC.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = alpaca_data.save_ohlc(symbol="BTC/USD")
+
+        # Verify the converted Polygon symbol was used for file path
+        assert "X%3ABTCUSD" in path_symbols
+        assert "BTC/USD" not in path_symbols
+
+    def test_save_ohlc_stock_symbol_unchanged(
+        self,
+        alpaca_data: Any,
+        mock_file_ops: dict[str, MagicMock],
+        tmp_path: Path,
+    ) -> None:
+        """Test that save_ohlc leaves non-crypto symbols unchanged."""
+        ohlc_path = tmp_path / "ohlc.csv"
+
+        path_symbols: list[str] = []
+
+        def tracking_get_ohlc_path(
+            symbol: str, provider: str = "polygon"
+        ) -> str:
+            path_symbols.append(symbol)
+            return str(ohlc_path)
+
+        alpaca_data.finder.get_ohlc_path = tracking_get_ohlc_path
+        mock_file_ops["reader"].load_csv.return_value = SAMPLE_OHLC.copy()
+        mock_file_ops["reader"].update_df.return_value = SAMPLE_OHLC.copy()
+        mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
+
+        result = alpaca_data.save_ohlc(symbol="AAPL")
+
+        # Stock symbols should pass through unchanged
+        assert "AAPL" in path_symbols
+
+
+class TestStandardizeSoprPath:
+    """Tests to verify standardize_sopr uses correct file path."""
+
+    def test_standardize_sopr_uses_sopr_path(self, market_data: Any) -> None:
+        """Test that standardize_sopr uses get_sopr_path, not get_diff_ribbon_path."""
+        sopr_path_calls: list[bool] = []
+        diff_ribbon_path_calls: list[bool] = []
+
+        original_sopr = market_data.finder.get_sopr_path
+        original_ribbon = market_data.finder.get_diff_ribbon_path
+
+        def tracking_sopr_path() -> str:
+            sopr_path_calls.append(True)
+            return original_sopr()
+
+        def tracking_ribbon_path() -> str:
+            diff_ribbon_path_calls.append(True)
+            return original_ribbon()
+
+        market_data.finder.get_sopr_path = tracking_sopr_path
+        market_data.finder.get_diff_ribbon_path = tracking_ribbon_path
+
+        raw = pd.DataFrame(
+            {
+                "t": pd.date_range("2020-01-01", periods=3, freq="D"),
+                "v": [1.0, 1.1, 0.9],
+            }
+        )
+        market_data.standardize_sopr(raw)
+
+        assert len(sopr_path_calls) > 0, "standardize_sopr should call get_sopr_path"
+        assert (
+            len(diff_ribbon_path_calls) == 0
+        ), "standardize_sopr should NOT call get_diff_ribbon_path"

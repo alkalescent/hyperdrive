@@ -49,28 +49,21 @@ def update_alpc_ohlc() -> None:
             filename = finder.get_ohlc_path(symbol=symbol, provider=alpc.provider)
             if C.CI and os.path.exists(filename):
                 os.remove(filename)
-    # Crypto - fetch with Alpaca symbol, save with Polygon symbol for S3-safe paths
+    # Crypto - AlpacaData.save_ohlc handles symbol conversion to Polygon format
     for alpc_symbol in alpc_crypto_symbols:
-        poly_symbol = C.ALPC_TO_POLY_CRYPTO.get(alpc_symbol)
-        if not poly_symbol:
-            print(f"No Polygon mapping for {alpc_symbol}, skipping.")
-            continue
         try:
-            df = alpc.get_ohlc(symbol=alpc_symbol, timeframe=C.FEW_DAYS, retries=1)
-            filename = finder.get_ohlc_path(symbol=poly_symbol, provider=alpc.provider)
-            if os.path.exists(filename):
-                os.remove(filename)
-            df = alpc.reader.update_df(filename, df, C.TIME, C.DATE_FMT)
-            alpc.writer.update_csv(filename, df)
+            alpc.save_ohlc(symbol=alpc_symbol, timeframe=C.FEW_DAYS, retries=1)
             with counter.get_lock():
                 counter.value += 1
         except Exception as e:
             print(f"Alpaca crypto OHLC update failed for {alpc_symbol}.")
             print(e)
         finally:
+            poly_symbol = C.ALPC_TO_POLY_CRYPTO.get(alpc_symbol, alpc_symbol)
             filename = finder.get_ohlc_path(symbol=poly_symbol, provider=alpc.provider)
             if C.CI and os.path.exists(filename):
                 os.remove(filename)
+
 
 
 if __name__ == "__main__":
