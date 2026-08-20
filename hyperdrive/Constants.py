@@ -166,6 +166,47 @@ SCRIPT_FAILURE_THRESHOLD = 0.95
 
 ALPACA_FREE_DELAY = 0.5
 
+# Staking
+# Keyless beacon endpoint. Serves head/finalized state and historical
+# headers/blocks. It retains only ~64 slots of state, so balances must be
+# snapshotted as they are observed rather than queried retroactively.
+BEACON_URL = os.environ.get("BEACON_URL", "https://ethereum-beacon-api.publicnode.com")
+ETHERSCAN_URL = "https://api.etherscan.io/v2/api"
+VALIDATOR_ID = os.environ.get("VALIDATOR_ID", "690345")
+FEE_RECIPIENT = os.environ.get("FEE_RECIPIENT", "")
+# Addresses permitted to submit capital operations, comma separated.
+STAKING_CONTROLLERS = os.environ.get("STAKING_CONTROLLERS", "")
+GENESIS_TIME = 1606824023  # mainnet beacon genesis, unix seconds
+SECONDS_PER_SLOT = 12
+GWEI_PER_ETH = 10**9
+WEI_PER_ETH = 10**18
+STAKING_DIR = "staking"
+API_TIMEOUT = 30
+ETHERSCAN_PAGE_SIZE = 1000
+ETHERSCAN_FREE_DELAY = 0.25  # free tier allows 5 calls/sec
+RELAY_PAGE_SIZE = 200
+# A snapshot must land within this many days of the row boundary it claims to
+# measure. Prevents a dropped weekly run from letting two rows share one pair.
+MAX_BOUNDARY_DRIFT = 3
+DEPOSIT_CONTRACT = "0x00000000219ab540356cBB839Cbe05303d7705Fa"
+WITHDRAWAL_REQUEST_PREDEPLOY = "0x00000961Ef480Eb55e80D19ad83579A64c007002"
+CONSOLIDATION_REQUEST_PREDEPLOY = "0x0000BBdDc7CE488642fb579F8B00f3a590007251"
+# keccak256("DepositEvent(bytes,bytes,bytes,bytes,bytes)")
+DEPOSIT_EVENT_TOPIC = (
+    "0x649bbc62d0e31342afea4e5cd82d4049e7e1ee912fc0889aa790803be39038c5"
+)
+# Mainnet relays configured by the validator's MEV-Boost setup.
+MEV_RELAYS = [
+    "https://aestus.live",
+    "https://agnostic-relay.net",
+    "https://bloxroute.max-profit.blxrbdn.com",
+    "https://boost-relay.flashbots.net",
+    "https://relay.ultrasound.money",
+    "https://relay.wenmerge.com",
+    "https://global.titanrelay.xyz",
+]
+ETH_USD = "X%3AETHUSD"
+
 # Exchanges
 BINANCE = "BINANCE"
 KRAKEN = "KRAKEN"
@@ -242,6 +283,17 @@ class PathFinder:
         return os.path.join(
             DATA_DIR, OHLC_DIR, folders[provider], f"{symbol.upper()}.csv"
         )
+
+    def get_staking_path(self, validator_id: str) -> str:
+        """Get the path to a validator's staking snapshot ledger CSV.
+
+        Args:
+            validator_id: Beacon chain validator index.
+
+        Returns:
+            Path to the staking ledger CSV file.
+        """
+        return os.path.join(DATA_DIR, STAKING_DIR, f"{validator_id}.csv")
 
     def get_intraday_path(
         self, symbol: str, date: str, provider: str = POLY_DIR
