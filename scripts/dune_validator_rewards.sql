@@ -7,7 +7,7 @@
 --   end_date        (date, exclusive UTC date)
 --
 -- This query deliberately emits a row for every requested day, including
--- zero-reward days. update_spreadsheet_codex.py rejects the entire result if
+-- zero-reward days. DuneRewardProvider rejects the entire result if
 -- any row has coverage_complete = false.
 
 WITH

@@ -1,179 +1,195 @@
-import math
+"""Fill empty FIRE spreadsheet cells, including blended validator rewards."""
+
+from __future__ import annotations
+
+import logging
 import os
-from datetime import datetime, timedelta
+import sys
+from datetime import UTC, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 import gspread
 import pandas as pd
 import requests
 
 from hyperdrive.Broker import Robinhood
-from hyperdrive.Constants import CLOSE, DATE_FMT
-from hyperdrive.DataSource import MarketData
+from hyperdrive.Constants import CLOSE, DATE_FMT, ETH_USD, TIME
+from hyperdrive.DataSource import Polygon
+from hyperdrive.Staking import (
+    RewardProviderError,
+    RewardWindow,
+    StakingRewards,
+)
 
-# Open spreadsheet
-gc = gspread.service_account()
-sh = gc.open("FIRE").get_worksheet(0)
-records = sh.get_all_records()
-old = pd.DataFrame(records)
-df = old.copy(deep=True)
-
-# Filter to only updateable rows
-cols = list(df.columns)
-total_idx = cols.index("Total")
-df = df[cols[:total_idx]]
-df["Date"] = pd.to_datetime(df["Date"])
-today = datetime.today()
-df = df[(df["Date"] < today) & (df.eq("").any(axis=1))]
-dates = df["Date"]
-
-rh = Robinhood()
-
-# Get dividends
-div = rh.get_dividends()
-div_df = pd.DataFrame(div)
-
-# Get option orders
-opt = rh.get_options()
-opt_df = pd.DataFrame(opt)
-# Filter to filled orders
-opt_df = opt_df[opt_df["state"] == "filled"]
-opt_df["updated_at"] = pd.to_datetime(opt_df["updated_at"]).dt.strftime(DATE_FMT)
+LOGGER = logging.getLogger(__name__)
 
 
-def calculate_crypto_value(days_since_update: int) -> float:
-    """Calculate crypto staking rewards estimated per week.
-
-    Selects the largest Beaconchain evaluation window that fits within
-    the time since the last update, fetches aggregate ETH validator
-    rewards for that window, and scales to a weekly estimate using the
-    aggregate average.
-
-    Args:
-        days_since_update: Number of days since the last spreadsheet update.
-
-    Returns:
-        Estimated weekly staking rewards value in USD.
-    """
-    # Beaconchain windows mapped to their duration in days
-    windows = [("24h", 1), ("7d", 7), ("30d", 30), ("90d", 90)]
-
-    # Pick the closest window based on the last update
-    window, window_days = min(
-        windows, key=lambda wd: abs(math.log(wd[1] / max(days_since_update, 1)))
-    )
-    url = "https://beaconcha.in/api/v2/ethereum/validators/rewards-aggregate"
-    payload = {
-        "validator": {"validator_identifiers": [690345]},
-        "range": {"evaluation_window": window},
-        "chain": "mainnet",
-    }
-    headers = {
-        "Authorization": f"Bearer {os.environ['BEACONCHAIN']}",
-        "Content-Type": "application/json",
-    }
-
-    response = requests.post(url, json=payload, headers=headers)
-    data = response.json()
-    total_amt = float(f"0.{data['data']['total']}")
-
-    # Scale aggregate rewards to a weekly estimate
-    weekly_amt = total_amt / window_days * 7
-
-    md = MarketData()
-    md.provider = "polygon"
-    ohlc_timeframe = f"{window_days}d"
-    cost = md.calculator.avg(md.get_ohlc("X%3AETHUSD", ohlc_timeframe)[CLOSE])
-    return weekly_amt * cost
-
-
-def calculate_options_value(start: str, end: str) -> float:
-    """Calculate net options value for a date range.
-
-    Scenarios:
-    1. Expired: profit = sold option premium (credit)
-    2. Rolled: profit = sold option - bought option (credit - debit)
-    3. Assignment + Rebuy: After assignment, stock is rebought and a new
-       longer-dated option is sold. The new option premium should NOT be
-       counted as profit since it's reinvesting capital, not realized gains.
-       Heuristic: Ignore credits for options with expiration >12 days out.
-
-    Args:
-        start: Start date string (exclusive)
-        end: End date string (inclusive)
-
-    Returns:
-        Net options value (positive = profit)
-    """
-    if opt_df.empty:
+def calculate_options_value(options: pd.DataFrame, start: str, end: str) -> float:
+    """Calculate realized options value for a half-open date range."""
+    if options.empty:
         return 0.0
-
-    # Filter option orders in date range
-    mask = (opt_df["updated_at"] >= start) & (opt_df["updated_at"] < end)
-    period_opts = opt_df[mask]
-
-    if period_opts.empty:
-        return 0.0
-
-    net_value = 0.0
-
-    for _, order in period_opts.iterrows():
-        # Premium is total for the order (price * 100 * quantity)
+    selected = options[(options["updated_at"] >= start) & (options["updated_at"] < end)]
+    value = 0.0
+    for _, order in selected.iterrows():
         premium = float(order["premium"])
-        direction = order["direction"]
-
-        # Scenario 3 heuristic: Ignore credits for options expiring >12 days out
-        # These are likely replacement calls after assignment, not realized profit
-        if direction == "credit":
+        if order["direction"] == "debit":
+            value -= premium
+            continue
+        legs = order.get("legs", [])
+        expiration = legs[0].get("expiration_date") if legs else None
+        if expiration:
             order_date = pd.to_datetime(order["updated_at"])
-            # Get expiration from first leg
-            legs = order.get("legs", [])
-            if legs:
-                exp_date_str = legs[0].get("expiration_date")
-                if exp_date_str:
-                    exp_date = pd.to_datetime(exp_date_str)
-                    days_to_expiry = (exp_date - order_date).days
-                    if days_to_expiry > 12:
-                        # Skip long-dated options (Scenario 3 - rebuy after assignment)
-                        continue
-            # Sold option - receive premium
-            net_value += premium
-        else:  # debit
-            # Bought option - pay premium (e.g., rolling)
-            net_value -= premium
-
-    return net_value
+            if (pd.to_datetime(expiration) - order_date).days > 12:
+                continue
+        value += premium
+    return value
 
 
-# Set up indices
-row_buffer = 2  # account for header and 0 index
-col_buffer = 1  # account for 0 index
-col_idxs = {col: idx for idx, col in enumerate(cols)}
-days_since_update = (today - dates.min()).days
+def _is_blank(value: Any) -> bool:
+    """Return whether a spreadsheet cell is empty."""
+    return value == "" or pd.isna(value)
 
-# weekly estimate
-crypto_val = round(calculate_crypto_value(days_since_update))
 
-for row_idx, date in enumerate(dates):
-    end = date
-    start = end - timedelta(weeks=1)
-    end_str = end.strftime(DATE_FMT)
-    start_str = start.strftime(DATE_FMT)
+def _price_periods(windows: list[RewardWindow]) -> dict[RewardWindow, Decimal]:
+    """Return complete average ETH/USD closes for each reward window."""
+    if not windows:
+        return {}
+    earliest = min(window.start for window in windows)
+    days = (datetime.now(UTC).date() - earliest.date()).days + 2
+    prices = Polygon().get_ohlc(ETH_USD, f"{max(days, 1)}d")
+    if prices.empty:
+        raise RuntimeError("Polygon returned no ETH/USD prices")
+    timestamps = pd.to_datetime(prices[TIME], utc=True)
+    averages: dict[RewardWindow, Decimal] = {}
+    for window in windows:
+        mask = (timestamps >= window.start) & (timestamps < window.end)
+        closes = prices.loc[mask, CLOSE]
+        expected = {
+            (window.start + timedelta(days=offset)).date()
+            for offset in range((window.end - window.start).days)
+        }
+        if set(timestamps.loc[mask].dt.date) != expected or len(closes) != len(
+            expected
+        ):
+            raise RuntimeError(f"Incomplete ETH/USD coverage for {window}")
+        averages[window] = sum(
+            (Decimal(str(value)) for value in closes), Decimal(0)
+        ) / Decimal(len(closes))
+    return averages
 
-    # Update dividends
-    col = "Dividends"
-    div = div_df[
-        (div_df["payable_date"] >= start_str) & (div_df["payable_date"] < end_str)
-    ]
-    div_val = round(div["amount"].astype(float).sum())
-    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, div_val)
 
-    # Update options
-    col = "Options"
-    opt_val = round(calculate_options_value(start_str, end_str))
-    sh.update_cell(df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, opt_val)
+def _window(end: pd.Timestamp) -> RewardWindow:
+    """Build the seven-day UTC window ending on a spreadsheet date."""
+    end_utc = end.to_pydatetime().replace(tzinfo=UTC)
+    return RewardWindow(end_utc - timedelta(weeks=1), end_utc)
 
-    # Update crypto
-    col = "Crypto"
-    sh.update_cell(
-        df.index[row_idx] + row_buffer, col_idxs[col] + col_buffer, crypto_val
+
+def main() -> None:
+    """Compute every resolved value, then update the spreadsheet."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    dry_run = (
+        "--dry-run" in sys.argv
+        or os.environ.get("SPREADSHEET_DRY_RUN", "false").lower() == "true"
     )
+
+    worksheet = gspread.service_account().open("FIRE").get_worksheet(0)
+    if worksheet is None:
+        raise RuntimeError("FIRE worksheet 0 does not exist")
+    frame = pd.DataFrame(worksheet.get_all_records())
+    columns = list(frame.columns)
+    editable = columns[: columns.index("Total")]
+    frame["Date"] = pd.to_datetime(frame["Date"])
+    today = datetime.now(UTC).date()
+    targets = frame[
+        (frame["Date"].dt.date < today) & frame[editable].map(_is_blank).any(axis=1)
+    ]
+    if targets.empty:
+        LOGGER.info("No spreadsheet cells need updating")
+        return
+
+    column_numbers = {name: index + 1 for index, name in enumerate(columns)}
+    writes: list[tuple[int, int, int]] = []
+    row_offset = 2
+
+    dividends = pd.DataFrame()
+    options = pd.DataFrame()
+    needs_robinhood = any(
+        _is_blank(row[column])
+        for _, row in targets.iterrows()
+        for column in ("Dividends", "Options")
+    )
+    robinhood_available = False
+    if needs_robinhood:
+        try:
+            robinhood = Robinhood()
+            dividends = pd.DataFrame(robinhood.get_dividends())
+            options = pd.DataFrame(robinhood.get_options())
+            if not options.empty:
+                options = options[options["state"] == "filled"].copy()
+                options["updated_at"] = pd.to_datetime(
+                    options["updated_at"]
+                ).dt.strftime(DATE_FMT)
+            robinhood_available = True
+        except Exception as error:
+            LOGGER.error("Robinhood data is unavailable: %s", error)
+
+    for index, row in targets.iterrows():
+        end = pd.Timestamp(row["Date"])
+        start = end - timedelta(weeks=1)
+        start_text = start.strftime(DATE_FMT)
+        end_text = end.strftime(DATE_FMT)
+        sheet_row = int(index) + row_offset
+        if _is_blank(row["Dividends"]) and robinhood_available:
+            value = 0
+            if not dividends.empty:
+                selected = dividends[
+                    (dividends["payable_date"] >= start_text)
+                    & (dividends["payable_date"] < end_text)
+                ]
+                value = round(selected["amount"].astype(float).sum())
+            writes.append((sheet_row, column_numbers["Dividends"], value))
+        if _is_blank(row["Options"]) and robinhood_available:
+            value = round(calculate_options_value(options, start_text, end_text))
+            writes.append((sheet_row, column_numbers["Options"], value))
+
+    crypto_rows = [
+        (int(index), _window(pd.Timestamp(row["Date"])))
+        for index, row in targets.iterrows()
+        if _is_blank(row["Crypto"])
+    ]
+    if crypto_rows:
+        windows = [window for _, window in crypto_rows]
+        try:
+            estimates = StakingRewards().fetch(windows)
+            prices = _price_periods(list(estimates))
+        except (RewardProviderError, RuntimeError, requests.RequestException) as error:
+            LOGGER.error("Crypto cells remain empty: %s", error)
+            estimates = {}
+            prices = {}
+        for index, window in crypto_rows:
+            estimate = estimates.get(window)
+            price = prices.get(window)
+            if estimate is None or price is None:
+                LOGGER.warning("Crypto remains empty for %s", window.end.date())
+                continue
+            usd = (estimate.eth * price).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            LOGGER.info(
+                "Crypto %s: %s ETH from %s, %s USD",
+                window.end.date(),
+                estimate.eth,
+                ", ".join(estimate.sources),
+                usd,
+            )
+            writes.append((index + row_offset, column_numbers["Crypto"], int(usd)))
+
+    for row, column, value in writes:
+        if dry_run:
+            LOGGER.info("Dry run: row=%s column=%s value=%s", row, column, value)
+        else:
+            worksheet.update_cell(row, column, value)
+    LOGGER.info("%s %s cells", "Would write" if dry_run else "Wrote", len(writes))
+
+
+if __name__ == "__main__":
+    main()

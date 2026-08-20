@@ -1,13 +1,14 @@
-# This workflow will automatically update the FIRE spreadsheet
-# For more information see: https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule
+# Manually update the FIRE spreadsheet.
 
 name: Spreadsheet
 
-on:
-  schedule:
-    - cron: "0 21 * * 1"
-    # 4:00pm EST / 5:00pm EDT on Mondays
-  workflow_dispatch:
+on: workflow_dispatch
+# schedule:
+# - cron: "0 21 * * 1"
+# - 4:00pm EST / 5:00pm EDT on Mondays
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -22,7 +23,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -42,9 +43,9 @@ jobs:
           RH_USERNAME: ${{ secrets.RH_USERNAME }}
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
           RH_2FA: ${{ secrets.RH_2FA }}
-          BEACONCHAIN: ${{ secrets.BEACONCHAIN }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          DUNE: ${{ secrets.DUNE }}
+          ETH_ADDR: ${{ secrets.ETH_ADDR }}
+          ETHERSCAN: ${{ secrets.ETHERSCAN }}
+          POLYGON: ${{ secrets.POLYGON }}
+          VALIDATOR: ${{ secrets.VALIDATOR }}
         run: uv run python scripts/update_spreadsheet.py
