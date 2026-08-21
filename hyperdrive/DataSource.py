@@ -8,7 +8,6 @@ BLS, and Glassnode.
 import json
 import logging
 import os
-import re
 from collections.abc import Callable, Generator, Iterable, Iterator
 from datetime import datetime
 from io import StringIO
@@ -35,10 +34,12 @@ from .TimeMachine import TimeTraveller
 
 LOGGER = logging.getLogger(__name__)
 WIKIPEDIA_NDX_URL = "https://en.wikipedia.org/wiki/List_of_NASDAQ-100_companies"
-NASDAQ_NDX_URL = "https://www.nasdaq.com/products/global-indexes/nasdaq-100/companies"
+NASDAQ_NDX_API_URL = "https://api.nasdaq.com/api/quote/list-type/nasdaq100"
+# Potential future authenticated fallback:
+# https://indexes.nasdaqomx.com/Index/Weighting/NDX
 NDX_MIN_SECURITIES = 100
 NDX_MAX_SECURITIES = 110
-NDX_MAX_SOURCE_AGE_DAYS = 370
+NDX_MAX_API_AGE_DAYS = 7
 
 
 class MarketData:
@@ -674,7 +675,7 @@ class MarketData:
         return self.standardize_ndx(df[df[C.TIME] <= date_str] if C.TIME in df else df)
 
     def get_latest_ndx(self, **kwargs: Any) -> pd.DataFrame:
-        """Fetch latest NDX securities from Wikipedia and Nasdaq.
+        """Fetch latest NDX securities from Nasdaq, falling back to Wikipedia.
 
         Args:
             **kwargs: Arguments for retry logic (retries, delay).
@@ -682,47 +683,18 @@ class MarketData:
         Returns:
             DataFrame with current NDX constituents.
         """
-        failures: dict[str, Exception] = {}
-        wikipedia: list[str] | None = None
-        nasdaq: list[str] | None = None
-        nasdaq_age: int | None = None
         try:
-            wikipedia = self.try_again(func=self._get_wikipedia_ndx_symbols, **kwargs)
-        except Exception as error:
-            failures["Wikipedia"] = error
-            LOGGER.warning("Wikipedia NDX constituents unavailable: %s", error)
-        try:
-            nasdaq, nasdaq_age = self.try_again(
-                func=self._get_nasdaq_ndx_symbols, **kwargs
-            )
-        except Exception as error:
-            failures["Nasdaq"] = error
-            LOGGER.warning("Nasdaq NDX constituents unavailable: %s", error)
-
-        if wikipedia is None and (
-            nasdaq is None or nasdaq_age is None or nasdaq_age > NDX_MAX_SOURCE_AGE_DAYS
-        ):
-            if nasdaq is not None and nasdaq_age is not None:
-                failures["Nasdaq"] = ValueError(
-                    f"constituent table is {nasdaq_age} days old"
-                )
-            details = "; ".join(f"{name}: {error}" for name, error in failures.items())
-            raise RuntimeError(f"No NDX constituent source succeeded ({details})")
-
-        # Wikipedia is updated more frequently than Nasdaq's public company page.
-        # Nasdaq remains a cross-check, and a fallback only while reasonably fresh.
-        symbols = wikipedia if wikipedia is not None else nasdaq
-        assert symbols is not None
-        if wikipedia is not None and nasdaq is not None:
-            wikipedia_set = set(wikipedia)
-            nasdaq_set = set(nasdaq)
-            if wikipedia_set != nasdaq_set:
-                LOGGER.warning(
-                    "NDX sources disagree; using Wikipedia: "
-                    "Wikipedia-only=%s Nasdaq-only=%s",
-                    sorted(wikipedia_set - nasdaq_set),
-                    sorted(nasdaq_set - wikipedia_set),
-                )
+            symbols = self.try_again(func=self._get_nasdaq_ndx_symbols, **kwargs)
+        except Exception as nasdaq_error:
+            LOGGER.warning("Nasdaq NDX constituents unavailable: %s", nasdaq_error)
+            try:
+                symbols = self.try_again(func=self._get_wikipedia_ndx_symbols, **kwargs)
+            except Exception as wikipedia_error:
+                raise RuntimeError(
+                    "No NDX constituent source succeeded "
+                    f"(Nasdaq: {nasdaq_error}; Wikipedia: {wikipedia_error})"
+                ) from wikipedia_error
+            LOGGER.warning("Using Wikipedia NDX constituent fallback")
         today = datetime.today().strftime(C.DATE_FMT)
         return pd.DataFrame(
             {
@@ -745,23 +717,44 @@ class MarketData:
             raise ValueError("Wikipedia constituent table is missing")
         return self._validate_ndx_symbols(tables[0], "Ticker", "Wikipedia")
 
-    def _get_nasdaq_ndx_symbols(self) -> tuple[list[str], int]:
-        """Fetch NDX security symbols from Nasdaq's public company table."""
+    def _get_nasdaq_ndx_symbols(self) -> list[str]:
+        """Fetch NDX security symbols from Nasdaq's live JSON endpoint."""
         response = requests.get(
-            NASDAQ_NDX_URL,
-            headers={"User-Agent": "Mozilla/5.0"},
+            NASDAQ_NDX_API_URL,
+            headers={"Accept": "application/json", "User-Agent": "Mozilla/5.0"},
             timeout=C.API_TIMEOUT,
         )
         response.raise_for_status()
-        tables = pd.read_html(StringIO(response.text), match="Symbol", header=0)
-        if not tables:
-            raise ValueError("Nasdaq constituent table is missing")
-        match = re.search(r"Last updated\s+(\d{2}/\d{2}/\d{4})", response.text, re.I)
-        if match is None:
-            raise ValueError("Nasdaq constituent table has no update date")
-        updated = datetime.strptime(match.group(1), "%m/%d/%Y").date()
-        age = (datetime.today().date() - updated).days
-        return self._validate_ndx_symbols(tables[0], "Symbol", "Nasdaq"), age
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("Nasdaq returned a non-object response")
+        status = payload.get("status")
+        if not isinstance(status, dict) or status.get("rCode") != 200:
+            raise ValueError("Nasdaq returned an unsuccessful status")
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise ValueError("Nasdaq response has no data")
+        reported = data.get("totalrecords")
+        rows_container = data.get("data")
+        if not isinstance(rows_container, dict):
+            raise ValueError("Nasdaq response has no row container")
+        rows = rows_container.get("rows")
+        if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+            raise ValueError("Nasdaq constituent rows are malformed")
+        if isinstance(reported, bool) or not isinstance(reported, int):
+            raise ValueError("Nasdaq record count is malformed")
+        if reported != len(rows):
+            raise ValueError(
+                f"Nasdaq reported {reported} records but returned {len(rows)}"
+            )
+        timestamp = data.get("date")
+        if not isinstance(timestamp, str):
+            raise ValueError("Nasdaq response has no timestamp")
+        updated = datetime.strptime(timestamp, "%b %d, %Y %I:%M %p")
+        age = (datetime.today().date() - updated.date()).days
+        if age < 0 or age > NDX_MAX_API_AGE_DAYS:
+            raise ValueError(f"Nasdaq response is {age} days old")
+        return self._validate_ndx_symbols(pd.DataFrame(rows), "symbol", "Nasdaq")
 
     @staticmethod
     def _validate_ndx_symbols(
