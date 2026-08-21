@@ -905,9 +905,7 @@ class AlpacaData(MarketData):
         Returns:
             Path to saved file, or None if save failed.
         """
-        kwargs["symbol"] = C.ALPC_TO_POLY_CRYPTO.get(
-            kwargs["symbol"], kwargs["symbol"]
-        )
+        kwargs["symbol"] = C.ALPC_TO_POLY_CRYPTO.get(kwargs["symbol"], kwargs["symbol"])
         return super().save_ohlc(**kwargs)
 
 

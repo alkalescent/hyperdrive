@@ -65,7 +65,6 @@ def update_alpc_ohlc() -> None:
                 os.remove(filename)
 
 
-
 if __name__ == "__main__":
     p1 = Process(target=update_poly_ohlc)
     p2 = Process(target=update_alpc_ohlc)

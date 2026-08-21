@@ -1248,9 +1248,7 @@ class TestAlpacaDataCryptoOHLC:
         path_symbols: list[str] = []
         original_get_ohlc_path = alpaca_data.finder.get_ohlc_path
 
-        def tracking_get_ohlc_path(
-            symbol: str, provider: str = "polygon"
-        ) -> str:
+        def tracking_get_ohlc_path(symbol: str, provider: str = "polygon") -> str:
             path_symbols.append(symbol)
             return original_get_ohlc_path(symbol, provider)
 
@@ -1261,12 +1259,12 @@ class TestAlpacaDataCryptoOHLC:
 
         # Verify that the Polygon-format symbol was used for the path,
         # not the raw Alpaca symbol
-        assert any(
-            "X%3ABTCUSD" == s for s in path_symbols
-        ), f"Expected 'X%3ABTCUSD' in path symbols, got {path_symbols}"
-        assert not any(
-            "BTC/USD" == s for s in path_symbols
-        ), "Raw Alpaca symbol 'BTC/USD' should not be used for file paths"
+        assert any("X%3ABTCUSD" == s for s in path_symbols), (
+            f"Expected 'X%3ABTCUSD' in path symbols, got {path_symbols}"
+        )
+        assert not any("BTC/USD" == s for s in path_symbols), (
+            "Raw Alpaca symbol 'BTC/USD' should not be used for file paths"
+        )
 
     def test_save_ohlc_crypto_converts_symbol(
         self,
@@ -1280,9 +1278,7 @@ class TestAlpacaDataCryptoOHLC:
         # Track what symbol gets passed to get_ohlc_path
         path_symbols: list[str] = []
 
-        def tracking_get_ohlc_path(
-            symbol: str, provider: str = "polygon"
-        ) -> str:
+        def tracking_get_ohlc_path(symbol: str, provider: str = "polygon") -> str:
             path_symbols.append(symbol)
             return str(ohlc_path)
 
@@ -1291,7 +1287,7 @@ class TestAlpacaDataCryptoOHLC:
         mock_file_ops["reader"].update_df.return_value = SAMPLE_OHLC.copy()
         mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
 
-        result = alpaca_data.save_ohlc(symbol="BTC/USD")
+        alpaca_data.save_ohlc(symbol="BTC/USD")
 
         # Verify the converted Polygon symbol was used for file path
         assert "X%3ABTCUSD" in path_symbols
@@ -1308,9 +1304,7 @@ class TestAlpacaDataCryptoOHLC:
 
         path_symbols: list[str] = []
 
-        def tracking_get_ohlc_path(
-            symbol: str, provider: str = "polygon"
-        ) -> str:
+        def tracking_get_ohlc_path(symbol: str, provider: str = "polygon") -> str:
             path_symbols.append(symbol)
             return str(ohlc_path)
 
@@ -1319,7 +1313,7 @@ class TestAlpacaDataCryptoOHLC:
         mock_file_ops["reader"].update_df.return_value = SAMPLE_OHLC.copy()
         mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
 
-        result = alpaca_data.save_ohlc(symbol="AAPL")
+        alpaca_data.save_ohlc(symbol="AAPL")
 
         # Stock symbols should pass through unchanged
         assert "AAPL" in path_symbols
@@ -1356,6 +1350,6 @@ class TestStandardizeSoprPath:
         market_data.standardize_sopr(raw)
 
         assert len(sopr_path_calls) > 0, "standardize_sopr should call get_sopr_path"
-        assert (
-            len(diff_ribbon_path_calls) == 0
-        ), "standardize_sopr should NOT call get_diff_ribbon_path"
+        assert len(diff_ribbon_path_calls) == 0, (
+            "standardize_sopr should NOT call get_diff_ribbon_path"
+        )
