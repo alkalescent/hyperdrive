@@ -1283,6 +1283,13 @@ class TestAlpacaDataCryptoOHLC:
             return str(ohlc_path)
 
         alpaca_data.finder.get_ohlc_path = tracking_get_ohlc_path
+        fetch_symbols: list[str] = []
+
+        def get_ohlc(symbol: str, **kwargs: Any) -> pd.DataFrame:
+            fetch_symbols.append(symbol)
+            return SAMPLE_OHLC.copy()
+
+        alpaca_data.get_ohlc = get_ohlc
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_OHLC.copy()
         mock_file_ops["reader"].update_df.return_value = SAMPLE_OHLC.copy()
         mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
@@ -1292,6 +1299,7 @@ class TestAlpacaDataCryptoOHLC:
         # Verify the converted Polygon symbol was used for file path
         assert "X%3ABTCUSD" in path_symbols
         assert "BTC/USD" not in path_symbols
+        assert fetch_symbols == ["BTC/USD"]
 
     def test_save_ohlc_stock_symbol_unchanged(
         self,
@@ -1309,6 +1317,13 @@ class TestAlpacaDataCryptoOHLC:
             return str(ohlc_path)
 
         alpaca_data.finder.get_ohlc_path = tracking_get_ohlc_path
+        fetch_symbols: list[str] = []
+
+        def get_ohlc(symbol: str, **kwargs: Any) -> pd.DataFrame:
+            fetch_symbols.append(symbol)
+            return SAMPLE_OHLC.copy()
+
+        alpaca_data.get_ohlc = get_ohlc
         mock_file_ops["reader"].load_csv.return_value = SAMPLE_OHLC.copy()
         mock_file_ops["reader"].update_df.return_value = SAMPLE_OHLC.copy()
         mock_file_ops["writer"].update_csv = lambda f, df: df.to_csv(f, index=False)
@@ -1317,6 +1332,7 @@ class TestAlpacaDataCryptoOHLC:
 
         # Stock symbols should pass through unchanged
         assert "AAPL" in path_symbols
+        assert fetch_symbols == ["AAPL"]
 
 
 class TestStandardizeSoprPath:

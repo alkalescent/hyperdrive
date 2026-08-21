@@ -309,8 +309,11 @@ class MarketData:
         Returns:
             Path to saved file, or None if save failed.
         """
-        symbol = kwargs["symbol"]
-        filename = self.finder.get_ohlc_path(symbol, self.provider)
+        return self._save_ohlc(kwargs["symbol"], **kwargs)
+
+    def _save_ohlc(self, storage_symbol: str, **kwargs: Any) -> str | None:
+        """Save fetched OHLC data under a possibly different storage symbol."""
+        filename = self.finder.get_ohlc_path(storage_symbol, self.provider)
         if os.path.exists(filename):
             os.remove(filename)
         df = self.reader.update_df(
@@ -905,8 +908,8 @@ class AlpacaData(MarketData):
         Returns:
             Path to saved file, or None if save failed.
         """
-        kwargs["symbol"] = C.ALPC_TO_POLY_CRYPTO.get(kwargs["symbol"], kwargs["symbol"])
-        return super().save_ohlc(**kwargs)
+        storage_symbol = C.ALPC_TO_POLY_CRYPTO.get(kwargs["symbol"], kwargs["symbol"])
+        return self._save_ohlc(storage_symbol, **kwargs)
 
 
 class Polygon(MarketData):
