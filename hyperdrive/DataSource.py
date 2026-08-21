@@ -6,7 +6,9 @@ BLS, and Glassnode.
 """
 
 import json
+import logging
 import os
+import re
 from collections.abc import Callable, Generator, Iterable, Iterator
 from datetime import datetime
 from io import StringIO
@@ -16,7 +18,6 @@ from typing import Any
 
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
 from dotenv import find_dotenv, load_dotenv
 from polygon import RESTClient
 from selenium import webdriver
@@ -31,6 +32,13 @@ from .Calculus import Calculator
 from .Constants import PathFinder
 from .FileOps import FileReader, FileWriter
 from .TimeMachine import TimeTraveller
+
+LOGGER = logging.getLogger(__name__)
+WIKIPEDIA_NDX_URL = "https://en.wikipedia.org/wiki/List_of_NASDAQ-100_companies"
+NASDAQ_NDX_URL = "https://www.nasdaq.com/products/global-indexes/nasdaq-100/companies"
+NDX_MIN_SECURITIES = 100
+NDX_MAX_SECURITIES = 110
+NDX_MAX_SOURCE_AGE_DAYS = 370
 
 
 class MarketData:
@@ -666,7 +674,7 @@ class MarketData:
         return self.standardize_ndx(df[df[C.TIME] <= date_str] if C.TIME in df else df)
 
     def get_latest_ndx(self, **kwargs: Any) -> pd.DataFrame:
-        """Fetch latest NDX constituents from Wikipedia.
+        """Fetch latest NDX securities from Wikipedia and Nasdaq.
 
         Args:
             **kwargs: Arguments for retry logic (retries, delay).
@@ -674,25 +682,107 @@ class MarketData:
         Returns:
             DataFrame with current NDX constituents.
         """
-
-        def _get_latest_ndx() -> pd.DataFrame:
-            url = "https://en.wikipedia.org/wiki/Nasdaq-100"
-            headers = {"User-Agent": '"Google Chrome";"Chromium"'}
-            res = requests.get(url, headers=headers)
-            soup = BeautifulSoup(res.text, "html.parser")
-            html = soup.select("table#constituents")[0]
-            df = pd.read_html(StringIO(str(html)))[0]
-            symbols = df["Ticker"]
-            today = datetime.today().strftime(C.DATE_FMT)
-            return pd.DataFrame(
-                {
-                    C.TIME: len(symbols) * [today],
-                    C.SYMBOL: symbols,
-                    C.DELTA: len(symbols) * ["+"],
-                }
+        failures: dict[str, Exception] = {}
+        wikipedia: list[str] | None = None
+        nasdaq: list[str] | None = None
+        nasdaq_age: int | None = None
+        try:
+            wikipedia = self.try_again(func=self._get_wikipedia_ndx_symbols, **kwargs)
+        except Exception as error:
+            failures["Wikipedia"] = error
+            LOGGER.warning("Wikipedia NDX constituents unavailable: %s", error)
+        try:
+            nasdaq, nasdaq_age = self.try_again(
+                func=self._get_nasdaq_ndx_symbols, **kwargs
             )
+        except Exception as error:
+            failures["Nasdaq"] = error
+            LOGGER.warning("Nasdaq NDX constituents unavailable: %s", error)
 
-        return self.try_again(func=_get_latest_ndx, **kwargs)
+        if wikipedia is None and (
+            nasdaq is None or nasdaq_age is None or nasdaq_age > NDX_MAX_SOURCE_AGE_DAYS
+        ):
+            if nasdaq is not None and nasdaq_age is not None:
+                failures["Nasdaq"] = ValueError(
+                    f"constituent table is {nasdaq_age} days old"
+                )
+            details = "; ".join(f"{name}: {error}" for name, error in failures.items())
+            raise RuntimeError(f"No NDX constituent source succeeded ({details})")
+
+        # Wikipedia is updated more frequently than Nasdaq's public company page.
+        # Nasdaq remains a cross-check, and a fallback only while reasonably fresh.
+        symbols = wikipedia if wikipedia is not None else nasdaq
+        assert symbols is not None
+        if wikipedia is not None and nasdaq is not None:
+            wikipedia_set = set(wikipedia)
+            nasdaq_set = set(nasdaq)
+            if wikipedia_set != nasdaq_set:
+                LOGGER.warning(
+                    "NDX sources disagree; using Wikipedia: "
+                    "Wikipedia-only=%s Nasdaq-only=%s",
+                    sorted(wikipedia_set - nasdaq_set),
+                    sorted(nasdaq_set - wikipedia_set),
+                )
+        today = datetime.today().strftime(C.DATE_FMT)
+        return pd.DataFrame(
+            {
+                C.TIME: len(symbols) * [today],
+                C.SYMBOL: symbols,
+                C.DELTA: len(symbols) * ["+"],
+            }
+        )
+
+    def _get_wikipedia_ndx_symbols(self) -> list[str]:
+        """Fetch NDX security symbols from Wikipedia's dedicated list page."""
+        response = requests.get(
+            WIKIPEDIA_NDX_URL,
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=C.API_TIMEOUT,
+        )
+        response.raise_for_status()
+        tables = pd.read_html(StringIO(response.text), attrs={"id": "constituents"})
+        if not tables:
+            raise ValueError("Wikipedia constituent table is missing")
+        return self._validate_ndx_symbols(tables[0], "Ticker", "Wikipedia")
+
+    def _get_nasdaq_ndx_symbols(self) -> tuple[list[str], int]:
+        """Fetch NDX security symbols from Nasdaq's public company table."""
+        response = requests.get(
+            NASDAQ_NDX_URL,
+            headers={"User-Agent": "Mozilla/5.0"},
+            timeout=C.API_TIMEOUT,
+        )
+        response.raise_for_status()
+        tables = pd.read_html(StringIO(response.text), match="Symbol", header=0)
+        if not tables:
+            raise ValueError("Nasdaq constituent table is missing")
+        match = re.search(r"Last updated\s+(\d{2}/\d{2}/\d{4})", response.text, re.I)
+        if match is None:
+            raise ValueError("Nasdaq constituent table has no update date")
+        updated = datetime.strptime(match.group(1), "%m/%d/%Y").date()
+        age = (datetime.today().date() - updated).days
+        return self._validate_ndx_symbols(tables[0], "Symbol", "Nasdaq"), age
+
+    @staticmethod
+    def _validate_ndx_symbols(
+        table: pd.DataFrame, column: str, source: str
+    ) -> list[str]:
+        """Normalize and validate a complete list of NDX security symbols."""
+        if column not in table:
+            raise ValueError(f"{source} constituent table has no {column} column")
+        symbols = table[column].dropna().astype(str).str.strip().str.upper()
+        invalid = symbols[~symbols.str.fullmatch(r"[A-Z][A-Z0-9.-]*")]
+        if not invalid.empty:
+            raise ValueError(f"{source} returned invalid symbols: {invalid.tolist()}")
+        duplicates = symbols[symbols.duplicated()].tolist()
+        if duplicates:
+            raise ValueError(f"{source} returned duplicate symbols: {duplicates}")
+        if not NDX_MIN_SECURITIES <= len(symbols) <= NDX_MAX_SECURITIES:
+            raise ValueError(
+                f"{source} returned {len(symbols)} securities; expected "
+                f"{NDX_MIN_SECURITIES}-{NDX_MAX_SECURITIES}"
+            )
+        return symbols.tolist()
 
     def save_ndx(self, **kwargs: Any) -> str | None:
         """Save NDX constituency data with changes.

@@ -5,7 +5,7 @@ Glassnode, and LaborStats for fast, deterministic, offline testing.
 """
 
 from collections.abc import Generator
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -77,6 +77,35 @@ SAMPLE_NDX = pd.DataFrame(
         C.DELTA: ["+", "+", "+"],
     }
 )
+
+
+def ndx_symbols(count: int = 101) -> list[str]:
+    """Build a realistic number of unique NDX security symbols."""
+    return ["GOOG", "GOOGL"] + [f"T{index:03d}" for index in range(count - 2)]
+
+
+def wikipedia_ndx_html(symbols: list[str]) -> str:
+    """Build Wikipedia's constituent table shape."""
+    rows = "".join(
+        f"<tr><td>{symbol}</td><td>{symbol} Company</td></tr>" for symbol in symbols
+    )
+    return (
+        '<table id="constituents"><thead><tr><th>Ticker</th><th>Company</th>'
+        f"</tr></thead><tbody>{rows}</tbody></table>"
+    )
+
+
+def nasdaq_ndx_html(symbols: list[str], updated: str | None = None) -> str:
+    """Build Nasdaq's table shape, whose first row contains td headers."""
+    updated = updated or datetime.today().strftime("%m/%d/%Y")
+    rows = "".join(
+        f"<tr><td>{symbol}</td><td>{symbol} Company</td></tr>" for symbol in symbols
+    )
+    return (
+        "<table><tbody><tr><td>Symbol</td><td>Company Name</td></tr>"
+        f"{rows}</tbody></table><p><em>Last updated {updated}.</em></p>"
+    )
+
 
 SAMPLE_S2F = pd.DataFrame(
     {
@@ -537,6 +566,118 @@ class TestIndices:
         """Test getting NDX index constituents."""
         ndx = indices.get_ndx()
         assert {C.TIME, C.SYMBOL, C.DELTA}.issubset(ndx.columns)
+
+
+class TestLatestNdx:
+    """Tests for hybrid Wikipedia and Nasdaq constituent retrieval."""
+
+    wikipedia_url = "https://en.wikipedia.org/wiki/List_of_NASDAQ-100_companies"
+    nasdaq_url = "https://www.nasdaq.com/products/global-indexes/nasdaq-100/companies"
+
+    @responses.activate
+    def test_fetches_both_sources_and_keeps_multiple_share_classes(
+        self, market_data: Any
+    ) -> None:
+        """Accept 101 securities and preserve both Alphabet share classes."""
+        symbols = ndx_symbols()
+        responses.add(
+            responses.GET,
+            self.wikipedia_url,
+            body=wikipedia_ndx_html(symbols),
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            self.nasdaq_url,
+            body=nasdaq_ndx_html(symbols),
+            status=200,
+        )
+
+        result = market_data.get_latest_ndx(retries=1)
+
+        assert len(result) == 101
+        assert set(result[C.SYMBOL]) == set(symbols)
+        assert {"GOOG", "GOOGL"}.issubset(result[C.SYMBOL])
+        assert len(responses.calls) == 2
+
+    @responses.activate
+    def test_prefers_wikipedia_and_warns_on_disagreement(
+        self,
+        market_data: Any,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Use the fresher Wikipedia set when complete sources disagree."""
+        wikipedia = ndx_symbols()
+        nasdaq = [*wikipedia[:-1], "DIFF"]
+        responses.add(
+            responses.GET,
+            self.wikipedia_url,
+            body=wikipedia_ndx_html(wikipedia),
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            self.nasdaq_url,
+            body=nasdaq_ndx_html(nasdaq),
+            status=200,
+        )
+
+        with caplog.at_level("WARNING"):
+            result = market_data.get_latest_ndx(retries=1)
+
+        assert set(result[C.SYMBOL]) == set(wikipedia)
+        assert "NDX sources disagree" in caplog.text
+
+    @responses.activate
+    def test_uses_nasdaq_when_wikipedia_is_unavailable(self, market_data: Any) -> None:
+        """Use Nasdaq as an independent fallback for a Wikipedia failure."""
+        symbols = ndx_symbols()
+        responses.add(responses.GET, self.wikipedia_url, status=500)
+        responses.add(
+            responses.GET,
+            self.nasdaq_url,
+            body=nasdaq_ndx_html(symbols),
+            status=200,
+        )
+
+        result = market_data.get_latest_ndx(retries=1)
+
+        assert set(result[C.SYMBOL]) == set(symbols)
+
+    @responses.activate
+    def test_rejects_stale_nasdaq_fallback(self, market_data: Any) -> None:
+        """Do not roll constituents backward from an old Nasdaq table."""
+        symbols = ndx_symbols()
+        responses.add(responses.GET, self.wikipedia_url, status=500)
+        responses.add(
+            responses.GET,
+            self.nasdaq_url,
+            body=nasdaq_ndx_html(symbols, updated="05/19/2025"),
+            status=200,
+        )
+
+        with pytest.raises(RuntimeError, match="days old"):
+            market_data.get_latest_ndx(retries=1)
+
+    @responses.activate
+    def test_rejects_incomplete_sources(self, market_data: Any) -> None:
+        """Do not turn a partial table into mass constituent removals."""
+        partial = ndx_symbols(99)
+        responses.add(
+            responses.GET,
+            self.wikipedia_url,
+            body=wikipedia_ndx_html(partial),
+            status=200,
+        )
+        responses.add(
+            responses.GET,
+            self.nasdaq_url,
+            body=nasdaq_ndx_html(partial),
+            status=200,
+        )
+
+        with pytest.raises(RuntimeError, match="No NDX constituent source succeeded"):
+            market_data.get_latest_ndx(retries=1)
 
 
 class TestPolygon:
