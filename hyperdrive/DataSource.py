@@ -934,12 +934,15 @@ class AlpacaData(MarketData):
                 "APCA-API-SECRET-KEY": self.secret,
             }
             results: list[dict[str, Any]] = []
+            seen_page_tokens: set[str] = set()
             while True:
                 self.obey_free_limit(C.ALPACA_FREE_DELAY)
                 try:
                     post_params = {"page_token": page_token} if page_token else {}
                     params = pre_params | post_params
-                    response = requests.get(url, params, headers=headers)
+                    response = requests.get(
+                        url, params, headers=headers, timeout=C.API_TIMEOUT
+                    )
                     if not response.ok:
                         raise Exception(
                             "Invalid response from Alpaca for OHLC",
@@ -951,8 +954,15 @@ class AlpacaData(MarketData):
                         results += data["bars"][symbol]
                 finally:
                     self.log_api_call_time()
-                if data.get("next_page_token"):
-                    page_token = data["next_page_token"]
+                next_page_token = data.get("next_page_token")
+                if next_page_token:
+                    if next_page_token in seen_page_tokens:
+                        raise ValueError(
+                            f"Alpaca repeated page token for {symbol}: "
+                            f"{next_page_token}"
+                        )
+                    seen_page_tokens.add(next_page_token)
+                    page_token = next_page_token
                 else:
                     break
             df = pd.DataFrame(results)

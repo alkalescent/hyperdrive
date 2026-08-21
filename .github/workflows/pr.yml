@@ -327,6 +327,12 @@ jobs:
     name: Update OHLC
     needs: [update-indices]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # PRs exercise Alpaca paper data against dev S3; production covers both providers.
+    env:
+      OHLC_STOCK_LIMIT: 2
+      OHLC_CRYPTO_LIMIT: 1
+      OHLC_WORKER_TIMEOUT_SECONDS: 300
     steps:
     - uses: actions/checkout@v5
     - uses: actions/setup-python@v6

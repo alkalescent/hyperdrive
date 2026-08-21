@@ -1013,6 +1013,27 @@ class TestPolygonIntraday:
 class TestAlpacaDataOHLC:
     """Unit tests for AlpacaData OHLC methods."""
 
+    @staticmethod
+    def alpaca_bars(next_page_token: str | None = None) -> dict[str, Any]:
+        """Build a single-page Alpaca stock response."""
+        return {
+            "bars": {
+                "AAPL": [
+                    {
+                        "t": "2024-01-01T00:00:00Z",
+                        "o": 100.0,
+                        "h": 105.0,
+                        "l": 99.0,
+                        "c": 103.0,
+                        "v": 1000000,
+                        "vw": 102.0,
+                        "n": 1000,
+                    }
+                ]
+            },
+            "next_page_token": next_page_token,
+        }
+
     def test_get_ohlc(
         self,
         alpaca_data: Any,
@@ -1045,6 +1066,37 @@ class TestAlpacaDataOHLC:
         mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
         df = alpaca_data.get_ohlc(symbol="AAPL", timeframe="1m")
         assert C.TIME in df.columns
+
+    def test_get_ohlc_uses_request_timeout(
+        self, alpaca_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
+        """Bound Alpaca requests so a stalled connection cannot hang a worker."""
+        response = MagicMock(ok=True)
+        response.json.return_value = self.alpaca_bars()
+
+        with patch("hyperdrive.DataSource.requests.get", return_value=response) as get:
+            alpaca_data.get_ohlc(symbol="AAPL", timeframe="1m", retries=1)
+
+        assert get.call_args.kwargs["timeout"] == C.API_TIMEOUT
+
+    def test_get_ohlc_rejects_repeated_page_token(
+        self, alpaca_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
+        """Stop pagination if Alpaca returns the same continuation token twice."""
+        first = MagicMock(ok=True)
+        first.json.return_value = self.alpaca_bars("repeated-token")
+        second = MagicMock(ok=True)
+        second.json.return_value = self.alpaca_bars("repeated-token")
+
+        with (
+            patch(
+                "hyperdrive.DataSource.requests.get", side_effect=[first, second]
+            ) as get,
+            pytest.raises(ValueError, match="repeated page token"),
+        ):
+            alpaca_data.get_ohlc(symbol="AAPL", timeframe="1m", retries=1)
+
+        assert get.call_count == 2
 
 
 class TestMarketDataIntraday:

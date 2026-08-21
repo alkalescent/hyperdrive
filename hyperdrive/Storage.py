@@ -6,6 +6,7 @@ from multiprocessing import Pool
 from typing import Any
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 from dotenv import find_dotenv, load_dotenv
 
@@ -49,7 +50,15 @@ class Store:
         Returns:
             A boto3 S3 Bucket resource object.
         """
-        s3 = boto3.resource("s3")
+        s3 = boto3.resource(
+            "s3",
+            config=Config(
+                connect_timeout=C.API_TIMEOUT,
+                read_timeout=C.API_TIMEOUT,
+                retries={"max_attempts": C.DEFAULT_RETRIES, "mode": "standard"},
+                tcp_keepalive=True,
+            ),
+        )
         bucket = s3.Bucket(self.bucket_name)
         return bucket
 
