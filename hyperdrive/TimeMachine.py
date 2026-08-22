@@ -33,7 +33,7 @@ class TimeTraveller:
         Returns:
             timedelta: The absolute difference between the two dates.
         """
-        d2_resolved: FlexibleDate = datetime.now() if d2 is None else d2
+        d2_resolved: FlexibleDate = d2 or datetime.now()
         d1_dt = datetime.strptime(d1, format) if isinstance(d1, str) else d1
         d2_dt = (
             datetime.strptime(d2_resolved, format)

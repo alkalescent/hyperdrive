@@ -127,8 +127,7 @@ class AlpacaEx(CEX):
         Raises:
             RuntimeError: If the request fails.
         """
-        if payload is None:
-            payload = {}
+        payload = payload or {}
         parts = [self.base, self.version, route]
         url = "/".join(parts)
         headers = {
@@ -264,8 +263,7 @@ class Kraken(CEX):
         Returns:
             API response result.
         """
-        if data is None:
-            data = {}
+        data = data or {}
         data["nonce"] = self.gen_nonce()
         headers: dict[str, str] = {}
         headers["API-Key"] = self.key or ""
@@ -641,14 +639,16 @@ class Binance(CEX):
         order_type = self.client.ORDER_TYPE_MARKET
         params: dict[str, Any] = {"symbol": pair, "type": order_type}
         symbol_info = self.client.get_symbol_info(pair)
-        if symbol_info is None:
+        if symbol_info:
+            validated_symbol_info = symbol_info
+        else:
             raise Exception(f"Symbol info not found for {pair}")
 
         if side == C.SELL:
             side = self.client.SIDE_SELL
             balance_label = base
             quantity_label = "quantity"
-            filters = symbol_info["filters"]
+            filters = validated_symbol_info["filters"]
             for filter in filters:
                 if filter["filterType"] == "LOT_SIZE":
                     step_size = float(filter["stepSize"])
@@ -656,7 +656,7 @@ class Binance(CEX):
             side = self.client.SIDE_BUY
             balance_label = quote
             quantity_label = "quoteOrderQty"
-            precision = int(symbol_info["quoteAssetPrecision"])
+            precision = int(validated_symbol_info["quoteAssetPrecision"])
         else:
             raise Exception("Need to specify BUY or SELL side for order")
 

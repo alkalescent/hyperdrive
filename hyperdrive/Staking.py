@@ -40,8 +40,9 @@ _market: MarketData | None = None
 def market() -> MarketData:
     """Return the shared market-data helper used for retries."""
     global _market
-    if _market is None:
-        _market = MarketData()
+    if _market:
+        return _market
+    _market = MarketData()
     return _market
 
 
@@ -149,10 +150,14 @@ class RelayReader(Protocol):
 
 def _integer(value: Any, field: str) -> int:
     """Parse an integer-valued API field without precision loss."""
-    if isinstance(value, bool) or value is None or isinstance(value, float):
+    if isinstance(value, bool) or isinstance(value, float):
+        raise RewardProviderError(f"{field} is not an exact integer")
+    if isinstance(value, (Decimal, int, str)):
+        raw_value = value
+    else:
         raise RewardProviderError(f"{field} is not an exact integer")
     try:
-        parsed = Decimal(str(value))
+        parsed = Decimal(str(raw_value))
     except InvalidOperation as error:
         raise RewardProviderError(f"{field} is not numeric") from error
     if parsed != parsed.to_integral_value():
@@ -349,7 +354,7 @@ class DuneRewardProvider:
 
 def _utc_timestamp(when: datetime) -> int:
     """Return a Unix timestamp while treating naive values as UTC."""
-    aware = when.replace(tzinfo=UTC) if when.tzinfo is None else when.astimezone(UTC)
+    aware = when.astimezone(UTC) if when.tzinfo else when.replace(tzinfo=UTC)
     return int(aware.timestamp())
 
 
@@ -398,9 +403,10 @@ class BeaconNode:
         payload = self._payload(
             f"/eth/v1/beacon/states/{slot}/validators/{validator_index}"
         )
-        if payload is None or payload.get("finalized") is not True:
+        if payload and payload.get("finalized"):
+            data = payload.get("data")
+        else:
             raise RewardProviderError(f"QuickNode state {slot} is not finalized")
-        data = payload.get("data")
         if not isinstance(data, dict):
             raise RewardProviderError(f"QuickNode state {slot} has no validator")
         if str(data.get("index", validator_index)) != str(validator_index):
@@ -421,14 +427,14 @@ class BeaconNode:
     def proposer_at(self, slot: int) -> int | None:
         """Return the proposer index, or None for a missed slot."""
         payload = self._payload(f"/eth/v1/beacon/headers/{slot}", allow_missing=True)
-        if payload is None:
-            return None
-        try:
-            return int(payload["data"]["header"]["message"]["proposer_index"])
-        except (KeyError, TypeError, ValueError) as error:
-            raise RewardProviderError(
-                f"Malformed proposer header for slot {slot}"
-            ) from error
+        if payload:
+            try:
+                return int(payload["data"]["header"]["message"]["proposer_index"])
+            except (KeyError, TypeError, ValueError) as error:
+                raise RewardProviderError(
+                    f"Malformed proposer header for slot {slot}"
+                ) from error
+        return None
 
 
 class Etherscan:
@@ -436,7 +442,7 @@ class Etherscan:
 
     def __init__(self, key: str | None = None, session: Session | None = None) -> None:
         """Initialize the Etherscan client."""
-        self.key = C.ETHERSCAN if key is None else key
+        self.key = key or C.ETHERSCAN
         self.session = session or requests.Session()
 
     def call(self, **params: Any) -> list[Any] | None:
@@ -477,7 +483,7 @@ class Etherscan:
             if str(payload.get("status")) != "1":
                 raise RewardProviderError(f"Etherscan returned {payload.get('result')}")
             result = payload.get("result")
-            return None if result is None else str(result)
+            return str(result) if result else None
 
         try:
             return market().try_again(_call)
@@ -492,12 +498,13 @@ class Etherscan:
         page = 1
         while True:
             batch = self.call(page=page, offset=C.ETHERSCAN_PAGE_SIZE, **params)
-            if batch is None:
+            if isinstance(batch, list):
+                records.extend(batch)
+                if len(batch) < C.ETHERSCAN_PAGE_SIZE:
+                    return records
+                page += 1
+            else:
                 return None
-            records.extend(batch)
-            if len(batch) < C.ETHERSCAN_PAGE_SIZE:
-                return records
-            page += 1
 
     def block_by_time(self, when: datetime, closest: str) -> int | None:
         """Resolve a UTC timestamp to an execution block number."""
@@ -517,7 +524,7 @@ class RelayIndex:
         self, relays: list[str] | None = None, session: Session | None = None
     ) -> None:
         """Initialize the relay index."""
-        self.relays = list(C.MEV_RELAYS) if relays is None else relays
+        self.relays = relays or list(C.MEV_RELAYS)
         self.session = session or requests.Session()
 
     def payloads(self, pubkey: str) -> dict[int, int]:
@@ -592,9 +599,11 @@ class QuickNodeRewardProvider:
         if start["pubkey"].lower() != end["pubkey"].lower():
             raise RewardProviderError("Validator pubkey changed between boundaries")
         moved = self.capital_moved(window, start["pubkey"])
-        if moved is None:
+        if isinstance(moved, bool):
+            capital_moved = moved
+        else:
             raise RewardProviderError("Capital movement could not be checked")
-        if moved:
+        if capital_moved:
             raise RewardProviderError("Capital movement makes balance delta ambiguous")
         return RewardTotal(
             consensus_gwei=int(end["balance"]) - int(start["balance"]),
@@ -613,17 +622,18 @@ class QuickNodeRewardProvider:
             return self._block_ranges[window]
         first = self.scan.block_by_time(window.start, "after")
         last = self.scan.block_by_time(window.end - timedelta(seconds=1), "before")
-        if first is None or last is None:
-            return None
-        self._block_ranges[window] = (first, last)
-        return first, last
+        if isinstance(first, int) and isinstance(last, int):
+            self._block_ranges[window] = (first, last)
+            return first, last
+        return None
 
     def capital_moved(self, window: RewardWindow, pubkey: str) -> bool | None:
         """Detect deposits, withdrawals, and configured capital requests."""
         bounds = self._block_range(window)
-        if bounds is None:
+        if bounds:
+            first, last = bounds
+        else:
             return None
-        first, last = bounds
         logs = self.scan.paged(
             module="logs",
             action="getLogs",
@@ -632,9 +642,10 @@ class QuickNodeRewardProvider:
             fromBlock=first,
             toBlock=last,
         )
-        if logs is None:
+        if isinstance(logs, list):
+            stripped = pubkey.lower().removeprefix("0x")
+        else:
             return None
-        stripped = pubkey.lower().removeprefix("0x")
         if any(stripped in str(log.get("data", "")).lower() for log in logs):
             return True
         withdrawals = self.scan.paged(
@@ -644,12 +655,14 @@ class QuickNodeRewardProvider:
             startblock=first,
             endblock=last,
         )
-        if withdrawals is None:
+        if isinstance(withdrawals, list):
+            validator_withdrew = any(
+                str(row.get("validatorIndex")) == str(self.validator_index)
+                for row in withdrawals
+            )
+        else:
             return None
-        if any(
-            str(row.get("validatorIndex")) == str(self.validator_index)
-            for row in withdrawals
-        ):
+        if validator_withdrew:
             return True
         predeploys = {
             C.WITHDRAWAL_REQUEST_PREDEPLOY.lower(),
@@ -670,12 +683,14 @@ class QuickNodeRewardProvider:
                     startblock=first,
                     endblock=last,
                 )
-                if entries is None:
+                if isinstance(entries, list):
+                    if any(
+                        str(entry.get("to", "")).lower() in predeploys
+                        for entry in entries
+                    ):
+                        return True
+                else:
                     return None
-                if any(
-                    str(entry.get("to", "")).lower() in predeploys for entry in entries
-                ):
-                    return True
         return False
 
     def candidates(
@@ -683,9 +698,10 @@ class QuickNodeRewardProvider:
     ) -> tuple[dict[int, list[dict[str, Any]]], dict[int, dict[str, Any]]] | None:
         """Enumerate inbound payments and coinbase blocks in a window."""
         bounds = self._block_range(window)
-        if bounds is None:
+        if bounds:
+            first, last = bounds
+        else:
             return None
-        first, last = bounds
         transfers: dict[int, list[dict[str, Any]]] = {}
         for action in ("txlist", "txlistinternal"):
             entries = self.scan.paged(
@@ -695,36 +711,38 @@ class QuickNodeRewardProvider:
                 startblock=first,
                 endblock=last,
             )
-            if entries is None:
+            if isinstance(entries, list):
+                for entry in entries:
+                    if not isinstance(entry, dict):
+                        return None
+                    stamp = entry.get("timeStamp")
+                    if stamp and not (window.start <= to_utc(int(stamp)) < window.end):
+                        continue
+                    if str(entry.get("to", "")).lower() != self.fee_recipient:
+                        continue
+                    if _integer(entry.get("value", 0), "transfer value") <= 0:
+                        continue
+                    block = _integer(entry.get("blockNumber"), "transfer block")
+                    transfers.setdefault(block, []).append(entry)
+            else:
                 return None
-            for entry in entries:
-                if not isinstance(entry, dict):
-                    return None
-                stamp = entry.get("timeStamp")
-                if stamp and not (window.start <= to_utc(int(stamp)) < window.end):
-                    continue
-                if str(entry.get("to", "")).lower() != self.fee_recipient:
-                    continue
-                if _integer(entry.get("value", 0), "transfer value") <= 0:
-                    continue
-                block = _integer(entry.get("blockNumber"), "transfer block")
-                transfers.setdefault(block, []).append(entry)
         mined = self.scan.paged(
             module="account",
             action="getminedblocks",
             address=self.fee_recipient,
             blocktype="blocks",
         )
-        if mined is None:
-            return None
         coinbase: dict[int, dict[str, Any]] = {}
-        for record in mined:
-            if not isinstance(record, dict):
-                return None
-            stamp = record.get("timeStamp")
-            if stamp and window.start <= to_utc(int(stamp)) < window.end:
-                block = _integer(record.get("blockNumber"), "mined block")
-                coinbase[block] = record
+        if isinstance(mined, list):
+            for record in mined:
+                if not isinstance(record, dict):
+                    return None
+                stamp = record.get("timeStamp")
+                if stamp and window.start <= to_utc(int(stamp)) < window.end:
+                    block = _integer(record.get("blockNumber"), "mined block")
+                    coinbase[block] = record
+        else:
+            return None
         return transfers, coinbase
 
     @staticmethod
@@ -759,9 +777,10 @@ class QuickNodeRewardProvider:
     def execution_rewards(self, window: RewardWindow, pubkey: str) -> int:
         """Return verified execution rewards in Wei."""
         found = self.candidates(window)
-        if found is None:
+        if found:
+            transfers, coinbase = found
+        else:
             raise RewardProviderError("Execution payments could not be enumerated")
-        transfers, coinbase = found
         blocks = set(transfers) | set(coinbase)
         if not blocks:
             return 0
@@ -771,18 +790,21 @@ class QuickNodeRewardProvider:
             when = self._block_time(block, transfers, coinbase)
             slot = self.beacon.slot_at(when)
             proposer = self.beacon.proposer_at(slot)
-            if proposer is None:
+            if isinstance(proposer, int):
+                proposed = proposer == self.validator_index
+            else:
                 raise RewardProviderError(
                     f"Proposer unavailable for paid block {block}"
                 )
-            if proposer != self.validator_index:
-                continue
-            if slot in delivered:
-                total += delivered[slot]
-            elif block in coinbase:
-                total += _integer(coinbase[block].get("blockReward"), "block reward")
-            else:
-                total += self.block_payment(transfers.get(block, []))
+            if proposed:
+                if slot in delivered:
+                    total += delivered[slot]
+                elif block in coinbase:
+                    total += _integer(
+                        coinbase[block].get("blockReward"), "block reward"
+                    )
+                else:
+                    total += self.block_payment(transfers.get(block, []))
         return total
 
     @staticmethod
@@ -812,23 +834,32 @@ class StakingRewards:
         fee_recipient: str | None = None,
     ) -> None:
         """Initialize configured providers or use injected test providers."""
-        if providers is None:
+        if isinstance(providers, dict):
+            configured = providers
+        else:
             validator = validator_index
-            if validator is None:
+            if isinstance(validator, int):
+                configured_validator = validator
+            else:
                 try:
-                    validator = int(C.VALIDATOR)
+                    configured_validator = int(C.VALIDATOR)
                 except ValueError as error:
                     raise RewardProviderError("VALIDATOR must be an integer") from error
-            recipient = C.ETH_ADDR if fee_recipient is None else fee_recipient
-            if validator < 0:
+            recipient = fee_recipient or C.ETH_ADDR
+            if configured_validator < 0:
                 raise RewardProviderError("VALIDATOR must be non-negative")
-            if re.fullmatch(r"0x[0-9a-fA-F]{40}", recipient) is None:
+            if re.fullmatch(r"0x[0-9a-fA-F]{40}", recipient):
+                configured = {}
+            else:
                 raise RewardProviderError("ETH_ADDR must be a 0x-prefixed address")
-            providers = {}
             if C.DUNE:
-                providers["dune"] = DuneRewardProvider(C.DUNE, validator, recipient)
-            providers["quicknode"] = QuickNodeRewardProvider(validator, recipient)
-        self.providers = providers
+                configured["dune"] = DuneRewardProvider(
+                    C.DUNE, configured_validator, recipient
+                )
+            configured["quicknode"] = QuickNodeRewardProvider(
+                configured_validator, recipient
+            )
+        self.providers = configured
 
     def fetch(self, windows: list[RewardWindow]) -> dict[RewardWindow, RewardEstimate]:
         """Fetch providers independently and blend complete values per window."""
@@ -848,16 +879,15 @@ class StakingRewards:
             values: list[tuple[str, Decimal]] = []
             for name in self.providers:
                 total = results[name].get(window)
-                if total is None:
-                    continue
-                if total.capital_change_gwei:
-                    LOGGER.warning(
-                        "%s reported a %s Gwei capital change for %s",
-                        name,
-                        total.capital_change_gwei,
-                        window,
-                    )
-                values.append((name, total.eth))
+                if total:
+                    if total.capital_change_gwei:
+                        LOGGER.warning(
+                            "%s reported a %s Gwei capital change for %s",
+                            name,
+                            total.capital_change_gwei,
+                            window,
+                        )
+                    values.append((name, total.eth))
             if not values:
                 continue
             source_values = dict(values)

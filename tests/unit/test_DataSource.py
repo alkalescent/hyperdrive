@@ -103,7 +103,9 @@ def nasdaq_ndx_payload(
     """Build Nasdaq's live constituent API response shape."""
     return {
         "data": {
-            "totalrecords": len(symbols) if totalrecords is None else totalrecords,
+            "totalrecords": totalrecords
+            if isinstance(totalrecords, int)
+            else len(symbols),
             "date": updated or datetime.today().strftime("%b %d, %Y %I:%M %p"),
             "data": {
                 "rows": [

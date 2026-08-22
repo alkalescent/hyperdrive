@@ -118,10 +118,10 @@ class TestEnvHelpers:
     def test_get_env_int_non_numeric(self, monkeypatch: "pytest.MonkeyPatch") -> None:
         """Test get_env_int with a non-numeric value returns default."""
         monkeypatch.setenv("TEST_INT_VAR", "not_a_number")
-        assert get_env_int("TEST_INT_VAR") is None
+        assert not get_env_int("TEST_INT_VAR")
         assert get_env_int("TEST_INT_VAR", 10) == 10
 
     def test_get_env_int_missing(self) -> None:
         """Test get_env_int with missing variable returns default."""
-        assert get_env_int("NONEXISTENT_VAR_12345") is None
+        assert not get_env_int("NONEXISTENT_VAR_12345")
         assert get_env_int("NONEXISTENT_VAR_12345", 99) == 99

@@ -113,12 +113,14 @@ class Calculator:
         Returns:
             Array of derivative values.
         """
-        if x is None:
-            x = np.array([0, 1])
         if isinstance(x, pd.Series):
-            x = x.to_numpy()
-        x = x.astype("float64")
-        x_delta = x[1] - x[0]
+            x_values = x.to_numpy()
+        elif isinstance(x, np.ndarray):
+            x_values = x
+        else:
+            x_values = np.array([0, 1])
+        x_values = x_values.astype("float64")
+        x_delta = x_values[1] - x_values[0]
         return np.gradient(y, x_delta)
 
     def cv(self, x: pd.Series | np.ndarray, ddof: int = 0) -> float | np.ndarray:

@@ -401,7 +401,7 @@ class TestBeaconNode:
         node = BeaconNode(BEACON)
         with pytest.raises(RewardProviderError, match="not finalized"):
             node.validator(1, VALIDATOR)
-        assert node.proposer_at(1) is None
+        assert not node.proposer_at(1)
 
     @responses.activate
     @pytest.mark.parametrize(
@@ -469,10 +469,10 @@ class TestEtherscan:
         responses.get(C.ETHERSCAN_URL, json={"status": "0", "result": "NOTOK"})
         responses.get(C.ETHERSCAN_URL, status=500)
         scan = Etherscan("key")
-        assert scan.call(action="bad") is None
-        assert scan.call_scalar(action="bad") is None
-        assert Etherscan("").call(action="x") is None
-        assert Etherscan("").call_scalar(action="x") is None
+        assert not scan.call(action="bad")
+        assert not scan.call_scalar(action="bad")
+        assert not Etherscan("").call(action="x")
+        assert not Etherscan("").call_scalar(action="x")
 
     def test_failed_page_and_nonnumeric_block(
         self, monkeypatch: pytest.MonkeyPatch
@@ -481,9 +481,9 @@ class TestEtherscan:
         monkeypatch.setattr(C, "ETHERSCAN_FREE_DELAY", 0)
         scan = Etherscan("key")
         monkeypatch.setattr(scan, "call", lambda **params: None)
-        assert scan.paged(action="x") is None
+        assert not scan.paged(action="x")
         monkeypatch.setattr(scan, "call_scalar", lambda **params: "bad")
-        assert scan.block_by_time(datetime(2026, 8, 1), "after") is None
+        assert not scan.block_by_time(datetime(2026, 8, 1), "after")
 
 
 class TestRelayIndex:
@@ -584,7 +584,7 @@ class TestQuickNodeProvider:
         )
         withdrawal_scan = FakeScan([[], [{"validatorIndex": str(VALIDATOR)}]])
         assert make_quick(scan=withdrawal_scan).capital_moved(window, PUBKEY) is True
-        assert make_quick(scan=FakeScan([None])).capital_moved(window, PUBKEY) is None
+        assert not make_quick(scan=FakeScan([None])).capital_moved(window, PUBKEY)
 
     def test_capital_clear_controller_and_range_failure(
         self, window: RewardWindow, monkeypatch: pytest.MonkeyPatch
@@ -597,9 +597,8 @@ class TestQuickNodeProvider:
         monkeypatch.setattr(C, "STAKING_CONTROLLERS", RECIPIENT)
         pages = [[], [], [{"to": C.CONSOLIDATION_REQUEST_PREDEPLOY}]]
         assert make_quick(scan=FakeScan(pages)).capital_moved(window, PUBKEY) is True
-        assert (
-            make_quick(scan=FakeScan(bounds=(None, 2))).capital_moved(window, PUBKEY)
-            is None
+        assert not make_quick(scan=FakeScan(bounds=(None, 2))).capital_moved(
+            window, PUBKEY
         )
 
     def test_candidates_filter_direction_time_and_value(
@@ -639,11 +638,11 @@ class TestQuickNodeProvider:
 
     def test_candidate_failures_are_unknown(self, window: RewardWindow) -> None:
         """Reject incomplete ranges, pages, and malformed records."""
-        assert make_quick(scan=FakeScan(bounds=(None, 2))).candidates(window) is None
-        assert make_quick(scan=FakeScan([None])).candidates(window) is None
-        assert make_quick(scan=FakeScan([["bad"]])).candidates(window) is None
-        assert make_quick(scan=FakeScan([[], [], None])).candidates(window) is None
-        assert make_quick(scan=FakeScan([[], [], ["bad"]])).candidates(window) is None
+        assert not make_quick(scan=FakeScan(bounds=(None, 2))).candidates(window)
+        assert not make_quick(scan=FakeScan([None])).candidates(window)
+        assert not make_quick(scan=FakeScan([["bad"]])).candidates(window)
+        assert not make_quick(scan=FakeScan([[], [], None])).candidates(window)
+        assert not make_quick(scan=FakeScan([[], [], ["bad"]])).candidates(window)
 
     def test_execution_uses_relay_coinbase_and_final_transfer(
         self, window: RewardWindow, monkeypatch: pytest.MonkeyPatch

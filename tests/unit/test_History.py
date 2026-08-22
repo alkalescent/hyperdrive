@@ -21,7 +21,7 @@ unfilled_ns = [
     None,
     True,
     None,
-]  # Last is None because unfill removes consecutive duplicates; index 8 repeats index 7 (True)
+]  # Last is absent because unfill removes consecutive duplicates at index 8.
 arr = np.array(ls)
 test_ffill = np.array(fs)
 test_nfill = np.array(ns)
@@ -87,14 +87,12 @@ class TestHistorian:
         # Check first elements (always kept)
         assert result_fs[0] == unfilled_fs[0]
         assert result_ns[0] == unfilled_ns[0]
-        # Check None positions match
+        # Check absent positions match
         assert all(
-            (r is None) == (e is None)
-            for r, e in zip(result_fs, unfilled_fs, strict=True)
+            type(r) is type(e) for r, e in zip(result_fs, unfilled_fs, strict=True)
         )
         assert all(
-            (r is None) == (e is None)
-            for r, e in zip(result_ns, unfilled_ns, strict=True)
+            type(r) is type(e) for r, e in zip(result_ns, unfilled_ns, strict=True)
         )
 
     def test_get_optimal_signals(self) -> None:
@@ -152,6 +150,6 @@ class TestHistorian:
         """Test preprocess with num_pca=0 (lines 190, 195)."""
         result = hist.preprocess(X, y, num_pca=0)
         X_train = result[0]
-        pca = result[7]  # pca should be None
+        pca = result[7]  # PCA should be absent.
         assert len(X_train) > 0
-        assert pca is None
+        assert not pca

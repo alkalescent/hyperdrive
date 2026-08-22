@@ -30,11 +30,12 @@ class Flow:
             workflow_content = file.read()
         line_pattern = '- cron: "(.*)"'
         match = re.search(line_pattern, workflow_content)
-        if match is None:
+        if match:
+            cron_line = match.group(1)
+        else:
             raise AttributeError(
                 f"{workflow_name}.yml doesn't have a scheduled cron job"
             )
-        cron_line = match.group(1)
 
         now = datetime.now(UTC)
         default_times = [now.minute, now.hour, now.day, now.month]

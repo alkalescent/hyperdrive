@@ -387,19 +387,17 @@ class MarketData:
         dfs = self.get_intraday(**kwargs)
         filenames = []
 
-        if dfs is None:
-            return filenames
-
-        for df in dfs:
-            date = df[C.TIME].iloc[0].strftime(C.DATE_FMT)
-            filename = self.finder.get_intraday_path(symbol, date, self.provider)
-            if os.path.exists(filename):
-                os.remove(filename)
-            save_fmt = f"{C.DATE_FMT} {C.TIME_FMT}"
-            df = self.reader.update_df(filename, df, C.TIME, save_fmt)
-            self.writer.update_csv(filename, df)
-            if os.path.exists(filename):
-                filenames.append(filename)
+        if dfs:
+            for df in dfs:
+                date = df[C.TIME].iloc[0].strftime(C.DATE_FMT)
+                filename = self.finder.get_intraday_path(symbol, date, self.provider)
+                if os.path.exists(filename):
+                    os.remove(filename)
+                save_fmt = f"{C.DATE_FMT} {C.TIME_FMT}"
+                df = self.reader.update_df(filename, df, C.TIME, save_fmt)
+                self.writer.update_csv(filename, df)
+                if os.path.exists(filename):
+                    filenames.append(filename)
         return filenames
 
     def get_unemployment_rate(
@@ -681,8 +679,7 @@ class MarketData:
         Returns:
             DataFrame with NDX constituents.
         """
-        if date is None:
-            date = datetime.now()
+        date = date or datetime.now()
         date_str = self.traveller.convert_date(date)
         df = self.get_saved_ndx()
         return self.standardize_ndx(df[df[C.TIME] <= date_str] if C.TIME in df else df)
@@ -864,8 +861,7 @@ class Indices(MarketData):
         Returns:
             DataFrame with NDX constituents.
         """
-        if date is None:
-            date = datetime.now()
+        date = date or datetime.now()
         old = super().get_ndx(date)
         date_str = self.traveller.convert_date(date)
         new = self.get_latest_ndx()
@@ -896,10 +892,8 @@ class AlpacaData(MarketData):
             Exception: If credentials are missing.
         """
         super().__init__()
-        if token is None:
-            token = os.environ.get("ALPACA")
-        if secret is None:
-            secret = os.environ.get("ALPACA_SECRET")
+        token = token or os.environ.get("ALPACA")
+        secret = secret or os.environ.get("ALPACA_SECRET")
         self.base = "https://data.alpaca.markets"
         self.token = os.environ.get("ALPACA_PAPER") if paper or C.TEST else token
         self.secret = (
@@ -1035,8 +1029,7 @@ class Polygon(MarketData):
             free: Use free tier rate limits (default: True).
         """
         super().__init__()
-        if token is None:
-            token = os.environ.get("POLYGON")
+        token = token or os.environ.get("POLYGON")
         self.client = RESTClient(token)
         self.provider = "polygon"
         self.free = free

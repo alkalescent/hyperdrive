@@ -25,15 +25,15 @@ def _limit_symbols(symbols: list[str], env_name: str) -> list[str]:
     """Return sorted unique symbols, optionally limited by an environment value."""
     ordered = sorted(set(symbols))
     raw_limit = os.environ.get(env_name)
-    if raw_limit is None:
-        return ordered
-    try:
-        limit = int(raw_limit)
-    except ValueError as error:
-        raise ValueError(f"{env_name} must be a positive integer") from error
-    if limit < 1:
-        raise ValueError(f"{env_name} must be a positive integer")
-    return ordered[:limit]
+    if raw_limit:
+        try:
+            limit = int(raw_limit)
+        except ValueError as error:
+            raise ValueError(f"{env_name} must be a positive integer") from error
+        if limit < 1:
+            raise ValueError(f"{env_name} must be a positive integer")
+        return ordered[:limit]
+    return ordered
 
 
 def _worker_timeout() -> int:

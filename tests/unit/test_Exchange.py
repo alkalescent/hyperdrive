@@ -595,7 +595,7 @@ class TestBinanceEdgeCases:
     def test_order_symbol_info_none(
         self, binance: Any, mock_binance_client: MagicMock
     ) -> None:
-        """Test order raises when symbol_info is None."""
+        """Test order raises when symbol information is absent."""
         mock_binance_client.get_symbol_info.return_value = None
         with pytest.raises(Exception, match="Symbol info not found"):
             binance.order("INVALID", "USD", "buy", 0.01)

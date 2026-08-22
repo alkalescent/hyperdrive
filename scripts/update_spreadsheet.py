@@ -94,9 +94,10 @@ def main() -> None:
     )
 
     worksheet = gspread.service_account().open("FIRE").get_worksheet(0)
-    if worksheet is None:
+    if worksheet:
+        frame = pd.DataFrame(worksheet.get_all_records())
+    else:
         raise RuntimeError("FIRE worksheet 0 does not exist")
-    frame = pd.DataFrame(worksheet.get_all_records())
     columns = list(frame.columns)
     editable = columns[: columns.index("Total")]
     frame["Date"] = pd.to_datetime(frame["Date"])
@@ -170,18 +171,20 @@ def main() -> None:
         for index, window in crypto_rows:
             estimate = estimates.get(window)
             price = prices.get(window)
-            if estimate is None or price is None:
+            if estimate and price:
+                usd = (estimate.eth * price).quantize(
+                    Decimal("1"), rounding=ROUND_HALF_UP
+                )
+                LOGGER.info(
+                    "Crypto %s: %s ETH from %s, %s USD",
+                    window.end.date(),
+                    estimate.eth,
+                    ", ".join(estimate.sources),
+                    usd,
+                )
+                writes.append((index + row_offset, column_numbers["Crypto"], int(usd)))
+            else:
                 LOGGER.warning("Crypto remains empty for %s", window.end.date())
-                continue
-            usd = (estimate.eth * price).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-            LOGGER.info(
-                "Crypto %s: %s ETH from %s, %s USD",
-                window.end.date(),
-                estimate.eth,
-                ", ".join(estimate.sources),
-                usd,
-            )
-            writes.append((index + row_offset, column_numbers["Crypto"], int(usd)))
 
     for row, column, value in writes:
         if dry_run:
