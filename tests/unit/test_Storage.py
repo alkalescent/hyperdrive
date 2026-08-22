@@ -121,7 +121,7 @@ class TestStore:
         (test_dir / "file1.txt").write_text("content1")
         (test_dir / "file2.txt").write_text("content2")
 
-        # Patch Pool to run sequentially (multiprocessing breaks moto)
+        # Run the spawn pool sequentially because multiprocessing breaks moto.
         class MockPool:
             def __enter__(self) -> "MockPool":
                 return self
@@ -132,8 +132,15 @@ class TestStore:
             def map(self, func: Any, iterable: Any) -> list[Any]:
                 return [func(item) for item in iterable]
 
-        with patch("hyperdrive.Storage.Pool", MockPool):
+        class MockContext:
+            def Pool(self) -> MockPool:  # noqa: N802
+                return MockPool()
+
+        with patch(
+            "hyperdrive.Storage.get_context", return_value=MockContext()
+        ) as context:
             store.upload_dir(path=str(test_dir))
+        context.assert_called_once_with("spawn")
 
         # Verify files were uploaded
         keys = store.get_keys(str(test_dir).replace(os.sep, "/"))
@@ -269,7 +276,7 @@ class TestStore:
         """Test downloading a directory from S3 (lines 80-82)."""
         from unittest.mock import patch
 
-        # Mock Pool to avoid multiprocessing issues
+        # Run the spawn pool sequentially because multiprocessing breaks moto.
         class MockPool:
             def __enter__(self) -> "MockPool":
                 return self
@@ -282,6 +289,13 @@ class TestStore:
                     func(*args)
                 return []
 
-        with patch("hyperdrive.Storage.Pool", MockPool):
+        class MockContext:
+            def Pool(self) -> MockPool:  # noqa: N802
+                return MockPool()
+
+        with patch(
+            "hyperdrive.Storage.get_context", return_value=MockContext()
+        ) as context:
             # Should not raise
             store.download_dir("data/")
+        context.assert_called_once_with("spawn")

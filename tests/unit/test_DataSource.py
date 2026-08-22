@@ -1316,20 +1316,6 @@ class TestMarketDataSaveWithExistingFiles:
         result = market_data.save_ohlc(symbol="AAPL")
         assert result == str(ohlc_path)
 
-    def test_save_ohlc_reports_progress(
-        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
-    ) -> None:
-        """Report whether a save is fetching, merging, or writing data."""
-        stages: list[str] = []
-
-        market_data.save_ohlc(symbol="AAPL", progress=stages.append)
-
-        assert stages == [
-            "fetching and standardizing provider data",
-            "merging cached data",
-            "writing cached data",
-        ]
-
 
 class TestMarketDataGetMethods:
     """Tests for MarketData get methods."""

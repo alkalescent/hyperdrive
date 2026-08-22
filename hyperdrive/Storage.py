@@ -2,7 +2,7 @@
 
 import os
 from datetime import UTC, datetime, timedelta
-from multiprocessing import Pool
+from multiprocessing import get_context
 from typing import Any
 
 import boto3
@@ -79,7 +79,7 @@ class Store:
             **kwargs: Arguments passed to PathFinder.get_all_paths().
         """
         paths = self.finder.get_all_paths(**kwargs)
-        with Pool() as p:
+        with get_context("spawn").Pool() as p:
             p.map(self.upload_file, paths)
 
     def delete_objects(self, keys: list[str]) -> None:
@@ -155,7 +155,7 @@ class Store:
             path: S3 prefix path to download.
         """
         keys = self.get_keys(path)
-        with Pool() as p:
+        with get_context("spawn").Pool() as p:
             p.starmap(self.key_exists, zip(keys, [True] * len(keys), strict=True))
 
     def copy_object(self, src: str, dst: str) -> None:

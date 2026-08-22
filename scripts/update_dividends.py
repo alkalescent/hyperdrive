@@ -1,40 +1,52 @@
+"""Update recent stock dividend data from Polygon."""
+
 import os
-from multiprocessing import Process, Value
+from multiprocessing import get_context
+from typing import Any
 
 from hyperdrive import Constants as C
 from hyperdrive.Constants import PathFinder
-from hyperdrive.DataSource import Polygon
-
-counter = Value("i", 0)
-poly = Polygon()
-symbols = poly.get_symbols()
+from hyperdrive.DataSource import MarketData, Polygon
 
 
-def update_poly_dividends() -> None:
-    """Update dividend data from Polygon.io for all symbols."""
+def update_poly_dividends(symbols: list[str], counter: Any) -> None:
+    """Update dividend data with a client owned by this worker."""
+    polygon = Polygon()
     for symbol in symbols:
         try:
-            filename = poly.save_dividends(
+            polygon.save_dividends(
                 symbol=symbol,
                 timeframe="3m",
                 retries=1 if C.TEST else C.DEFAULT_RETRIES,
             )
             with counter.get_lock():
                 counter.value += 1
-        except Exception as e:
+        except Exception as error:
             print(f"Polygon.io dividend update failed for {symbol}.")
-            print(e)
+            print(error)
         finally:
             filename = PathFinder().get_dividends_path(
-                symbol=symbol, provider=poly.provider
+                symbol=symbol, provider=polygon.provider
             )
             if C.CI and os.path.exists(filename):
                 os.remove(filename)
 
 
-p1 = Process(target=update_poly_dividends)
-p1.start()
-p1.join()
+def main() -> int:
+    """Run the dividend worker with spawn-based multiprocessing."""
+    symbols = MarketData().get_symbols()
+    context = get_context("spawn")
+    counter = context.Value("i", 0)
+    process = context.Process(
+        target=update_poly_dividends,
+        args=(symbols, counter),
+    )
+    process.start()
+    process.join()
+    if symbols:
+        return 0 if counter.value / len(symbols) >= 0.05 else 1
+    return 1
 
-if counter.value / len(symbols) < 0.05:
-    exit(1)
+
+if __name__ == "__main__":
+    raise SystemExit(main())
