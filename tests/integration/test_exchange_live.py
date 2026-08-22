@@ -34,7 +34,7 @@ class TestBinanceIntegration:
 
         bn = Binance(testnet=True)
         info = bn.client.get_symbol_info("BTCUSDT")
-        assert info is not None
+        assert isinstance(info, dict)
 
 
 class TestKrakenIntegration:

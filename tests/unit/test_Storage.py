@@ -5,6 +5,7 @@ eliminating the need for real AWS credentials and network calls.
 """
 
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -96,7 +97,7 @@ class TestStore:
     def test_get_bucket(self, store: Store) -> None:
         """Test getting S3 bucket resource."""
         bucket = store.get_bucket()
-        assert bucket is not None
+        assert hasattr(bucket, "Object")
 
     def test_upload_file(self, store: Store, tmp_path: Path) -> None:
         """Test uploading a file to S3."""
@@ -240,7 +241,7 @@ class TestStore:
         modified_time = store.last_modified("README.md")
 
         # Should return a datetime
-        assert modified_time is not None
+        assert isinstance(modified_time, datetime)
         assert hasattr(modified_time, "year")
 
     def test_modified_delta(self, store: Store, s3_bucket: Any) -> None:
@@ -248,7 +249,7 @@ class TestStore:
         delta = store.modified_delta("README.md")
 
         # Should return a timedelta
-        assert delta is not None
+        assert isinstance(delta, timedelta)
         assert hasattr(delta, "total_seconds")
         # File was just created, so delta should be small
         assert delta.total_seconds() < 10

@@ -309,25 +309,38 @@ class MarketData:
         filtered = self.reader.data_in_timeframe(df, C.TIME, timeframe)
         return filtered
 
-    def save_ohlc(self, **kwargs: Any) -> str | None:
+    def save_ohlc(
+        self, progress: Callable[[str], None] | None = None, **kwargs: Any
+    ) -> str | None:
         """Save OHLC data for a symbol.
 
         Args:
+            progress: Optional callback receiving save-stage descriptions.
             **kwargs: Must include 'symbol'. Other args passed to get_ohlc.
 
         Returns:
             Path to saved file, or None if save failed.
         """
-        return self._save_ohlc(kwargs["symbol"], **kwargs)
+        return self._save_ohlc(kwargs["symbol"], progress=progress, **kwargs)
 
-    def _save_ohlc(self, storage_symbol: str, **kwargs: Any) -> str | None:
+    def _save_ohlc(
+        self,
+        storage_symbol: str,
+        progress: Callable[[str], None] | None = None,
+        **kwargs: Any,
+    ) -> str | None:
         """Save fetched OHLC data under a possibly different storage symbol."""
         filename = self.finder.get_ohlc_path(storage_symbol, self.provider)
         if os.path.exists(filename):
             os.remove(filename)
-        df = self.reader.update_df(
-            filename, self.get_ohlc(**kwargs), C.TIME, C.DATE_FMT
-        )
+        if progress:
+            progress("fetching and standardizing provider data")
+        fetched = self.get_ohlc(**kwargs)
+        if progress:
+            progress("merging cached data")
+        df = self.reader.update_df(filename, fetched, C.TIME, C.DATE_FMT)
+        if progress:
+            progress("writing cached data")
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
@@ -750,7 +763,10 @@ class MarketData:
         timestamp = data.get("date")
         if not isinstance(timestamp, str):
             raise ValueError("Nasdaq response has no timestamp")
-        updated = datetime.strptime(timestamp, "%b %d, %Y %I:%M %p")
+        try:
+            updated = datetime.strptime(timestamp, "%b %d, %Y %I:%M %p")
+        except ValueError:
+            updated = datetime.strptime(timestamp, "%b %d, %Y")
         age = (datetime.today().date() - updated.date()).days
         if age < 0 or age > NDX_MAX_API_AGE_DAYS:
             raise ValueError(f"Nasdaq response is {age} days old")
@@ -988,7 +1004,9 @@ class AlpacaData(MarketData):
             func=_get_ohlc, symbol=symbol, timeframe=timeframe, **kwargs
         )
 
-    def save_ohlc(self, **kwargs: Any) -> str | None:
+    def save_ohlc(
+        self, progress: Callable[[str], None] | None = None, **kwargs: Any
+    ) -> str | None:
         """Save OHLC data, converting Alpaca crypto symbols to Polygon format.
 
         Overrides base save_ohlc to convert Alpaca crypto symbols
@@ -996,13 +1014,14 @@ class AlpacaData(MarketData):
         for S3-safe file paths.
 
         Args:
+            progress: Optional callback receiving save-stage descriptions.
             **kwargs: Must include 'symbol'. Other args passed to parent.
 
         Returns:
             Path to saved file, or None if save failed.
         """
         storage_symbol = C.ALPC_TO_POLY_CRYPTO.get(kwargs["symbol"], kwargs["symbol"])
-        return self._save_ohlc(storage_symbol, **kwargs)
+        return self._save_ohlc(storage_symbol, progress=progress, **kwargs)
 
 
 class Polygon(MarketData):

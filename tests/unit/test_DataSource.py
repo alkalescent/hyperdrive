@@ -604,10 +604,27 @@ class TestLatestNdx:
         assert {"GOOG", "GOOGL"}.issubset(result[C.SYMBOL])
         assert len(responses.calls) == 1
         request = responses.calls[0].request
-        assert request is not None
+        assert request
         headers = request.headers
-        assert headers is not None
+        assert headers
         assert headers["Accept"] == "application/json"
+
+    @responses.activate
+    def test_nasdaq_accepts_date_without_time(self, market_data: Any) -> None:
+        """Accept the date-only timestamp shape returned by Nasdaq."""
+        symbols = ndx_symbols()
+        responses.add(
+            responses.GET,
+            self.nasdaq_url,
+            json=nasdaq_ndx_payload(
+                symbols, updated=datetime.today().strftime("%b %d, %Y")
+            ),
+            status=200,
+        )
+
+        result = market_data.get_latest_ndx(retries=1)
+
+        assert set(result[C.SYMBOL]) == set(symbols)
 
     @pytest.mark.parametrize(
         "failure",
@@ -961,7 +978,7 @@ class TestGlassnode:
         mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
         df = glassnode.get_s2f_ratio(timeframe="1y")
         # Returns data from the mock
-        assert df is not None
+        assert isinstance(df, pd.DataFrame)
 
     def test_get_diff_ribbon(
         self,
@@ -972,7 +989,7 @@ class TestGlassnode:
         """Test getting difficulty ribbon from Glassnode API."""
         mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
         df = glassnode.get_diff_ribbon(timeframe="1y")
-        assert df is not None
+        assert isinstance(df, pd.DataFrame)
 
     def test_get_sopr(
         self,
@@ -983,7 +1000,7 @@ class TestGlassnode:
         """Test getting SOPR from Glassnode API."""
         mock_file_ops["reader"].data_in_timeframe.side_effect = lambda df, col, tf: df
         df = glassnode.get_sopr(timeframe="1y")
-        assert df is not None
+        assert isinstance(df, pd.DataFrame)
 
 
 class TestPolygonIntraday:
@@ -1296,6 +1313,20 @@ class TestMarketDataSaveWithExistingFiles:
 
         result = market_data.save_ohlc(symbol="AAPL")
         assert result == str(ohlc_path)
+
+    def test_save_ohlc_reports_progress(
+        self, market_data: Any, mock_file_ops: dict[str, MagicMock]
+    ) -> None:
+        """Report whether a save is fetching, merging, or writing data."""
+        stages: list[str] = []
+
+        market_data.save_ohlc(symbol="AAPL", progress=stages.append)
+
+        assert stages == [
+            "fetching and standardizing provider data",
+            "merging cached data",
+            "writing cached data",
+        ]
 
 
 class TestMarketDataGetMethods:

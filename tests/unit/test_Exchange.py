@@ -560,7 +560,7 @@ class TestKraken:
             json={"result": {"XXBT": "1.0"}, "error": []},
         )
         result = kraken.make_auth_req("/0/private/Balance")
-        assert result is not None
+        assert isinstance(result, dict)
 
 
 class TestAlpacaExEdgeCases:

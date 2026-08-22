@@ -47,24 +47,28 @@ class TestHistorian:
     def test_from_holding(self) -> None:
         """Test creating portfolio from holding strategy."""
         stats = hist.from_holding(close).stats()
-        assert stats is not None and "Sortino Ratio" in stats
+        assert isinstance(stats, pd.Series)
+        assert "Sortino Ratio" in stats
 
     def test_from_signals(self) -> None:
         """Test creating portfolio from trading signals."""
         stats = hist.from_signals(close, pd.Series(test_ffill)).stats()
-        assert stats is not None and "Sortino Ratio" in stats
+        assert isinstance(stats, pd.Series)
+        assert "Sortino Ratio" in stats
 
     def test_from_orders(self) -> None:
         """Test creating portfolio from order data."""
         size = pd.DataFrame({"AAPL": [1, 0], "META": [0, 1]}, index=orders_index)
         stats = hist.from_orders(orders_close, size).stats()
-        assert stats is not None and "Sortino Ratio" in stats
+        assert isinstance(stats, pd.Series)
+        assert "Sortino Ratio" in stats
 
     def test_optimize_portfolio(self) -> None:
         """Test portfolio optimization with indicator."""
         indicator = pd.Series.diff
         stats = hist.optimize_portfolio(orders_close, indicator, 1, "day", 225).stats()
-        assert stats is not None and "Sortino Ratio" in stats
+        assert isinstance(stats, pd.Series)
+        assert "Sortino Ratio" in stats
 
     def test_fill(self) -> None:
         """Test filling signal gaps with ffill and nearest methods."""
@@ -136,7 +140,8 @@ class TestHistorian:
         stats = hist.optimize_portfolio(
             close_with_time, indicator, 1, "day", 225
         ).stats()
-        assert stats is not None and "Sortino Ratio" in stats
+        assert isinstance(stats, pd.Series)
+        assert "Sortino Ratio" in stats
 
     def test_unfill_empty(self) -> None:
         """Test unfill with empty list (line 115)."""

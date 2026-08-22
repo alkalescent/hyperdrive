@@ -1,8 +1,10 @@
 """Update OHLC price data from Polygon and Alpaca APIs."""
 
+import faulthandler
 import os
-from multiprocessing import Process, Value
-from time import monotonic
+import signal
+from multiprocessing import get_context
+from time import monotonic, sleep
 from typing import Any
 
 from hyperdrive import Constants as C
@@ -10,6 +12,13 @@ from hyperdrive.Constants import PathFinder
 from hyperdrive.DataSource import AlpacaData, Indices, MarketData, Polygon
 
 DEFAULT_WORKER_TIMEOUT_SECONDS = 60 * 60
+
+
+def _enable_stack_dumps() -> None:
+    """Allow the parent to request a worker traceback before termination."""
+    stack_signal = getattr(signal, "SIGUSR1", None)
+    if stack_signal:
+        faulthandler.register(stack_signal, all_threads=True)
 
 
 def _limit_symbols(symbols: list[str], env_name: str) -> list[str]:
@@ -62,8 +71,17 @@ def _update_symbol(
     label = f"[{source.provider} {index}/{total}] {api_symbol}"
     started = monotonic()
     print(f"{label}: starting", flush=True)
+
+    def progress(stage: str) -> None:
+        print(f"{label}: {stage}", flush=True)
+
     try:
-        source.save_ohlc(symbol=api_symbol, timeframe=C.FEW_DAYS, retries=1)
+        source.save_ohlc(
+            symbol=api_symbol,
+            timeframe=C.FEW_DAYS,
+            retries=1,
+            progress=progress,
+        )
         with counter.get_lock():
             counter.value += 1
         elapsed = monotonic() - started
@@ -77,6 +95,7 @@ def _update_symbol(
 
 def update_poly_ohlc(symbols: list[str], counter: Any) -> None:
     """Update Polygon OHLC data using a client created inside the worker."""
+    _enable_stack_dumps()
     polygon = Polygon(os.environ["POLYGON"])
     total = len(symbols)
     for index, symbol in enumerate(symbols, start=1):
@@ -87,6 +106,7 @@ def update_alpc_ohlc(
     stock_symbols: list[str], crypto_symbols: list[str], counter: Any
 ) -> None:
     """Update Alpaca stock and crypto OHLC data inside the worker."""
+    _enable_stack_dumps()
     alpaca = AlpacaData(paper=C.TEST)
     symbol_pairs = [(symbol, symbol) for symbol in stock_symbols]
     symbol_pairs.extend(
@@ -107,7 +127,7 @@ def _load_symbol_scope() -> tuple[list[str], list[str], list[str]]:
     return stocks + polygon_crypto, alpaca_stocks, alpaca_crypto
 
 
-def _wait_for_processes(processes: list[Process], timeout: int) -> bool:
+def _wait_for_processes(processes: list[Any], timeout: int) -> bool:
     """Wait for all workers within one shared deadline and terminate stalls."""
     deadline = monotonic() + timeout
     for process in processes:
@@ -117,6 +137,13 @@ def _wait_for_processes(processes: list[Process], timeout: int) -> bool:
     if timed_out:
         names = ", ".join(process.name for process in timed_out)
         print(f"OHLC worker timeout after {timeout}s: {names}", flush=True)
+        stack_signal = getattr(signal, "SIGUSR1", None)
+        if stack_signal:
+            print("Requesting stack traces from stalled workers", flush=True)
+            for process in timed_out:
+                if process.pid:
+                    os.kill(process.pid, stack_signal)
+            sleep(1)
         for process in timed_out:
             process.terminate()
         for process in timed_out:
@@ -134,9 +161,11 @@ def _wait_for_processes(processes: list[Process], timeout: int) -> bool:
 def main() -> int:
     """Run the configured OHLC update and return a process exit code."""
     polygon_symbols, alpaca_stocks, alpaca_crypto = _load_symbol_scope()
-    counter = Value("i", 0)
+    # Spawn prevents inherited boto3 and HTTP session state from deadlocking workers.
+    context = get_context("spawn")
+    counter = context.Value("i", 0)
     processes = [
-        Process(
+        context.Process(
             name="alpaca",
             target=update_alpc_ohlc,
             args=(alpaca_stocks, alpaca_crypto, counter),
@@ -148,7 +177,7 @@ def main() -> int:
         print("TEST=true: Polygon requests are excluded from this run", flush=True)
     else:
         processes.append(
-            Process(
+            context.Process(
                 name="polygon",
                 target=update_poly_ohlc,
                 args=(polygon_symbols, counter),
@@ -166,18 +195,20 @@ def main() -> int:
     for process in processes:
         process.start()
 
-    if not _wait_for_processes(processes, _worker_timeout()):
-        return 1
-    if total_symbols == 0:
-        print("OHLC update has no configured symbols", flush=True)
-        return 1
+    workers_succeeded = _wait_for_processes(processes, _worker_timeout())
+    if workers_succeeded:
+        if total_symbols == 0:
+            print("OHLC update has no configured symbols", flush=True)
+            return 1
 
-    success_rate = counter.value / total_symbols
-    print(
-        f"OHLC update completed: {counter.value}/{total_symbols} ({success_rate:.1%})",
-        flush=True,
-    )
-    return 0 if success_rate >= C.SCRIPT_FAILURE_THRESHOLD else 1
+        success_rate = counter.value / total_symbols
+        print(
+            f"OHLC update completed: {counter.value}/{total_symbols} "
+            f"({success_rate:.1%})",
+            flush=True,
+        )
+        return 0 if success_rate >= C.SCRIPT_FAILURE_THRESHOLD else 1
+    return 1
 
 
 if __name__ == "__main__":

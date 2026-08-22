@@ -436,7 +436,7 @@ class Etherscan:
 
     def __init__(self, key: str | None = None, session: Session | None = None) -> None:
         """Initialize the Etherscan client."""
-        self.key = key if key is not None else C.ETHERSCAN
+        self.key = C.ETHERSCAN if key is None else key
         self.session = session or requests.Session()
 
     def call(self, **params: Any) -> list[Any] | None:
@@ -477,7 +477,7 @@ class Etherscan:
             if str(payload.get("status")) != "1":
                 raise RewardProviderError(f"Etherscan returned {payload.get('result')}")
             result = payload.get("result")
-            return str(result) if result is not None else None
+            return None if result is None else str(result)
 
         try:
             return market().try_again(_call)
@@ -517,7 +517,7 @@ class RelayIndex:
         self, relays: list[str] | None = None, session: Session | None = None
     ) -> None:
         """Initialize the relay index."""
-        self.relays = relays if relays is not None else list(C.MEV_RELAYS)
+        self.relays = list(C.MEV_RELAYS) if relays is None else relays
         self.session = session or requests.Session()
 
     def payloads(self, pubkey: str) -> dict[int, int]:
@@ -812,25 +812,23 @@ class StakingRewards:
         fee_recipient: str | None = None,
     ) -> None:
         """Initialize configured providers or use injected test providers."""
-        if providers is not None:
-            self.providers = providers
-            return
-        validator = validator_index
-        if validator is None:
-            try:
-                validator = int(C.VALIDATOR)
-            except ValueError as error:
-                raise RewardProviderError("VALIDATOR must be an integer") from error
-        recipient = fee_recipient if fee_recipient is not None else C.ETH_ADDR
-        if validator < 0:
-            raise RewardProviderError("VALIDATOR must be non-negative")
-        if re.fullmatch(r"0x[0-9a-fA-F]{40}", recipient) is None:
-            raise RewardProviderError("ETH_ADDR must be a 0x-prefixed address")
-        configured: dict[str, RewardProvider] = {}
-        if C.DUNE:
-            configured["dune"] = DuneRewardProvider(C.DUNE, validator, recipient)
-        configured["quicknode"] = QuickNodeRewardProvider(validator, recipient)
-        self.providers = configured
+        if providers is None:
+            validator = validator_index
+            if validator is None:
+                try:
+                    validator = int(C.VALIDATOR)
+                except ValueError as error:
+                    raise RewardProviderError("VALIDATOR must be an integer") from error
+            recipient = C.ETH_ADDR if fee_recipient is None else fee_recipient
+            if validator < 0:
+                raise RewardProviderError("VALIDATOR must be non-negative")
+            if re.fullmatch(r"0x[0-9a-fA-F]{40}", recipient) is None:
+                raise RewardProviderError("ETH_ADDR must be a 0x-prefixed address")
+            providers = {}
+            if C.DUNE:
+                providers["dune"] = DuneRewardProvider(C.DUNE, validator, recipient)
+            providers["quicknode"] = QuickNodeRewardProvider(validator, recipient)
+        self.providers = providers
 
     def fetch(self, windows: list[RewardWindow]) -> dict[RewardWindow, RewardEstimate]:
         """Fetch providers independently and blend complete values per window."""
