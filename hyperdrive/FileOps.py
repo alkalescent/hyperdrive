@@ -14,6 +14,9 @@ from .Constants import TZ
 from .Storage import Store
 from .TimeMachine import TimeTraveller
 
+# TODO: consider collapsing FileReader and FileWriter into one class, since both
+# hold the same Store and callers usually need both.
+
 
 class FileReader:
     """File reading operations with S3 synchronization.
@@ -305,3 +308,8 @@ class FileWriter:
             pickle.dump(data, file)
         self.store.upload_file(filename)
         return True
+
+
+# TODO: add a bulk column rename that takes a data directory and an old-to-new
+# column mapping, then applies df.rename(columns=mapping) to every CSV in it.
+# Needed whenever a name in Constants changes and the stored files fall behind.

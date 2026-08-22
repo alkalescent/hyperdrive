@@ -40,6 +40,9 @@ class Historian:
         """Initialize the Historian with a Calculator instance."""
         self.calc = Calculator()
 
+    # TODO: add a generic column calculation helper taking a Calculator method, a
+    # DataFrame, the column names to operate on, and that method's own arguments.
+
     def from_holding(self, close: pd.Series, init_cash: float = 1000) -> vbt.Portfolio:
         """Create a portfolio based on buy-and-hold strategy.
 

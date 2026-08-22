@@ -11,6 +11,9 @@ class HyperDrive:
         None currently - placeholder for future implementation.
     """
 
+    # TODO: give HyperDrive Broker, Backtester, and Strategy attributes, assembled
+    # here so they can be swapped in tests.
+
     def __init__(self) -> None:
         """Initialize HyperDrive instance."""
         pass

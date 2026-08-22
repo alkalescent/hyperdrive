@@ -75,7 +75,7 @@ DEC = "Dec"  # Declaration Date
 PAY = "Pay"  # Payment Date
 
 # Splits
-RATIO = "Ratio"
+RATIO = "Ratio"  # newShares = oldShares / ratio
 
 # OHLCV
 # DATE = 'Date'

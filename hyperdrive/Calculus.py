@@ -334,6 +334,9 @@ class Calculator:
         vertices += center
         return vertices
 
+    # TODO: four Platonic solids remain unimplemented: tetrahedron, cube,
+    # dodecahedron, and icosahedron.
+
     def get_3D_circle(
         self,
         center: np.ndarray,
@@ -342,6 +345,9 @@ class Calculator:
         refinement: int = 360,
     ) -> np.ndarray:
         """Generate points on a 3D circle in an arbitrary plane.
+
+        Uses the parametric construction from https://math.stackexchange.com/a/73242,
+        chosen over the alternative at https://math.stackexchange.com/a/2375120.
 
         Args:
             center: Center of the circle.

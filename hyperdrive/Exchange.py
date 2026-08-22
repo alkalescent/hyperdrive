@@ -267,6 +267,8 @@ class Kraken(CEX):
         data["nonce"] = self.gen_nonce()
         headers: dict[str, str] = {}
         headers["API-Key"] = self.key or ""
+        # Equivalent to get_kraken_signature() in the Authentication section of
+        # Kraken's REST API docs.
         headers["API-Sign"] = self.get_signature(uri_path, data)
         response = requests.post((self.api_url + uri_path), headers=headers, data=data)
         return self.handle_response(response)
@@ -474,6 +476,9 @@ class Kraken(CEX):
         side = order["descr"]["type"].upper()
         origQty = float(order["vol"])
         if side == C.BUY:
+            # Buys are submitted with the viqc flag, so Kraken reports vol in the
+            # quote currency. Divide by price to recover base quantity. A stricter
+            # test is `"viqc" in order["oflags"].split(",")`.
             origQty = round(origQty / std["price"], 10)
         std["origQty"] = origQty
         std["executedQty"] = float(order["vol_exec"])
@@ -675,3 +680,8 @@ class Binance(CEX):
 
         order = fx(**params)
         return order
+
+
+# TODO: nightly pipeline. Fetch the most recent data at 9pm EST, predict with the
+# current model, write the prediction back to predict.csv, and record successful
+# orders in binance.csv.

@@ -35,8 +35,9 @@ from .TimeMachine import TimeTraveller
 LOGGER = logging.getLogger(__name__)
 WIKIPEDIA_NDX_URL = "https://en.wikipedia.org/wiki/List_of_NASDAQ-100_companies"
 NASDAQ_NDX_API_URL = "https://api.nasdaq.com/api/quote/list-type/nasdaq100"
-# Potential future authenticated fallback:
-# https://indexes.nasdaqomx.com/Index/Weighting/NDX
+# Unused alternative sources, kept for when both of the above break:
+# https://www.cnbc.com/nasdaq-100/
+# https://indexes.nasdaqomx.com/Index/Weighting/NDX (authenticated)
 NDX_MIN_SECURITIES = 100
 NDX_MAX_SECURITIES = 110
 NDX_MAX_API_AGE_DAYS = 7
@@ -150,6 +151,8 @@ class MarketData:
         time_col, val_cols = columns[0], columns[1:]
 
         if time_col in df and set(val_cols).issubset(df.columns):
+            # TODO: the time column is a pd.Timestamp here. Consider normalizing it
+            # to a YYYY-MM-DD string so stored CSVs round-trip without reparsing.
             df = self.reader.update_df(filename, df, time_col).sort_values(
                 by=[time_col]
             )
@@ -352,6 +355,8 @@ class MarketData:
         Yields:
             DataFrames with intraday OHLC data for each date.
         """
+        # TODO: resample the 1 minute dataset to 5, 30, or 60 minute bars rather
+        # than refetching, and add an option to return market hours only.
         dates = self.traveller.dates_in_range(timeframe)
         for date in dates:
             date_str = date if isinstance(date, str) else date.strftime("%Y-%m-%d")
@@ -923,6 +928,8 @@ class AlpacaData(MarketData):
                 "symbols": symbol,
                 "timeframe": "1D",
                 "start": start,
+                # An explicit end is omitted deliberately. Alpaca requires it to be
+                # at least 15 minutes behind current UTC, formatted 2025-01-01T00:00:00Z.
                 "limit": 10000,
             } | ({} if is_crypto else {"adjustment": "all"})
             headers = {
@@ -1222,6 +1229,8 @@ class Polygon(MarketData):
                 except (
                     Exception
                 ):  # NoResultsError may not be available in all polygon versions
+                    # Weekends and holidays have no bars. Skip the date rather
+                    # than break the loop over the rest of the timeframe.
                     continue
                 finally:
                     self.log_api_call_time()
