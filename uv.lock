@@ -1416,11 +1416,12 @@ dependencies = [
     { name = "python-binance" },
     { name = "python-dotenv" },
     { name = "pytz" },
-    { name = "robin-stocks" },
     { name = "requests" },
+    { name = "robin-stocks" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "selenium" },
+    { name = "ta" },
     { name = "vectorbt" },
 ]
 
@@ -1458,11 +1459,12 @@ requires-dist = [
     { name = "python-binance", specifier = ">=1.0.28" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "pytz", specifier = ">=2025.2" },
-    { name = "robin-stocks", specifier = ">=3.4.0" },
     { name = "requests" },
+    { name = "robin-stocks", specifier = ">=3.4.0" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
     { name = "scipy", specifier = ">=1.15.3" },
     { name = "selenium", specifier = ">=4.27.1" },
+    { name = "ta", specifier = ">=0.11.0" },
     { name = "vectorbt", specifier = ">=0.28.0" },
 ]
 
@@ -3996,6 +3998,16 @@ sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl", hash = "sha256:e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5", size = 6299353, upload-time = "2025-04-27T18:04:59.103Z" },
 ]
+
+[[package]]
+name = "ta"
+version = "0.11.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pandas" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/9a/37d92a6b470dc9088612c2399a68f1a9ac22872d4e1eff416818e22ab11b/ta-0.11.0.tar.gz", hash = "sha256:de86af43418420bd6b088a2ea9b95483071bf453c522a8441bc2f12bcf8493fd", size = 25308, upload-time = "2023-11-02T13:53:35.434Z" }
 
 [[package]]
 name = "tabulate"
