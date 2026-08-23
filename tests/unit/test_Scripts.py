@@ -189,3 +189,19 @@ def test_historical_ohlc_worker_owns_provider(
 
     provider_class.assert_called_once_with(paper=module.C.TEST)
     provider.save_ohlc.assert_called_once_with(symbol="AAPL", timeframe="10y")
+
+
+def test_ohlc_worker_uses_timeframe_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Use the workflow timeframe when updating OHLC data."""
+    module = load_script("scripts.update_ohlc")
+    monkeypatch.setenv("OHLC_TIMEFRAME", "1m")
+    monkeypatch.setattr(module.C, "CI", False)
+    provider = MagicMock(provider="alpaca")
+    counter = Counter()
+
+    module._update_symbol(provider, "AAPL", "AAPL", 1, 1, counter)
+
+    provider.save_ohlc.assert_called_once_with(symbol="AAPL", timeframe="1m", retries=1)
+    assert counter.value == 1

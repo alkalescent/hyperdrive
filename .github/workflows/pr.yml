@@ -330,6 +330,7 @@ jobs:
     timeout-minutes: 10
     # PRs exercise Alpaca paper data against dev S3; production covers both providers.
     env:
+      OHLC_TIMEFRAME: 1m
       OHLC_WORKER_TIMEOUT_SECONDS: 300
     steps:
     - uses: actions/checkout@v5

@@ -63,9 +63,10 @@ def _update_symbol(
     started = monotonic()
     print(f"{label}: starting", flush=True)
     try:
+        timeframe = os.environ.get("OHLC_TIMEFRAME") or C.FEW_DAYS
         source.save_ohlc(
             symbol=api_symbol,
-            timeframe=C.FEW_DAYS,
+            timeframe=timeframe,
             retries=1,
         )
         with counter.get_lock():
