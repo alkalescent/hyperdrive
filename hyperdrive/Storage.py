@@ -1,8 +1,9 @@
 """AWS S3 storage utilities for file operations."""
 
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
-from multiprocessing import get_context
 from typing import Any
 
 import boto3
@@ -23,6 +24,7 @@ class Store:
     Attributes:
         bucket_name: Name of the S3 bucket to use.
         finder: PathFinder instance for path operations.
+        local: Thread local holding each thread's boto3 session.
     """
 
     def __init__(self) -> None:
@@ -30,6 +32,7 @@ class Store:
         load_dotenv(find_dotenv("config.env"))
         self.bucket_name = self.get_bucket_name()
         self.finder = PathFinder()
+        self.local = threading.local()
 
     def get_bucket_name(self) -> str:
         """Get the S3 bucket name based on environment.
@@ -44,13 +47,29 @@ class Store:
         )
         return bucket or ""
 
+    def get_session(self) -> boto3.session.Session:
+        """Get this thread's boto3 session, creating it on first use.
+
+        Sessions are not thread safe, so each thread of a directory transfer
+        gets its own. Building one costs far more than reusing it, so the cost
+        is paid once per thread instead of once per file.
+
+        Returns:
+            The session belonging to the calling thread.
+        """
+        session = getattr(self.local, "session", None)
+        if session is None:
+            session = boto3.session.Session()
+            self.local.session = session
+        return session
+
     def get_bucket(self) -> Any:
         """Get the S3 bucket resource.
 
         Returns:
             A boto3 S3 Bucket resource object.
         """
-        s3 = boto3.resource(
+        s3 = self.get_session().resource(
             "s3",
             config=Config(
                 connect_timeout=C.API_TIMEOUT,
@@ -59,6 +78,7 @@ class Store:
                 tcp_keepalive=True,
             ),
         )
+        # Read bucket_name per call so use_dev can retarget an existing Store.
         bucket = s3.Bucket(self.bucket_name)
         return bucket
 
@@ -79,8 +99,10 @@ class Store:
             **kwargs: Arguments passed to PathFinder.get_all_paths().
         """
         paths = self.finder.get_all_paths(**kwargs)
-        with get_context("spawn").Pool() as p:
-            p.map(self.upload_file, paths)
+        with ThreadPoolExecutor() as executor:
+            # Consume the iterator so a failed upload raises instead of being
+            # dropped. Executor.map is lazy where Pool.map was eager.
+            list(executor.map(self.upload_file, paths))
 
     def delete_objects(self, keys: list[str]) -> None:
         """Delete multiple objects from S3.
@@ -155,8 +177,8 @@ class Store:
             path: S3 prefix path to download.
         """
         keys = self.get_keys(path)
-        with get_context("spawn").Pool() as p:
-            p.starmap(self.key_exists, zip(keys, [True] * len(keys), strict=True))
+        with ThreadPoolExecutor() as executor:
+            list(executor.map(self.key_exists, keys, [True] * len(keys)))
 
     def copy_object(self, src: str, dst: str) -> None:
         """Copy an object within S3.

@@ -165,6 +165,13 @@ FEW_DAYS = str(FEW) + "d"
 SCRIPT_FAILURE_THRESHOLD = 0.95
 
 ALPACA_FREE_DELAY = 0.5
+ORDER_FILL_TIMEOUT = 300  # live, generous for a slow open
+ORDER_FILL_TEST_TIMEOUT = 60  # paper, CI reports fast
+ORDER_POLL_DELAY = 1
+# Alpaca states that are finished and can never fill. done_for_day is excluded
+# on purpose: the order can still be live, so it must reach the deadline where
+# the live path cancels it.
+DEAD_ORDER_STATES = {"canceled", "expired", "rejected", "replaced"}
 
 # Staking
 QUICKNODE_URL = "https://docs-demo.quiknode.pro"

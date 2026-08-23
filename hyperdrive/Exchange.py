@@ -7,7 +7,7 @@ import os
 import time
 import urllib.parse
 from collections.abc import Callable, Iterable
-from time import sleep
+from time import monotonic, sleep
 from typing import Any
 
 import requests
@@ -43,6 +43,7 @@ class AlpacaEx(CEX):
     """Alpaca exchange client for stock and crypto trading.
 
     Attributes:
+        paper: True when trading against the paper account.
         base: Base API URL.
         version: API version string.
         token: API key.
@@ -66,12 +67,11 @@ class AlpacaEx(CEX):
             Exception: If credentials are missing.
         """
         super().__init__()
-        self.base = f"https://{'paper-' if paper or C.TEST else ''}api.alpaca.markets"
+        self.paper = paper or C.TEST
+        self.base = f"https://{'paper-' if self.paper else ''}api.alpaca.markets"
         self.version = "v2"
-        self.token = os.environ.get("ALPACA_PAPER") if paper or C.TEST else token
-        self.secret = (
-            os.environ.get("ALPACA_PAPER_SECRET") if paper or C.TEST else secret
-        )
+        self.token = os.environ.get("ALPACA_PAPER") if self.paper else token
+        self.secret = os.environ.get("ALPACA_PAPER_SECRET") if self.paper else secret
         if not (self.token and self.secret):
             raise Exception("missing Alpaca credentials")
 
@@ -83,6 +83,12 @@ class AlpacaEx(CEX):
     ) -> list[dict[str, Any]]:
         """Execute orders for multiple symbols and wait for fills.
 
+        Waiting is bounded. On the live account any order still open at the
+        deadline is cancelled and the call fails, so the broker never holds
+        positions the caller did not record. On the paper account the unfilled
+        orders are reported and the filled ones returned, since orders not
+        filling outside market hours is expected there.
+
         Args:
             symbols: Symbols to trade.
             func: Order function to call for each symbol.
@@ -90,6 +96,9 @@ class AlpacaEx(CEX):
 
         Returns:
             List of completed order responses.
+
+        Raises:
+            TimeoutError: If a live order is still open at the deadline.
         """
         pending_orders: set[str] = set()
         completed_orders: list[dict[str, Any]] = []
@@ -99,13 +108,31 @@ class AlpacaEx(CEX):
                 completed_orders.append(order)
             else:
                 pending_orders.add(order["id"])
-        while pending_orders:
+
+        timeout = C.ORDER_FILL_TEST_TIMEOUT if self.paper else C.ORDER_FILL_TIMEOUT
+        deadline = monotonic() + timeout
+        while pending_orders and monotonic() < deadline:
             for id in list(pending_orders):
                 order = self.get_order(id)
                 if order["status"] == "filled":
                     completed_orders.append(order)
                     pending_orders.discard(id)
-            sleep(1)
+                elif order["status"] in C.DEAD_ORDER_STATES:
+                    # Finished at the broker and will never fill.
+                    print(f"Order {id} ended as {order['status']}")
+                    pending_orders.discard(id)
+            if pending_orders:
+                sleep(C.ORDER_POLL_DELAY)
+
+        if pending_orders:
+            unfilled = ", ".join(sorted(pending_orders))
+            if not self.paper:
+                for id in pending_orders:
+                    self.cancel_order(id)
+                raise TimeoutError(
+                    f"Cancelled orders unfilled after {timeout}s: {unfilled}"
+                )
+            print(f"Orders unfilled after {timeout}s: {unfilled}")
         return completed_orders
 
     def make_request(
@@ -137,7 +164,8 @@ class AlpacaEx(CEX):
         }
         response = requests.request(method, url, json=payload, headers=headers)
         if response.ok:
-            return response.json()
+            # A cancelled order answers 204 with no body, so decoding is guarded.
+            return response.json() if response.content else None
         else:
             raise RuntimeError(response.text)
 
@@ -170,6 +198,17 @@ class AlpacaEx(CEX):
             Order data.
         """
         return self.make_request("GET", f"orders/{id}")
+
+    def cancel_order(self, id: str) -> Any:
+        """Cancel an open order by ID.
+
+        Args:
+            id: Order ID.
+
+        Returns:
+            None, since Alpaca answers a cancellation with an empty body.
+        """
+        return self.make_request("DELETE", f"orders/{id}")
 
     def get_account(self) -> Any:
         """Get account information.

@@ -5,11 +5,14 @@ for fast, deterministic, offline testing.
 """
 
 from collections.abc import Generator
+from time import monotonic
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 import responses
+
+from hyperdrive import Constants as C
 
 # ============================================================
 # Sample Response Data
@@ -576,6 +579,89 @@ class TestAlpacaExEdgeCases:
         # CEX.create_pair returns base+quote without separator
         assert alpaca.create_pair("BTC", "USD") == "BTCUSD"
         assert alpaca.create_pair("ETH", "USDT") == "ETHUSDT"
+
+    def open_order(self, id: str) -> Any:
+        """Build an order func that always returns one unfilled order."""
+
+        def submit(symbol: str, **kwargs: Any) -> dict[str, Any]:
+            """Stand in for create_order so the loop can be tested alone."""
+            return {"id": id, "status": "accepted", "symbol": symbol}
+
+        return submit
+
+    def test_fill_orders_drops_dead_order(
+        self,
+        alpaca: Any,
+        mock_alpaca_api: responses.RequestsMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test an order that ended as rejected stops being polled."""
+        monkeypatch.setattr(C, "ORDER_FILL_TEST_TIMEOUT", 5)
+        mock_alpaca_api.add(
+            responses.GET,
+            "https://paper-api.alpaca.markets/v2/orders/dead1",
+            json={"id": "dead1", "status": "rejected"},
+        )
+
+        started = monotonic()
+        orders = alpaca.fill_orders(["ETH/USD"], self.open_order("dead1"))
+
+        assert orders == []
+        # Returns on the terminal status rather than waiting out the deadline.
+        assert monotonic() - started < 5
+
+    def test_fill_orders_paper_reports_unfilled(
+        self,
+        alpaca: Any,
+        mock_alpaca_api: responses.RequestsMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test paper expiry returns the filled subset without raising."""
+        monkeypatch.setattr(C, "ORDER_FILL_TEST_TIMEOUT", 0.2)
+        monkeypatch.setattr(C, "ORDER_POLL_DELAY", 0.05)
+        mock_alpaca_api.add(
+            responses.GET,
+            "https://paper-api.alpaca.markets/v2/orders/open1",
+            json={"id": "open1", "status": "accepted"},
+        )
+
+        assert alpaca.fill_orders(["ETH/USD"], self.open_order("open1")) == []
+
+    def test_fill_orders_live_cancels_and_raises(
+        self,
+        alpaca: Any,
+        mock_alpaca_api: responses.RequestsMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test live expiry cancels every open order and then fails."""
+        # The paper base URL is already mocked; only the branch matters here.
+        monkeypatch.setattr(alpaca, "paper", False)
+        monkeypatch.setattr(C, "ORDER_FILL_TIMEOUT", 0.2)
+        monkeypatch.setattr(C, "ORDER_POLL_DELAY", 0.05)
+        base = "https://paper-api.alpaca.markets/v2"
+        mock_alpaca_api.add(
+            responses.GET,
+            f"{base}/orders/live1",
+            json={"id": "live1", "status": "accepted"},
+        )
+        cancel = mock_alpaca_api.add(
+            responses.DELETE, f"{base}/orders/live1", body="", status=204
+        )
+
+        with pytest.raises(TimeoutError, match="live1"):
+            alpaca.fill_orders(["ETH/USD"], self.open_order("live1"))
+
+        assert cancel.call_count == 1
+
+    def test_cancel_order_handles_empty_body(
+        self, alpaca: Any, mock_alpaca_api: responses.RequestsMock
+    ) -> None:
+        """Test a 204 cancellation does not fail on an empty body."""
+        base = "https://paper-api.alpaca.markets/v2"
+        mock_alpaca_api.add(
+            responses.DELETE, f"{base}/orders/gone1", body="", status=204
+        )
+        assert alpaca.cancel_order("gone1") is None
 
 
 class TestBinanceEdgeCases:

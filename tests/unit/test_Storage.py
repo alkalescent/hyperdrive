@@ -113,38 +113,47 @@ class TestStore:
 
     def test_upload_dir(self, store: Store, tmp_path: Path) -> None:
         """Test uploading a directory to S3."""
-        from unittest.mock import patch
-
         # Create test directory with files
         test_dir = tmp_path / "test_dir"
         test_dir.mkdir()
         (test_dir / "file1.txt").write_text("content1")
         (test_dir / "file2.txt").write_text("content2")
 
-        # Run the spawn pool sequentially because multiprocessing breaks moto.
-        class MockPool:
-            def __enter__(self) -> "MockPool":
-                return self
-
-            def __exit__(self, *args: Any) -> None:
-                pass
-
-            def map(self, func: Any, iterable: Any) -> list[Any]:
-                return [func(item) for item in iterable]
-
-        class MockContext:
-            def Pool(self) -> MockPool:  # noqa: N802
-                return MockPool()
-
-        with patch(
-            "hyperdrive.Storage.get_context", return_value=MockContext()
-        ) as context:
-            store.upload_dir(path=str(test_dir))
-        context.assert_called_once_with("spawn")
+        store.upload_dir(path=str(test_dir))
 
         # Verify files were uploaded
         keys = store.get_keys(str(test_dir).replace(os.sep, "/"))
         assert len(keys) >= 2
+
+    def test_upload_dir_raises_on_worker_failure(
+        self, store: Store, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test a failed upload surfaces instead of being silently dropped."""
+        test_dir = tmp_path / "failing_dir"
+        test_dir.mkdir()
+        (test_dir / "file1.txt").write_text("content1")
+
+        def explode(path: str) -> None:
+            """Fail the way a rejected S3 upload would."""
+            raise OSError(f"upload rejected: {path}")
+
+        monkeypatch.setattr(store, "upload_file", explode)
+
+        with pytest.raises(OSError, match="upload rejected"):
+            store.upload_dir(path=str(test_dir))
+
+    def test_get_bucket_follows_renamed_bucket(
+        self, store: Store, s3_bucket: Any
+    ) -> None:
+        """Test a cached thread session still honors a later bucket rename."""
+        original = store.get_bucket().name
+        store.bucket_name = "renamed-bucket"
+        assert store.get_bucket().name == "renamed-bucket"
+        assert original != "renamed-bucket"
+
+    def test_get_session_is_reused_within_a_thread(self, store: Store) -> None:
+        """Test the per-thread session is built once and then reused."""
+        assert store.get_session() is store.get_session()
 
     def test_get_keys(self, store: Store, s3_bucket: Any) -> None:
         """Test listing keys from S3."""
@@ -273,29 +282,6 @@ class TestStore:
         assert result is False
 
     def test_download_dir(self, store: Store, s3_bucket: Any) -> None:
-        """Test downloading a directory from S3 (lines 80-82)."""
-        from unittest.mock import patch
-
-        # Run the spawn pool sequentially because multiprocessing breaks moto.
-        class MockPool:
-            def __enter__(self) -> "MockPool":
-                return self
-
-            def __exit__(self, *args: Any) -> None:
-                pass
-
-            def starmap(self, func: Any, iterable: Any) -> list[Any]:
-                for args in iterable:
-                    func(*args)
-                return []
-
-        class MockContext:
-            def Pool(self) -> MockPool:  # noqa: N802
-                return MockPool()
-
-        with patch(
-            "hyperdrive.Storage.get_context", return_value=MockContext()
-        ) as context:
-            # Should not raise
-            store.download_dir("data/")
-        context.assert_called_once_with("spawn")
+        """Test downloading a directory from S3."""
+        # Should not raise
+        store.download_dir("data/")
