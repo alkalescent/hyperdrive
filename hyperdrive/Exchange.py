@@ -83,11 +83,12 @@ class AlpacaEx(CEX):
     ) -> list[dict[str, Any]]:
         """Execute orders for multiple symbols and wait for fills.
 
-        Waiting is bounded. On the live account any order still open at the
-        deadline is cancelled and the call fails, so the broker never holds
-        positions the caller did not record. On the paper account the unfilled
-        orders are reported and the filled ones returned, since orders not
-        filling outside market hours is expected there.
+        Waiting is bounded, and any order still open at the deadline is
+        cancelled on either account, since a resting order reserves buying
+        power until it is withdrawn. The live account then fails the call, so
+        the broker never holds positions the caller did not record. The paper
+        account reports the cancellations and returns whatever filled, since
+        orders not filling outside market hours is expected there.
 
         Args:
             symbols: Symbols to trade.
@@ -126,13 +127,13 @@ class AlpacaEx(CEX):
 
         if pending_orders:
             unfilled = ", ".join(sorted(pending_orders))
+            for id in pending_orders:
+                self.cancel_order(id)
             if not self.paper:
-                for id in pending_orders:
-                    self.cancel_order(id)
                 raise TimeoutError(
                     f"Cancelled orders unfilled after {timeout}s: {unfilled}"
                 )
-            print(f"Orders unfilled after {timeout}s: {unfilled}")
+            print(f"Cancelled orders unfilled after {timeout}s: {unfilled}")
         return completed_orders
 
     def make_request(
@@ -209,6 +210,18 @@ class AlpacaEx(CEX):
             None, since Alpaca answers a cancellation with an empty body.
         """
         return self.make_request("DELETE", f"orders/{id}")
+
+    def cancel_orders(self) -> Any:
+        """Cancel every open order on the account.
+
+        An order left resting reserves buying power until it is withdrawn, so
+        a run that ends without filling starves the next one. Clearing them
+        before ordering keeps a stalled run from blocking the following days.
+
+        Returns:
+            Per order cancellation results.
+        """
+        return self.make_request("DELETE", "orders")
 
     def get_account(self) -> Any:
         """Get account information.

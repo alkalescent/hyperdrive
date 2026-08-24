@@ -616,16 +616,22 @@ class TestAlpacaExEdgeCases:
         mock_alpaca_api: responses.RequestsMock,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test paper expiry returns the filled subset without raising."""
+        """Test paper expiry cancels the stragglers without raising."""
         monkeypatch.setattr(C, "ORDER_FILL_TEST_TIMEOUT", 0.2)
         monkeypatch.setattr(C, "ORDER_POLL_DELAY", 0.05)
+        base = "https://paper-api.alpaca.markets/v2"
         mock_alpaca_api.add(
             responses.GET,
-            "https://paper-api.alpaca.markets/v2/orders/open1",
+            f"{base}/orders/open1",
             json={"id": "open1", "status": "accepted"},
+        )
+        cancel = mock_alpaca_api.add(
+            responses.DELETE, f"{base}/orders/open1", body="", status=204
         )
 
         assert alpaca.fill_orders(["ETH/USD"], self.open_order("open1")) == []
+        # A resting paper order would reserve buying power for every later run.
+        assert cancel.call_count == 1
 
     def test_fill_orders_live_cancels_and_raises(
         self,
@@ -651,6 +657,20 @@ class TestAlpacaExEdgeCases:
         with pytest.raises(TimeoutError, match="live1"):
             alpaca.fill_orders(["ETH/USD"], self.open_order("live1"))
 
+        assert cancel.call_count == 1
+
+    def test_cancel_orders_clears_the_account(
+        self, alpaca: Any, mock_alpaca_api: responses.RequestsMock
+    ) -> None:
+        """Test every resting order is withdrawn in one call."""
+        cancel = mock_alpaca_api.add(
+            responses.DELETE,
+            "https://paper-api.alpaca.markets/v2/orders",
+            json=[{"id": "stale1", "status": 200}, {"id": "stale2", "status": 200}],
+            status=207,
+        )
+
+        assert len(alpaca.cancel_orders()) == 2
         assert cancel.call_count == 1
 
     def test_cancel_order_handles_empty_body(
