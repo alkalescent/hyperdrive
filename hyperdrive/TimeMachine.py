@@ -1,22 +1,23 @@
-from time import sleep
-from typing import Union
-from datetime import datetime, timedelta, tzinfo
-from Constants import TZ, UTC, DATE_FMT, TIME_FMT, PRECISE_TIME_FMT
+"""Time manipulation utilities for date calculations and scheduling."""
 
-FlexibleDate = Union[datetime, str]
+from datetime import datetime, timedelta, tzinfo
+from datetime import time as dt_time
+from time import sleep
+
+from .Constants import DATE_FMT, PRECISE_TIME_FMT, TIME_FMT, TZ, UTC
+
+FlexibleDate = datetime | str
 
 
 class TimeTraveller:
-    """
-    A class to handle time-related operations, such as calculating deltas,
-    converting timeframes, and managing sleep intervals.
+    """Time manipulation utility for date calculations and scheduling.
+
+    Provides methods for calculating date differences, converting timeframes,
+    generating date ranges, and managing sleep intervals based on schedules.
     """
 
     def get_delta(
-        self,
-        d1: FlexibleDate,
-        d2: FlexibleDate = datetime.now(),
-        format: str = DATE_FMT
+        self, d1: FlexibleDate, d2: FlexibleDate | None = None, format: str = DATE_FMT
     ) -> timedelta:
         """
         Calculate the difference between two dates.
@@ -32,30 +33,29 @@ class TimeTraveller:
         Returns:
             timedelta: The absolute difference between the two dates.
         """
-        if isinstance(d1, str):
-            d1 = datetime.strptime(d1, format)
-        if isinstance(d2, str):
-            d2 = datetime.strptime(d2, format)
+        d2_resolved: FlexibleDate = d2 or datetime.now()
+        d1_dt = datetime.strptime(d1, format) if isinstance(d1, str) else d1
+        d2_dt = (
+            datetime.strptime(d2_resolved, format)
+            if isinstance(d2_resolved, str)
+            else d2_resolved
+        )
 
-        return abs(d2 - d1)
+        return abs(d2_dt - d1_dt)
 
     def convert_timeframe(self, d1: FlexibleDate, d2: FlexibleDate) -> str:
-        """
-        Convert two datetime objects
-        to a string representation of the timeframe.
+        """Convert two datetime objects to a string representation of the timeframe.
 
         Args:
-            d1 (FlexibleDate):
-                The first date, can be a datetime object or a string.
-            d2 (FlexibleDate):
-                The second date, can be a datetime object or a string.
+            d1: The first date, can be a datetime object or a string.
+            d2: The second date, can be a datetime object or a string.
 
         Returns:
-            str: A string representation of the timeframe in days.
+            A string representation of the timeframe in days.
         """
         delta = self.get_delta(d1, d2)
         days = delta.days
-        return f'{days}d'
+        return f"{days}d"
 
     def convert_delta(self, timeframe: str) -> timedelta:
         """
@@ -72,11 +72,11 @@ class TimeTraveller:
         Raises:
             ValueError: If the timeframe string is not in a supported format.
         """
-        if timeframe == 'max':
+        if timeframe == "max":
             return timedelta(days=36500)
 
-        periods = {'y': 365, 'm': 30, 'w': 7, 'd': 1}
-        period = 'y'
+        periods = {"y": 365, "m": 30, "w": 7, "d": 1}
+        period = "y"
         idx = -1
 
         for curr_period in periods:
@@ -86,8 +86,8 @@ class TimeTraveller:
                 break
 
         if idx == -1:
-            supported = ', '.join(list(periods))
-            error_msg = f'Only certain suffixes ({supported}) are supported.'
+            supported = ", ".join(list(periods))
+            error_msg = f"Only certain suffixes ({supported}) are supported."
             raise ValueError(error_msg)
 
         num = int(timeframe[:idx])
@@ -97,9 +97,7 @@ class TimeTraveller:
         return delta
 
     def convert_dates(
-        self,
-        timeframe: str,
-        format: str = DATE_FMT
+        self, timeframe: str, format: str = DATE_FMT
     ) -> tuple[FlexibleDate, FlexibleDate]:
         """
         Convert a timeframe to a start and end date.
@@ -116,18 +114,20 @@ class TimeTraveller:
                 A tuple containing the start and end dates as strings.
         """
         # if timeframe='max': timeframe = '25y'
-        end = datetime.now(TZ) - self.convert_delta('1d')
-        delta = self.convert_delta(timeframe) - self.convert_delta('1d')
+        end = datetime.now(TZ) - self.convert_delta("1d")
+        delta = self.convert_delta(timeframe) - self.convert_delta("1d")
         start = end - delta
         if format:
             start = start.strftime(format)
             end = end.strftime(format)
         return start, end
 
-    def dates_in_range(self, timeframe: str, format: str = DATE_FMT
-                       ) -> list[FlexibleDate]:
+    def dates_in_range(
+        self, timeframe: str, format: str = DATE_FMT
+    ) -> list[FlexibleDate]:
         """
         Get a list of dates in the specified timeframe.
+
         Args:
             timeframe (str):
                 A string representing the timeframe,
@@ -138,44 +138,48 @@ class TimeTraveller:
         Returns:
             list[FlexibleDate]: A list of dates in the specified timeframe.
         """
-        start, end = self.convert_dates(timeframe, None)
-        dates = [start + timedelta(days=x)
-                 for x in range(0, (end - start).days + 1)]
+        start, end = self.convert_dates(timeframe, "")
+        # When format is empty string, convert_dates returns datetime objects
+        if isinstance(start, str):
+            start = datetime.strptime(start, DATE_FMT)
+        if isinstance(end, str):
+            end = datetime.strptime(end, DATE_FMT)
+        dates_dt = [start + timedelta(days=x) for x in range(0, (end - start).days + 1)]
         if format:
-            dates = [date.strftime(format) for date in dates]
-        return dates
+            return [date.strftime(format) for date in dates_dt]
+        return dates_dt
 
-    def get_time(self, time: str) -> datetime.time:
+    def get_time(self, time_str: str) -> dt_time:
         """
         Converts time string to a time object.
 
         Args:
-            time (str):
+            time_str (str):
                 A string representing the time, e.g., '14:30', '14:30:00'.
 
         Returns:
-            datetime.time: A time object representing the specified time.
+            dt_time: A time object representing the specified time.
         """
         return datetime.strptime(
-            time, TIME_FMT if len(time.split(':')) == 2 else PRECISE_TIME_FMT
+            time_str, TIME_FMT if len(time_str.split(":")) == 2 else PRECISE_TIME_FMT
         ).time()
 
-    def combine_date_time(self, date: str, time: str) -> datetime:
+    def combine_date_time(self, date: str, time_str: str) -> datetime:
         """
         Combines date and time into a datetime object.
 
         Args:
             date (str):
                 A string representing the date, e.g., '2025-01-01'.
-            time (str):
+            time_str (str):
                 A string representing the time, e.g., '14:30', '14:30:00'.
 
         Returns:
             datetime: A datetime object combining the specified date and time.
         """
-        date = datetime.strptime(date, DATE_FMT)
-        time = self.get_time(time)
-        return date.combine(date, time)
+        date_dt = datetime.strptime(date, DATE_FMT)
+        time_obj = self.get_time(time_str)
+        return datetime.combine(date_dt, time_obj)
 
     def get_diff(self, t1: datetime, t2: datetime) -> float:
         """

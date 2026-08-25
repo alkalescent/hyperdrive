@@ -1,6 +1,4 @@
-import sys
-sys.path.append('hyperdrive')
-from DataSource import LaborStats  # noqa
+from hyperdrive.DataSource import LaborStats
 
 bls = LaborStats()
-bls.save_unemployment_rate(timeframe='2y')
+bls.save_unemployment_rate(timeframe="2y")

@@ -1,0 +1,58 @@
+"""Tests for the Transformer module."""
+
+import json
+
+import numpy as np
+import pytest
+
+from hyperdrive.Transformer import NumpyEncoder
+
+encoder = NumpyEncoder()
+
+
+class TestNumpyEncoder:
+    """Tests for the NumpyEncoder JSON encoder."""
+
+    def test_default(self) -> None:
+        """Test encoding various numpy types to JSON."""
+        # list
+        arr = np.array([True, False])
+        with pytest.raises(TypeError):
+            json.dumps(arr)
+        assert json.dumps(NumpyEncoder().default(arr)) == "[true, false]"
+
+        # bool
+        val = np.True_
+        with pytest.raises(TypeError):
+            json.dumps(val)
+        assert json.dumps(NumpyEncoder().default(val)) == "true"
+
+        # int
+        val = np.int64(1)
+        with pytest.raises(TypeError):
+            json.dumps(val)
+        assert json.dumps(NumpyEncoder().default(val)) == "1"
+
+        # # float
+        val = np.float64(0.5)
+        assert json.dumps(NumpyEncoder().default(val)) == "0.5"
+
+        # complex
+        val = np.complex64(1 + 2j)
+        with pytest.raises(TypeError):
+            json.dumps(val)
+        assert json.dumps(NumpyEncoder().default(val)) == '{"real": 1.0, "imag": 2.0}'
+
+        # void
+        dt = np.dtype([("x", np.int64)])
+        x = np.array([(0)], dtype=dt)
+        val = x[0]
+        with pytest.raises(TypeError):
+            json.dumps(val)
+        assert json.dumps(NumpyEncoder().default(val)) == "null"
+
+        # other
+        arr = []
+        with pytest.raises(TypeError):
+            json.dumps(NumpyEncoder().default(arr))
+        assert json.dumps(arr) == "[]"

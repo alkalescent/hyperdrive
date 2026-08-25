@@ -1,30 +1,43 @@
+"""JSON encoders for numpy data types."""
+
 import json
+from typing import Any
+
 import numpy as np
 
 
 class NumpyEncoder(json.JSONEncoder):
-    """ Custom encoder for numpy data types """
+    """Custom JSON encoder for numpy data types.
 
-    def default(self, obj):
-        if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
-                            np.int16, np.int32, np.int64, np.uint8,
-                            np.uint16, np.uint32, np.uint64)):
+    Converts numpy types to native Python types for JSON serialization.
+    Handles integers, floats, complex numbers, arrays, booleans, and void types.
+    """
 
-            return int(obj)
+    def default(self, o: Any) -> Any:
+        """Convert numpy types to JSON-serializable Python types.
 
-        elif isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
-            return float(obj)
+        Args:
+            o: Object to encode. If a numpy type, converts to Python equivalent.
 
-        elif isinstance(obj, (np.complex_, np.complex64, np.complex128)):
-            return {'real': float(obj.real), 'imag': float(obj.imag)}
+        Returns:
+            JSON-serializable Python object.
+        """
+        if isinstance(o, np.integer):
+            return int(o)
 
-        elif isinstance(obj, (np.ndarray,)):
-            return obj.tolist()
+        elif isinstance(o, np.floating):
+            return float(o)
 
-        elif isinstance(obj, (np.bool_)):
-            return bool(obj)
+        elif isinstance(o, np.complexfloating):
+            return {"real": float(o.real), "imag": float(o.imag)}
 
-        elif isinstance(obj, (np.void)):
+        elif isinstance(o, (np.ndarray,)):
+            return o.tolist()
+
+        elif isinstance(o, (np.bool_)):
+            return bool(o)
+
+        elif isinstance(o, (np.void)):
             return None
 
-        return json.JSONEncoder.default(self, obj)
+        return json.JSONEncoder.default(self, o)

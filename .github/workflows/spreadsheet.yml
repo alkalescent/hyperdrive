@@ -1,0 +1,51 @@
+# Manually update the FIRE spreadsheet.
+
+name: Spreadsheet
+
+on: workflow_dispatch
+# schedule:
+# - cron: "0 21 * * 1"
+# - 4:00pm EST / 5:00pm EDT on Mondays
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: make ci
+
+      - name: Set up Google credentials
+        run: |
+          mkdir -p ~/.config/gspread
+          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT }}' > ~/.config/gspread/service_account.json
+
+      - name: Update spreadsheet
+        env:
+          RH_USERNAME: ${{ secrets.RH_USERNAME }}
+          RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
+          RH_2FA: ${{ secrets.RH_2FA }}
+          DUNE: ${{ secrets.DUNE }}
+          ETH_ADDR: ${{ secrets.ETH_ADDR }}
+          ETHERSCAN: ${{ secrets.ETHERSCAN }}
+          POLYGON: ${{ secrets.POLYGON }}
+          VALIDATOR: ${{ secrets.VALIDATOR }}
+        run: uv run python scripts/update_spreadsheet.py

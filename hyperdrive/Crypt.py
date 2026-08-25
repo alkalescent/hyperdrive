@@ -1,30 +1,34 @@
+"""Cryptographic utilities for symmetric encryption using AES-256-GCM."""
+
 import os
-from typing import Union
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 
-
-FlexibleBytes = Union[str, bytes]
+FlexibleBytes = str | bytes
 
 
 class Cryptographer:
-    """
-    A class for symmetric encryption using AES-256 in GCM mode.
+    """Symmetric encryption using AES-256 in GCM mode.
 
     The key is derived from a user-provided password and salt using Scrypt.
-    This approach is considered post-quantum
-    resistant for symmetric encryption.
+    This approach is considered post-quantum resistant for symmetric encryption.
 
     Derives a 256-bit (32-byte) key from the password and salt.
 
-    Args:
-        password (FlexibleBytes):
-            The password to use for key derivation.
-        salt (FlexibleBytes):
-            A random salt, which should be stored and reused for decryption.
+    Attributes:
+        key: The derived encryption key.
+        aesgcm: The AES-GCM cipher instance.
+        nonce_size: Size of the nonce in bytes (12).
     """
 
-    def __init__(self, password: FlexibleBytes, salt: FlexibleBytes):
+    def __init__(self, password: FlexibleBytes, salt: FlexibleBytes) -> None:
+        """Initialize the Cryptographer with password and salt.
+
+        Args:
+            password: The password to use for key derivation.
+            salt: A random salt, which should be stored and reused for decryption.
+        """
         password = self.convert_to_bytes(password)
         salt = self.convert_to_bytes(salt)
         kdf = Scrypt(
@@ -42,29 +46,26 @@ class Cryptographer:
         self.nonce_size = 12
 
     def convert_to_bytes(self, value: FlexibleBytes) -> bytes:
-        """
-        Convert a string to bytes, if necessary.
+        """Convert a string to bytes, if necessary.
 
         Args:
-            value (FlexibleBytes): The value to convert.
+            value: The value to convert.
 
         Returns:
-            bytes: The converted value.
+            The converted value as bytes.
         """
         if isinstance(value, str):
-            return value.encode('UTF-8')
+            return value.encode("UTF-8")
         return value
 
     def encrypt(self, plaintext: FlexibleBytes) -> bytes:
-        """
-        Encrypts and authenticates plaintext using AES-256-GCM.
+        """Encrypt and authenticate plaintext using AES-256-GCM.
 
         Args:
-            plaintext (FlexibleBytes): The data to encrypt.
+            plaintext: The data to encrypt.
 
         Returns:
-            bytes: A self-contained ciphertext blob in the format:
-            nonce + encrypted_data_and_tag.
+            A self-contained ciphertext blob in the format: nonce + encrypted_data_and_tag.
         """
         plaintext = self.convert_to_bytes(plaintext)
         # Generate a random nonce. It must be unique for each encryption.
@@ -75,24 +76,22 @@ class Cryptographer:
         return nonce + ciphertext
 
     def decrypt(self, ciphertext: bytes) -> FlexibleBytes:
-        """
-        Decrypts and verifies a ciphertext blob.
+        """Decrypt and verify a ciphertext blob.
 
         Args:
-            ciphertext (bytes): The combined nonce and ciphertext.
+            ciphertext: The combined nonce and ciphertext.
 
         Returns:
-            FlexibleBytes: The original plaintext
-                if decryption and authentication are successful.
+            The original plaintext if decryption and authentication are successful.
         """
         # Extract the nonce
-        nonce = ciphertext[:self.nonce_size]
+        nonce = ciphertext[: self.nonce_size]
         # Extract the actual ciphertext (without the nonce)
-        ciphertext = ciphertext[self.nonce_size:]
+        ciphertext = ciphertext[self.nonce_size :]
         # Decrypt the data. The tag is verified automatically.
         plaintext = self.aesgcm.decrypt(nonce, ciphertext, None)
         try:
-            plaintext = plaintext.decode('UTF-8')
+            plaintext = plaintext.decode()
         except UnicodeDecodeError:
             pass
         return plaintext

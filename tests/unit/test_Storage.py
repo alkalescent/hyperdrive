@@ -1,0 +1,287 @@
+"""Unit tests for Storage module using moto to mock S3.
+
+This test file uses moto to create an in-memory S3 environment,
+eliminating the need for real AWS credentials and network calls.
+"""
+
+import os
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+import boto3
+import pytest
+from botocore.exceptions import ClientError
+from moto import mock_aws
+
+from hyperdrive.Storage import Store
+
+# ============================================================
+# Fixtures
+# ============================================================
+
+
+@pytest.fixture
+def aws_credentials() -> None:
+    """Mock AWS credentials for moto."""
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    os.environ["S3_BUCKET"] = "test-bucket"
+    os.environ["S3_DEV_BUCKET"] = "test-dev-bucket"
+    os.environ["DEV"] = "true"
+
+
+@pytest.fixture
+def mock_s3(aws_credentials: None) -> Any:
+    """Create a mock S3 environment using moto."""
+    from unittest.mock import patch
+
+    with mock_aws():
+        # Create the S3 bucket
+        conn = boto3.resource("s3", region_name="us-east-1")
+        bucket_name = os.environ.get("S3_DEV_BUCKET", "test-dev-bucket")
+        conn.create_bucket(Bucket=bucket_name)
+
+        # Upload some initial test files
+        bucket = conn.Bucket(bucket_name)
+        bucket.put_object(Key="data/symbols.csv", Body=b"Symbol,Name\nAAPL,Apple")
+        bucket.put_object(Key="README.md", Body=b"# Test README")
+
+        # Patch C.DEV since the constant is evaluated at import time
+        with patch("hyperdrive.Storage.C.DEV", True):
+            # Create the store within the mock context
+            store = Store()
+            yield store, bucket
+
+
+@pytest.fixture
+def store(mock_s3: Any) -> Store:
+    """Create a Store instance with mocked S3."""
+    return mock_s3[0]
+
+
+@pytest.fixture
+def s3_bucket(mock_s3: Any) -> Any:
+    """Get the mocked S3 bucket."""
+    return mock_s3[1]
+
+
+@pytest.fixture
+def temp_dir(tmp_path: Path) -> Path:
+    """Create a temporary directory for file operations."""
+    test_dir = tmp_path / "dev"
+    test_dir.mkdir()
+    return test_dir
+
+
+# ============================================================
+# Test Class
+# ============================================================
+
+
+class TestStore:
+    """Unit tests for Store class with mocked S3."""
+
+    def test_init(self, store: Store) -> None:
+        """Test Store initialization."""
+        assert type(store).__name__ == "Store"
+        assert hasattr(store, "bucket_name")
+        assert hasattr(store, "finder")
+        assert store.bucket_name == "test-dev-bucket"
+
+    def test_get_bucket_name(self, store: Store) -> None:
+        """Test bucket name resolution from environment."""
+        assert store.get_bucket_name() == "test-dev-bucket"
+
+    def test_get_bucket(self, store: Store) -> None:
+        """Test getting S3 bucket resource."""
+        bucket = store.get_bucket()
+        assert hasattr(bucket, "Object")
+
+    def test_upload_file(self, store: Store, tmp_path: Path) -> None:
+        """Test uploading a file to S3."""
+        # Create a test file
+        test_file = tmp_path / "test_upload.txt"
+        test_file.write_text("test content")
+
+        # Upload it
+        store.upload_file(str(test_file))
+
+        # Verify it exists
+        assert store.key_exists(str(test_file))
+
+    def test_upload_dir(self, store: Store, tmp_path: Path) -> None:
+        """Test uploading a directory to S3."""
+        # Create test directory with files
+        test_dir = tmp_path / "test_dir"
+        test_dir.mkdir()
+        (test_dir / "file1.txt").write_text("content1")
+        (test_dir / "file2.txt").write_text("content2")
+
+        store.upload_dir(path=str(test_dir))
+
+        # Verify files were uploaded
+        keys = store.get_keys(str(test_dir).replace(os.sep, "/"))
+        assert len(keys) >= 2
+
+    def test_upload_dir_raises_on_worker_failure(
+        self, store: Store, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test a failed upload surfaces instead of being silently dropped."""
+        test_dir = tmp_path / "failing_dir"
+        test_dir.mkdir()
+        (test_dir / "file1.txt").write_text("content1")
+
+        def explode(path: str) -> None:
+            """Fail the way a rejected S3 upload would."""
+            raise OSError(f"upload rejected: {path}")
+
+        monkeypatch.setattr(store, "upload_file", explode)
+
+        with pytest.raises(OSError, match="upload rejected"):
+            store.upload_dir(path=str(test_dir))
+
+    def test_get_bucket_follows_renamed_bucket(
+        self, store: Store, s3_bucket: Any
+    ) -> None:
+        """Test a cached thread session still honors a later bucket rename."""
+        original = store.get_bucket().name
+        store.bucket_name = "renamed-bucket"
+        assert store.get_bucket().name == "renamed-bucket"
+        assert original != "renamed-bucket"
+
+    def test_get_session_is_reused_within_a_thread(self, store: Store) -> None:
+        """Test the per-thread session is built once and then reused."""
+        assert store.get_session() is store.get_session()
+
+    def test_get_keys(self, store: Store, s3_bucket: Any) -> None:
+        """Test listing keys from S3."""
+        keys = store.get_keys()
+
+        # Should include the pre-seeded files
+        assert "data/symbols.csv" in keys
+        assert "README.md" in keys
+
+    def test_get_keys_with_filter(self, store: Store, s3_bucket: Any) -> None:
+        """Test listing keys with prefix filter."""
+        keys = store.get_keys(filter="data/")
+
+        assert "data/symbols.csv" in keys
+        assert "README.md" not in keys
+
+    def test_key_exists_true(self, store: Store, s3_bucket: Any) -> None:
+        """Test key_exists returns True for existing keys."""
+        assert store.key_exists("data/symbols.csv") is True
+        assert store.key_exists("README.md") is True
+
+    def test_key_exists_false(self, store: Store, s3_bucket: Any) -> None:
+        """Test key_exists returns False for non-existing keys."""
+        assert store.key_exists("non_existent_file.txt") is False
+
+    def test_download_file(self, store: Store, s3_bucket: Any, tmp_path: Path) -> None:
+        """Test downloading a file from S3."""
+        download_path = tmp_path / "data" / "symbols.csv"
+
+        # Should not exist locally yet
+        assert not download_path.exists()
+
+        # Download the file
+        s3_key = os.path.relpath(download_path, tmp_path).replace(os.sep, "/")
+        store.download_file(s3_key)
+
+        # Note: In the real Store, this would create the file locally
+        # For unit tests, we verify the S3 interaction worked
+
+    def test_download_file_not_found(
+        self, store: Store, s3_bucket: Any, tmp_path: Path
+    ) -> None:
+        """Test downloading non-existent file raises ClientError."""
+        with pytest.raises(ClientError):
+            store.download_file("non_existent_file.txt")
+
+    def test_delete_objects(self, store: Store, s3_bucket: Any) -> None:
+        """Test deleting objects from S3."""
+        # Add a test file first
+        s3_bucket.put_object(Key="to_delete.txt", Body=b"delete me")
+        assert store.key_exists("to_delete.txt")
+
+        # Delete it
+        store.delete_objects(["to_delete.txt"])
+
+        # Verify it's gone
+        assert not store.key_exists("to_delete.txt")
+
+    def test_delete_objects_empty_list(self, store: Store) -> None:
+        """Test delete_objects handles empty list gracefully."""
+        # Should not raise
+        store.delete_objects([])
+
+    def test_copy_object(self, store: Store, s3_bucket: Any) -> None:
+        """Test copying an object within S3."""
+        src = "README.md"
+        dst = "README_copy.md"
+
+        # Verify source exists, destination doesn't
+        assert store.key_exists(src)
+        assert not store.key_exists(dst)
+
+        # Copy
+        store.copy_object(src, dst)
+
+        # Both should exist now
+        assert store.key_exists(src)
+        assert store.key_exists(dst)
+
+        # Cleanup
+        store.delete_objects([dst])
+
+    def test_rename_key(self, store: Store, s3_bucket: Any) -> None:
+        """Test renaming (move) an object in S3."""
+        # Create a file to rename
+        s3_bucket.put_object(Key="original.txt", Body=b"content")
+        assert store.key_exists("original.txt")
+
+        # Rename it
+        store.rename_key("original.txt", "renamed.txt")
+
+        # Original should be gone, new should exist
+        assert not store.key_exists("original.txt")
+        assert store.key_exists("renamed.txt")
+
+        # Cleanup
+        store.delete_objects(["renamed.txt"])
+
+    def test_last_modified(self, store: Store, s3_bucket: Any) -> None:
+        """Test getting last modified time of an object."""
+        modified_time = store.last_modified("README.md")
+
+        # Should return a datetime
+        assert isinstance(modified_time, datetime)
+        assert hasattr(modified_time, "year")
+
+    def test_modified_delta(self, store: Store, s3_bucket: Any) -> None:
+        """Test getting time delta since last modification."""
+        delta = store.modified_delta("README.md")
+
+        # Should return a timedelta
+        assert isinstance(delta, timedelta)
+        assert hasattr(delta, "total_seconds")
+        # File was just created, so delta should be small
+        assert delta.total_seconds() < 10
+
+    def test_key_exists_with_download(self, store: Store, s3_bucket: Any) -> None:
+        """Test key_exists with download=True (line 58)."""
+        # Key exists and should download
+        result = store.key_exists("data/symbols.csv", download=True)
+        assert result is True
+
+    def test_key_exists_download_not_found(self, store: Store, s3_bucket: Any) -> None:
+        """Test key_exists with download=True for non-existent file."""
+        result = store.key_exists("non_existent.txt", download=True)
+        assert result is False
+
+    def test_download_dir(self, store: Store, s3_bucket: Any) -> None:
+        """Test downloading a directory from S3."""
+        # Should not raise
+        store.download_dir("data/")

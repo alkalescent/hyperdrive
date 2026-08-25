@@ -1,6 +1,4 @@
-import sys
-sys.path.append('hyperdrive')
-from Broker import Robinhood  # noqa autopep8
+from hyperdrive.Broker import Robinhood
 
 broker = Robinhood()
 broker.save_symbols()

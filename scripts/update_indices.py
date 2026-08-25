@@ -1,6 +1,4 @@
-import sys
-sys.path.append('hyperdrive')
-from DataSource import Indices  # noqa autopep8
+from hyperdrive.DataSource import Indices
 
 idc = Indices()
 
