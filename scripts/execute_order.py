@@ -8,8 +8,6 @@ from hyperdrive.Exchange import Binance, Kraken
 
 test = C.TEST or C.DEV
 
-bn = Binance(testnet=test)
-kr = Kraken(test=test)
 md = MarketData()
 md.provider = "polygon"
 
@@ -26,6 +24,9 @@ should_order = False  # disable trading
 if should_order:
     side = C.BUY if signal else C.SELL
     if C.PREF_EXCHANGE == C.BINANCE:
+        # Built here rather than up top because the Binance client pings on
+        # construction, and that call is refused from the regions CI runs in.
+        bn = Binance(testnet=test)
         base = "BTC"
         quote = "USDT" if test else "USD"
         spend_ratio = C.BINANCE_TEST_SPEND if test else 1
@@ -33,6 +34,7 @@ if should_order:
         order = bn.order(base, quote, side, spend_ratio, test)
         order["exchange"] = C.BINANCE
     else:
+        kr = Kraken(test=test)
         base = "XXBT"
         quote = "ZUSD"
         spend_ratio = C.KRAKEN_TEST_SPEND if test else 1
