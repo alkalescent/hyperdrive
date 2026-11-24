@@ -11,6 +11,9 @@ from hyperdrive.DataSource import MarketData
 from hyperdrive.Exchange import Kraken
 from hyperdrive.History import Historian
 
+# The public preview ends one week before the latest signal.
+PREVIEW_DELAY = pd.Timedelta(days=7)
+
 
 def transform_stats(stats: Any, metrics: list[str]) -> dict[str, float | None]:
     """Transform portfolio stats to a simplified dictionary.
@@ -28,19 +31,37 @@ def transform_stats(stats: Any, metrics: list[str]) -> dict[str, float | None]:
     }
 
 
+def delay_preview(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop the last week of rows, counted by date.
+
+    Crypto has a row for every day and stocks only for trading days, so a
+    fixed number of rows would delay the two by different spans.
+
+    Args:
+        df: Rows with a datetime time column.
+
+    Returns:
+        The rows dated at least PREVIEW_DELAY before the latest row.
+    """
+    return df[df[C.TIME] <= df[C.TIME].max() - PREVIEW_DELAY]
+
+
 def create_portfolio_preview(
-    close: pd.Series, signals: pd.Series, invert: bool
+    df: pd.DataFrame, invert: bool, hist: Historian, kr: Kraken
 ) -> dict[str, Any]:
     """Create portfolio preview data comparing HODL vs hyperdrive strategy.
 
     Args:
-        close: Series of closing prices.
-        signals: Series of trading signals.
+        df: Rows with time, closing price, and signal columns.
         invert: If True, invert for BTC-denominated returns.
+        hist: Historian that builds the portfolios.
+        kr: Kraken client for the trading fee.
 
     Returns:
         Dictionary with 'data' (time series) and 'stats' (metrics).
     """
+    close = df[C.CLOSE]
+    signals = df[C.SIG]
     metrics = [
         "Total Return [%]",
         "Max Drawdown [%]",
@@ -123,24 +144,27 @@ def create_portfolio_preview(
     return preview
 
 
-md = MarketData()
-md.provider = "polygon"
-hist = Historian()
-kr = Kraken(test=True)
-symbol = os.environ["SYMBOL"]
-signals_path = md.finder.get_signals_path()
-signals = md.reader.load_csv(signals_path)
-signals[C.TIME] = pd.to_datetime(signals[C.TIME])
-df = md.get_ohlc(symbol).merge(signals, on=C.TIME)
+def main() -> int:
+    """Build the USD and BTC previews and save them for the API."""
+    md = MarketData()
+    md.provider = "polygon"
+    hist = Historian()
+    kr = Kraken(test=True)
+    symbol = os.environ["SYMBOL"]
+    signals_path = md.finder.get_signals_path()
+    signals = md.reader.load_csv(signals_path)
+    signals[C.TIME] = pd.to_datetime(signals[C.TIME])
+    df = delay_preview(md.get_ohlc(symbol).merge(signals, on=C.TIME))
 
-# 1 week delay
-df = df.head(len(df) - 5)
+    usd_preview = create_portfolio_preview(df, False, hist, kr)
+    btc_preview = create_portfolio_preview(df, True, hist, kr)
+
+    preview = {"BTC": btc_preview, "USD": usd_preview}
+
+    preview_path = md.finder.get_api_path("preview")
+    md.writer.save_json(preview_path, preview)
+    return 0
 
 
-usd_preview = create_portfolio_preview(df[C.CLOSE], df[C.SIG], False)
-btc_preview = create_portfolio_preview(df[C.CLOSE], df[C.SIG], True)
-
-preview = {"BTC": btc_preview, "USD": usd_preview}
-
-preview_path = md.finder.get_api_path("preview")
-md.writer.save_json(preview_path, preview)
+if __name__ == "__main__":
+    raise SystemExit(main())

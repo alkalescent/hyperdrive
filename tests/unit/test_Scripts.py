@@ -205,3 +205,60 @@ def test_ohlc_worker_uses_timeframe_override(
 
     provider.save_ohlc.assert_called_once_with(symbol="AAPL", timeframe="1m", retries=1)
     assert counter.value == 1
+
+
+def test_update_api_import_has_no_runtime_state() -> None:
+    """Build the API clients and read the signals only when main runs."""
+    module = load_script("scripts.update_api")
+
+    for runtime_name in ("df", "hist", "kr", "md", "signals", "symbol"):
+        assert runtime_name not in vars(module)
+
+
+@pytest.mark.parametrize(
+    ("times", "dropped"),
+    [
+        (pd.date_range("2026-01-01", periods=30, freq="D"), 7),
+        (pd.bdate_range("2026-01-01", periods=30), 5),
+    ],
+)
+def test_update_api_preview_ends_a_week_early(
+    times: pd.DatetimeIndex, dropped: int
+) -> None:
+    """Cut the preview by date for daily (crypto) and trading-day (stock) rows."""
+    module = load_script("scripts.update_api")
+    df = pd.DataFrame({C.TIME: times})
+
+    delayed = module.delay_preview(df)
+
+    assert delayed[C.TIME].max() == times[-1] - pd.Timedelta(days=7)
+    assert len(delayed) == len(times) - dropped
+
+
+def test_update_api_main_saves_delayed_previews(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Save USD and BTC previews that end one week before the latest row."""
+    module = load_script("scripts.update_api")
+    monkeypatch.setenv("SYMBOL", "BTC")
+    times = pd.date_range("2026-01-01", periods=40, freq="D")
+    market = MagicMock()
+    market.get_ohlc.return_value = pd.DataFrame(
+        {C.TIME: times, C.CLOSE: [100.0 + day for day in range(40)]}
+    )
+    market.reader.load_csv.return_value = pd.DataFrame(
+        {C.TIME: times.strftime("%Y-%m-%d"), C.SIG: [day % 10 < 5 for day in range(40)]}
+    )
+
+    with (
+        patch.object(module, "MarketData", return_value=market),
+        patch.object(module, "Kraken") as kraken,
+    ):
+        kraken.return_value.get_fee.return_value = 0.26
+        assert module.main() == 0
+
+    _, preview = market.writer.save_json.call_args.args
+    last = (times[-1] - pd.Timedelta(days=7)).strftime("%m/%d/%Y")
+    for currency in ("BTC", "USD"):
+        assert preview[currency]["data"][-1][C.TIME] == last
+        assert len(preview[currency]["data"]) == 2 * (40 - 7)
