@@ -5,8 +5,8 @@
 
 version: 2
 updates:
-  - package-ecosystem: "pip" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "uv"
+    directory: "/" # Location of pyproject.toml and uv.lock
     schedule:
       interval: "monthly"
 
