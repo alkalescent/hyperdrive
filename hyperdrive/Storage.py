@@ -169,6 +169,12 @@ class Store:
             print(f"{key} does not exist in S3.")
             os.remove(key)
             raise e
+        except BaseException:
+            # Remove the partly written file, so the next read downloads the
+            # key again instead of taking the partial file as the stored data.
+            if os.path.exists(key):
+                os.remove(key)
+            raise
 
     def download_dir(self, path: str) -> None:
         """Download all files in an S3 directory.

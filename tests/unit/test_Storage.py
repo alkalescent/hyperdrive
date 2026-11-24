@@ -8,10 +8,11 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import boto3
 import pytest
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 from moto import mock_aws
 
 from hyperdrive.Storage import Store
@@ -199,6 +200,25 @@ class TestStore:
         """Test downloading non-existent file raises ClientError."""
         with pytest.raises(ClientError):
             store.download_file("non_existent_file.txt")
+
+    def test_download_file_error_removes_partial_file(
+        self, store: Store, tmp_path: Path
+    ) -> None:
+        """Test a failed download removes the partly written local file."""
+        path = tmp_path / "partial.csv"
+
+        def fail(key: str, file: Any) -> None:
+            file.write(b"Time,Open\n2026-01-01,1.0\n")
+            raise EndpointConnectionError(endpoint_url="https://s3.amazonaws.com")
+
+        bucket = MagicMock()
+        bucket.download_fileobj.side_effect = fail
+        store.get_bucket = MagicMock(return_value=bucket)
+
+        with pytest.raises(EndpointConnectionError):
+            store.download_file(str(path))
+
+        assert not path.exists()
 
     def test_delete_objects(self, store: Store, s3_bucket: Any) -> None:
         """Test deleting objects from S3."""

@@ -15,6 +15,7 @@ from unittest.mock import MagicMock
 import boto3
 import pandas as pd
 import pytest
+from botocore.exceptions import ClientError
 from moto import mock_aws
 
 from hyperdrive.FileOps import FileReader, FileWriter
@@ -406,6 +407,53 @@ class TestFileReader:
         with pytest.raises(FileNotFoundError):
             reader.load_csv("nonexistent_file.csv")
 
+    def test_load_csv_missing_key(
+        self, reader: FileReader, s3_bucket: Any, tmp_path: Path
+    ) -> None:
+        """Test load_csv returns an empty DataFrame for a key S3 does not store."""
+        reader.store.bucket_name = s3_bucket.name
+        path = tmp_path / "missing.csv"
+
+        result = reader.load_csv(str(path))
+
+        assert result.empty
+        assert not path.exists()
+
+    @pytest.mark.parametrize(
+        ("code", "status"), [("SlowDown", 503), ("AccessDenied", 403)]
+    )
+    def test_update_csv_download_error_keeps_history(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        s3_bucket: Any,
+        tmp_path: Path,
+        code: str,
+        status: int,
+    ) -> None:
+        """Test a failed S3 read stops the merge before the save."""
+        key = str(tmp_path / "history.csv")
+        rows = "".join(f"2026-01-{day:02d},1.0\n" for day in range(1, 31))
+        s3_bucket.put_object(Key=key, Body=f"date,open\n{rows}".encode())
+        failing = MagicMock()
+        failing.download_fileobj.side_effect = ClientError(
+            {
+                "Error": {"Code": code, "Message": "test"},
+                "ResponseMetadata": {"HTTPStatusCode": status},
+            },
+            "GetObject",
+        )
+        reader.store.get_bucket = MagicMock(return_value=failing)
+        writer.store.bucket_name = s3_bucket.name
+        new = pd.DataFrame({"date": ["2026-11-20", "2026-11-21"], "open": [2.0, 2.0]})
+
+        with pytest.raises(ClientError):
+            merged = reader.update_df(key, new, "date")
+            writer.update_csv(key, merged)
+
+        stored = s3_bucket.Object(key).get()["Body"].read().decode()
+        assert len(stored.splitlines()) == 31
+
     def test_update_df(
         self,
         reader: FileReader,
@@ -536,19 +584,15 @@ class TestFileReader:
         assert result is True
         assert os.path.exists(pickle_path)
 
-    def test_load_csv_general_exception(
-        self, reader: FileReader, tmp_path: Path
-    ) -> None:
-        """Test load_csv with general exception (lines 52-53)."""
+    def test_load_csv_binary_data(self, reader: FileReader, tmp_path: Path) -> None:
+        """Test load_csv raises ValueError when polars panics on binary data."""
         reader.store.download_file = MagicMock()
 
-        # Create a malformed CSV that will cause a general exception during read
         bad_csv = tmp_path / "bad.csv"
         bad_csv.write_bytes(b"\x00\x01\x02\x03")  # Binary data
 
-        result = reader.load_csv(str(bad_csv))
-        # Should return empty DataFrame on general exception
-        assert result.empty
+        with pytest.raises(ValueError, match="could not be read"):
+            reader.load_csv(str(bad_csv))
 
     def test_update_df_with_save_fmt(
         self, reader: FileReader, writer: FileWriter, tmp_path: Path

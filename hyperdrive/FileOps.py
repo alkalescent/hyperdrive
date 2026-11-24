@@ -9,10 +9,14 @@ from typing import Any
 
 import pandas as pd
 import polars as pl
+from botocore.exceptions import ClientError
 
 from .Constants import TZ
 from .Storage import Store
 from .TimeMachine import TimeTraveller
+
+# Error codes S3 returns for a key it does not store (HeadObject gives "404").
+MISSING_KEY_CODES = {"404", "NoSuchKey", "NotFound"}
 
 # TODO: consider collapsing FileReader and FileWriter into one class, since both
 # hold the same Store and callers usually need both.
@@ -77,11 +81,15 @@ class FileReader:
             filename: Path to the CSV file.
 
         Returns:
-            DataFrame containing the CSV data.
+            DataFrame containing the CSV data, or an empty DataFrame when
+            S3 does not store the file yet.
 
         Raises:
             pd.errors.EmptyDataError: If the CSV file is empty.
             FileNotFoundError: If the file doesn't exist.
+            ClientError: If the S3 download fails for any other reason, so
+                that callers stop before saving over the stored file.
+            ValueError: If polars cannot read the file.
         """
         try:
             if self.should_be_updated(filename):
@@ -92,6 +100,10 @@ class FileReader:
             # Round numeric columns to avoid floating point precision issues
             numeric_cols = df.select_dtypes(include=["float64", "float32"]).columns
             df[numeric_cols] = df[numeric_cols].round(10)
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") not in MISSING_KEY_CODES:
+                raise
+            df = pd.DataFrame()
         except pl.exceptions.NoDataError:
             print(f"{filename} is an empty csv file.")
             raise pd.errors.EmptyDataError(
@@ -102,8 +114,11 @@ class FileReader:
             raise
         except pd.errors.EmptyDataError:
             raise
-        except BaseException:
-            df = pd.DataFrame()
+        except pl.exceptions.PanicException as e:
+            # polars panics on some malformed files, such as one with a NUL
+            # byte in its header. A panic is a BaseException, which the
+            # scripts' per-symbol `except Exception` handlers do not catch.
+            raise ValueError(f"{filename} could not be read as a CSV file.") from e
         return df
 
     def check_update(self, filename: str, df: pd.DataFrame) -> bool:
