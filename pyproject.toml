@@ -52,9 +52,9 @@ qr = ["qrcode[pil]"]
 keepalive = ["PyGithub"]
 
 [project.urls]
-Homepage = "https://github.com/suchak1/hyperdrive"
-"Bug Reports" = "https://github.com/suchak1/hyperdrive/issues"
-Source = "https://github.com/suchak1/hyperdrive"
+Homepage = "https://github.com/alkalescent/hyperdrive"
+"Bug Reports" = "https://github.com/alkalescent/hyperdrive/issues"
+Source = "https://github.com/alkalescent/hyperdrive"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
