@@ -9,26 +9,6 @@ permissions:
   contents: write
   id-token: write  # Required for OIDC trusted publishing to PyPI
 
-env:
-  RUN_ID: ${{ github.run_id }}
-  RH_USERNAME: ${{ secrets.RH_USERNAME }}
-  RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
-  RH_2FA: ${{ secrets.RH_2FA }}
-  GLASSNODE: ${{ secrets.GLASSNODE }}
-  BLS: ${{ secrets.BLS }}
-  BINANCE_TESTNET_KEY: ${{ secrets.BINANCE_TESTNET_KEY }}
-  BINANCE_TESTNET_SECRET: ${{ secrets.BINANCE_TESTNET_SECRET }}
-  KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
-  KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
-  POLYGON: ${{ secrets.POLYGON }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-  PREF_EXCHANGE: ${{ secrets.PREF_EXCHANGE }}
-  GLASSNODE_PASS: ${{ secrets.GLASSNODE_PASS }}
-  ALPACA_PAPER: ${{ secrets.ALPACA_PAPER }}
-  ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
-
 jobs:
   test:
     name: Test

@@ -10,27 +10,10 @@ permissions:
   pull-requests: write
   id-token: write  # Required for OIDC trusted publishing to TestPyPI
 
+# Secrets go to the steps that use them, as in the scheduled workflows.
 env:
   RUN_ID: ${{ github.run_id }}
-  RH_USERNAME: ${{ secrets.RH_USERNAME }}
-  RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
-  RH_2FA: ${{ secrets.RH_2FA }}
-  GLASSNODE: ${{ secrets.GLASSNODE }}
-  S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
-  POLYGON: ${{ secrets.POLYGON }}
-  BLS: ${{ secrets.BLS }}
-  BINANCE_TESTNET_KEY: ${{ secrets.BINANCE_TESTNET_KEY }}
-  BINANCE_TESTNET_SECRET: ${{ secrets.BINANCE_TESTNET_SECRET }}
-  KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
-  KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
-  PREF_EXCHANGE: ${{ secrets.PREF_EXCHANGE }}
   TEST: true
-  GLASSNODE_PASS: ${{ secrets.GLASSNODE_PASS }}
-  ALPACA_PAPER: ${{ secrets.ALPACA_PAPER }}
-  ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
 
 jobs:
   test:
@@ -296,6 +279,11 @@ jobs:
     - uses: astral-sh/setup-uv@v7
     - run: make install
     - name: Update indices
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
       run: uv run python scripts/update_indices.py
 
   # update-unrate:
@@ -358,6 +346,14 @@ jobs:
     - uses: astral-sh/setup-uv@v7
     - run: make install
     - name: Update OHLC
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
+        POLYGON: ${{ secrets.POLYGON }}
+        ALPACA_PAPER: ${{ secrets.ALPACA_PAPER }}
+        ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
       run: uv run python scripts/update_ohlc.py
 
   # # update-intraday:
@@ -388,9 +384,15 @@ jobs:
     - run: make install
     - name: Decrypt scripts
       env:
+        RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
         SALT: ${{ secrets.SALT }}
       run: uv run python util/decrypt.py encrypted/create_model.py
     - name: Create model
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
       run: uv run python encrypted/create_model.py
 
   optimize-portfolio:
@@ -406,9 +408,17 @@ jobs:
     - run: make install
     - name: Decrypt scripts
       env:
+        RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
         SALT: ${{ secrets.SALT }}
       run: uv run python util/decrypt.py encrypted/optimize_portfolio.py
     - name: Optimize portfolio
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
+        ALPACA_PAPER: ${{ secrets.ALPACA_PAPER }}
+        ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
       run: uv run python encrypted/optimize_portfolio.py
 
   # Wave 4: Visualization and prediction (parallel, depend on model)
@@ -424,6 +434,11 @@ jobs:
     - uses: astral-sh/setup-uv@v7
     - run: make install
     - name: Create visualization
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
       run: uv run python scripts/visualize.py
 
   predict-signal:
@@ -439,12 +454,22 @@ jobs:
     - run: make install
     - name: Decrypt scripts
       env:
+        RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
         SALT: ${{ secrets.SALT }}
       run: uv run python util/decrypt.py encrypted/predict_signal.py
     - name: Predict signal
       env:
-        SALT: ${{ secrets.SALT }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
+        POLYGON: ${{ secrets.POLYGON }}
+        GLASSNODE: ${{ secrets.GLASSNODE }}
+        RH_USERNAME: ${{ secrets.RH_USERNAME }}
+        GLASSNODE_PASS: ${{ secrets.GLASSNODE_PASS }}
         EMIT_SECRET: ${{ secrets.DEV_EMIT_SECRET }}
+        SALT: ${{ secrets.SALT }}
+        RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
       run: uv run python encrypted/predict_signal.py
 
   # Wave 5: API update and order execution (parallel, depend on signal prediction)
@@ -461,7 +486,14 @@ jobs:
     - run: make install
     - name: Update API
       env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
         SYMBOL: ${{ secrets.SYMBOL }}
+        KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
+        KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
+        PREF_EXCHANGE: ${{ secrets.PREF_EXCHANGE }}
       run: uv run python scripts/update_api.py
 
   execute-order:
@@ -476,4 +508,14 @@ jobs:
     - uses: astral-sh/setup-uv@v7
     - run: make install
     - name: Execute order
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
+        BINANCE_TESTNET_KEY: ${{ secrets.BINANCE_TESTNET_KEY }}
+        BINANCE_TESTNET_SECRET: ${{ secrets.BINANCE_TESTNET_SECRET }}
+        KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
+        KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
+        PREF_EXCHANGE: ${{ secrets.PREF_EXCHANGE }}
       run: uv run python scripts/execute_order.py
