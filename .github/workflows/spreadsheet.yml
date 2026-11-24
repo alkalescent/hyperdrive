@@ -34,9 +34,11 @@ jobs:
         run: make ci
 
       - name: Set up Google credentials
+        env:
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
         run: |
           mkdir -p ~/.config/gspread
-          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT }}' > ~/.config/gspread/service_account.json
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT" > ~/.config/gspread/service_account.json
 
       - name: Update spreadsheet
         env:
