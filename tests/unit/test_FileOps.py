@@ -428,6 +428,7 @@ class TestFileReader:
         writer: FileWriter,
         s3_bucket: Any,
         tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
         code: str,
         status: int,
     ) -> None:
@@ -443,7 +444,7 @@ class TestFileReader:
             },
             "GetObject",
         )
-        reader.store.get_bucket = MagicMock(return_value=failing)
+        monkeypatch.setattr(reader.store, "get_bucket", MagicMock(return_value=failing))
         writer.store.bucket_name = s3_bucket.name
         new = pd.DataFrame({"date": ["2026-11-20", "2026-11-21"], "open": [2.0, 2.0]})
 

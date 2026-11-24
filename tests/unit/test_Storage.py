@@ -202,7 +202,7 @@ class TestStore:
             store.download_file("non_existent_file.txt")
 
     def test_download_file_error_removes_partial_file(
-        self, store: Store, tmp_path: Path
+        self, store: Store, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test a failed download removes the partly written local file."""
         path = tmp_path / "partial.csv"
@@ -213,7 +213,7 @@ class TestStore:
 
         bucket = MagicMock()
         bucket.download_fileobj.side_effect = fail
-        store.get_bucket = MagicMock(return_value=bucket)
+        monkeypatch.setattr(store, "get_bucket", MagicMock(return_value=bucket))
 
         with pytest.raises(EndpointConnectionError):
             store.download_file(str(path))

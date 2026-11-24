@@ -559,6 +559,7 @@ class TestKraken:
         query = urllib.parse.urlsplit(request.url).query
         assert request.method == "GET"
         assert urllib.parse.parse_qs(query) == {"pair": ["XXBTZUSD"]}
+        assert request.headers is not None
         assert "API-Key" not in request.headers
         assert "API-Sign" not in request.headers
 
