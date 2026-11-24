@@ -12,6 +12,9 @@ on:
     # so no overlap between runs
     - cron: "*/90 * 15 * *"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

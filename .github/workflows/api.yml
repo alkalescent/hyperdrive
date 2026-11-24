@@ -10,6 +10,9 @@ on:
     # choose a time after OHLC update
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -9,6 +9,9 @@ on:
     # 12pm UTC on the 16th of each month
     - cron: "0 12 16 * *"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

@@ -9,6 +9,9 @@ on:
     # 2:30pm EST every day (for crypto)
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

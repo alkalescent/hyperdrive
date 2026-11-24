@@ -10,6 +10,9 @@ on:
     # 2 hr before 00:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

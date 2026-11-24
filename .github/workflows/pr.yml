@@ -6,9 +6,7 @@ on:
       - master
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write  # Required for OIDC trusted publishing to TestPyPI
+  contents: read
 
 # Secrets go to the steps that use them, as in the scheduled workflows.
 env:
@@ -24,6 +22,8 @@ jobs:
     name: QR Codes
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Needed to push QR code updates
     # Skip if triggered by QR code update commit to prevent infinite loop
     if: "!contains(github.event.head_commit.message, '[skip-qr]')"
     steps:
@@ -60,6 +60,10 @@ jobs:
     name: Version Preview
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write  # Needed to comment the version preview
+      id-token: write  # Required for OIDC trusted publishing to TestPyPI
     outputs:
       pypi_version: ${{ steps.set-version.outputs.pypi_version }}
     environment:

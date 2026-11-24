@@ -3,6 +3,9 @@ name: Test
 on:
   workflow_call:  # Only callable by other workflows (pr.yml, release.yml)
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Run Tests
