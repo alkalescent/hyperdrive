@@ -25,14 +25,14 @@ jobs:
       pypi_version: ${{ steps.set-version.outputs.pypi_version }}
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       with:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Bump version and push tag
       id: version
-      uses: anothrNick/github-tag-action@v1
+      uses: anothrNick/github-tag-action@4ed44965e0db8dab2b466a16da04aec3cc312fd8 # 1.75.0
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         DEFAULT_BUMP: minor
@@ -68,7 +68,7 @@ jobs:
       url: https://pypi.org/p/${{ github.event.repository.name }}
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       with:
         ref: master
         fetch-depth: 1
@@ -77,12 +77,12 @@ jobs:
       run: git pull origin master
     
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
       with:
         python-version: '3.11'
     
     - name: Install uv
-      uses: astral-sh/setup-uv@v7
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
     
     - name: Inject version from tag
       run: |
@@ -98,7 +98,7 @@ jobs:
         uv build --wheel
     
     - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
       # Uses OIDC trusted publishing - configure at:
       # https://pypi.org/manage/account/publishing/
 
@@ -110,12 +110,12 @@ jobs:
       contents: write  # Needed to create the release
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       with:
         ref: master
     
     - name: Create Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
       with:
         tag_name: ${{ needs.version.outputs.tag_name }}
         body: |
@@ -139,11 +139,11 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       with:
         persist-credentials: false
     
-    - uses: actions/setup-python@v6
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
       with:
         python-version: '3.11'
     
