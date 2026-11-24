@@ -1,10 +1,14 @@
 """Integration tests for DataSource module.
 
 These tests make real API calls to external services.
-Run with: pytest tests/integration/ -v
+Run with: pytest tests/integration/ -m integration -v
 """
 
+import pytest
+
 from hyperdrive import Constants as C
+
+pytestmark = pytest.mark.integration
 
 
 class TestPolygonIntegration:
