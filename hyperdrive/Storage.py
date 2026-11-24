@@ -181,8 +181,19 @@ class Store:
 
         Args:
             path: S3 prefix path to download.
+
+        Raises:
+            ValueError: If a listed key resolves outside the working directory.
         """
         keys = self.get_keys(path)
+        # Listed keys come from the bucket and become local paths, so check
+        # them all before downloading any.
+        root = os.path.realpath(os.getcwd())
+        for key in keys:
+            if os.path.commonpath([root, os.path.realpath(key)]) != root:
+                raise ValueError(
+                    f"S3 key {key!r} resolves outside the working directory"
+                )
         with ThreadPoolExecutor() as executor:
             list(executor.map(self.key_exists, keys, [True] * len(keys)))
 

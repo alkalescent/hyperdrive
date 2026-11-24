@@ -305,3 +305,22 @@ class TestStore:
         """Test downloading a directory from S3."""
         # Should not raise
         store.download_dir("data/")
+
+    def test_download_dir_rejects_key_outside_working_dir(
+        self,
+        store: Store,
+        s3_bucket: Any,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test a listed key that leaves the working directory stops the download."""
+        work = tmp_path / "work"
+        work.mkdir()
+        monkeypatch.chdir(work)
+        s3_bucket.put_object(Key="data/../../outside.csv", Body=b"Time,Open\n")
+
+        with pytest.raises(ValueError, match="outside the working directory"):
+            store.download_dir("data/")
+
+        assert not (tmp_path / "outside.csv").exists()
+        assert not (work / "data" / "symbols.csv").exists()
