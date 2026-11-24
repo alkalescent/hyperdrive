@@ -109,7 +109,7 @@ jobs:
         PYPI_VERSION="${BASE_VERSION}rc${{ github.event.pull_request.number }}.dev${{ github.run_number }}"
         echo "Tag version: $NEW_TAG"
         echo "PyPI version: $PYPI_VERSION"
-        echo "pypi_version=$PYPI_VERSION" >> $GITHUB_OUTPUT
+        echo "pypi_version=$PYPI_VERSION" >> "$GITHUB_OUTPUT"
       env:
         NEW_TAG: ${{ steps.version.outputs.new_tag }}
     
