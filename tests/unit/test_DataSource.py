@@ -5,7 +5,7 @@ Glassnode, and LaborStats for fast, deterministic, offline testing.
 """
 
 from collections.abc import Generator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -1027,6 +1027,39 @@ class TestPolygonIntraday:
         polygon.last_api_call_time = time() - 100  # 100 seconds ago
         # Should not delay since enough time has passed
         polygon.obey_free_limit(C.POLY_FREE_DELAY)
+
+    def test_get_intraday_skips_empty_day(self, polygon: Any) -> None:
+        """Test a day without bars is skipped and later days are still requested."""
+
+        class Bar:
+            def __init__(self, timestamp: int) -> None:
+                self.open = self.high = self.low = self.close = 1.0
+                self.volume = 10.0
+                self.vwap = 1.0
+                self.timestamp = timestamp
+                self.transactions = 1
+
+        dates = polygon.traveller.dates_in_range("3d")
+        requested: list[str] = []
+
+        def get_aggs(*args: Any, from_: str, **kwargs: Any) -> list[Bar]:
+            requested.append(from_)
+            if from_ == dates[1]:
+                return []  # what polygon-api-client returns for a day without bars
+            # 17:00 UTC falls on the same date in New York
+            bar_time = datetime.strptime(from_, C.DATE_FMT).replace(hour=17, tzinfo=UTC)
+            return [Bar(int(bar_time.timestamp() * 1000))]
+
+        polygon.client.get_aggs = get_aggs
+        polygon.obey_free_limit = MagicMock()
+
+        dfs = list(polygon.get_intraday(symbol="AAPL", timeframe="3d"))
+
+        assert requested == dates
+        assert [df[C.TIME].dt.strftime(C.DATE_FMT).tolist() for df in dfs] == [
+            [dates[0]],
+            [dates[2]],
+        ]
 
 
 class TestAlpacaDataOHLC:

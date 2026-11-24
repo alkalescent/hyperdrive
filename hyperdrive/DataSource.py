@@ -1234,6 +1234,9 @@ class Polygon(MarketData):
                     continue
                 finally:
                     self.log_api_call_time()
+                # get_aggs returns [] for a day without bars instead of raising
+                if not response:
+                    continue
 
                 raw = [vars(item) for item in response]
                 columns = {
