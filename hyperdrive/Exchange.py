@@ -430,14 +430,17 @@ class Kraken(CEX):
         precision = pair_info[precision_label]
         volume = "{:0.0{}f}".format(amount, precision)
 
-        data = {
+        data: dict[str, Any] = {
             "ordertype": "market",
             "type": side.lower(),
             "pair": pair,
             "oflags": ",".join(oflags),
             "volume": volume,
-            "validate": test or self.test,
         }
+        # A bool posts as "True" or "False", so send validate only when testing
+        # and keep a live order from depending on how Kraken reads "False".
+        if test or self.test:
+            data["validate"] = True
         response = self.make_auth_req(url, data)
         return response
 
@@ -706,9 +709,12 @@ class Binance(CEX):
             balance_label = base
             quantity_label = "quantity"
             filters = validated_symbol_info["filters"]
+            step_size = None
             for filter in filters:
                 if filter["filterType"] == "LOT_SIZE":
                     step_size = float(filter["stepSize"])
+            if step_size is None:
+                raise ValueError(f"Symbol info for {pair} has no LOT_SIZE filter")
         elif side == C.BUY:
             side = self.client.SIDE_BUY
             balance_label = quote

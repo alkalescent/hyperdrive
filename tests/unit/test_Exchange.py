@@ -4,6 +4,7 @@ This test file mocks all external API calls to Binance, Kraken, and Alpaca
 for fast, deterministic, offline testing.
 """
 
+import urllib.parse
 from collections.abc import Generator
 from time import monotonic
 from typing import Any
@@ -465,6 +466,26 @@ class TestKraken:
         result = kraken.order("XXBT", "ZUSD", "sell", 0.005, test=True)
         assert "txid" in result
 
+    def test_order_sends_validate_only_when_testing(
+        self, mock_env_vars: None, mock_kraken_api: responses.RequestsMock
+    ) -> None:
+        """Test AddOrder carries validate when testing and leaves it out otherwise."""
+        from hyperdrive.Exchange import Kraken
+
+        def add_order_body() -> dict[str, list[str]]:
+            calls = mock_kraken_api.calls
+            request = [c.request for c in calls if "AddOrder" in str(c.request.url)][-1]
+            return urllib.parse.parse_qs(str(request.body))
+
+        Kraken(test=True).order("XXBT", "ZUSD", "sell", 0.005)
+        assert add_order_body()["validate"] == ["True"]
+
+        Kraken().order("XXBT", "ZUSD", "sell", 0.005, test=True)
+        assert add_order_body()["validate"] == ["True"]
+
+        Kraken().order("XXBT", "ZUSD", "sell", 0.005)
+        assert "validate" not in add_order_body()
+
     def test_standardize_order(self, kraken: Any) -> None:
         """Test order standardization."""
         order = SAMPLE_KRAKEN_ORDER.copy()
@@ -705,6 +726,18 @@ class TestBinanceEdgeCases:
         mock_binance_client.get_symbol_info.return_value = None
         with pytest.raises(Exception, match="Symbol info not found"):
             binance.order("INVALID", "USD", "buy", 0.01)
+
+    def test_order_sell_without_lot_size(
+        self, binance: Any, mock_binance_client: MagicMock
+    ) -> None:
+        """Test a sell raises ValueError when the symbol has no LOT_SIZE filter."""
+        mock_binance_client.get_symbol_info.return_value = {
+            "quoteAssetPrecision": 4,
+            "filters": [{"filterType": "MIN_NOTIONAL", "minNotional": "10.0000"}],
+        }
+        with pytest.raises(ValueError, match="LOT_SIZE"):
+            binance.order("BTC", "USD", "sell", 1, test=True)
+        mock_binance_client.create_test_order.assert_not_called()
 
 
 class TestAlpacaFillOrders:
