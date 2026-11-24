@@ -45,7 +45,7 @@ jobs:
         env:
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
           SALT: ${{ secrets.SALT }}
-        run: uv run python util/decrypt.py encrypted/create_model.py
+        run: uv run --frozen --no-dev python util/decrypt.py encrypted/create_model.py
 
       - name: Create model
         env:
@@ -57,7 +57,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
-        run: uv run python encrypted/create_model.py
+        run: uv run --frozen --no-dev python encrypted/create_model.py
 
       # Add step to create visualization after automating model creation
       # Should be able to copy step from visualize.yml

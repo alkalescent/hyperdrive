@@ -43,10 +43,13 @@ dev = [
     "pytest-mock",
     "responses",
     "freezegun",
-    "qrcode[pil]",
-    "PyGithub",
+    {include-group = "qr"},
+    {include-group = "keepalive"},
     "ty",
 ]
+# Only the QR and Keep Alive jobs install these, next to the main dependencies.
+qr = ["qrcode[pil]"]
+keepalive = ["PyGithub"]
 
 [project.urls]
 Homepage = "https://github.com/suchak1/hyperdrive"

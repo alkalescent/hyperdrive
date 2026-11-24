@@ -32,4 +32,4 @@ jobs:
       - name: Enable workflows
         env:
           GITHUB: ${{ secrets.GITHUB }}
-        run: uv run python util/keepalive.py
+        run: uv run --frozen --no-dev --group keepalive python util/keepalive.py

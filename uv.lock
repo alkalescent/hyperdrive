@@ -1448,6 +1448,12 @@ dev = [
     { name = "ruff" },
     { name = "ty" },
 ]
+keepalive = [
+    { name = "pygithub" },
+]
+qr = [
+    { name = "qrcode", extra = ["pil"] },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1491,6 +1497,8 @@ dev = [
     { name = "ruff" },
     { name = "ty" },
 ]
+keepalive = [{ name = "pygithub" }]
+qr = [{ name = "qrcode", extras = ["pil"] }]
 
 [[package]]
 name = "hyperopt"

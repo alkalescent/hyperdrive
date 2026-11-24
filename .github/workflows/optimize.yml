@@ -36,7 +36,7 @@ jobs:
         env:
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
           SALT: ${{ secrets.SALT }}
-        run: uv run python util/decrypt.py encrypted/optimize_portfolio.py
+        run: uv run --frozen --no-dev python util/decrypt.py encrypted/optimize_portfolio.py
 
       - name: Optimize portfolio
         env:
@@ -46,4 +46,4 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           ALPACA: ${{ secrets.ALPACA }}
           ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
-        run: uv run python encrypted/optimize_portfolio.py
+        run: uv run --frozen --no-dev python encrypted/optimize_portfolio.py

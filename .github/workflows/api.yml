@@ -46,4 +46,4 @@ jobs:
           KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
           KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
           PREF_EXCHANGE: ${{ secrets.PREF_EXCHANGE }}
-        run: uv run python scripts/update_api.py
+        run: uv run --frozen --no-dev python scripts/update_api.py

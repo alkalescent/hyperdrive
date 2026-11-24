@@ -42,4 +42,4 @@ jobs:
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           POLYGON: ${{ secrets.POLYGON }}
-        run: uv run python scripts/update_intraday.py
+        run: uv run --frozen --no-dev python scripts/update_intraday.py

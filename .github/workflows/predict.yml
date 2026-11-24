@@ -37,10 +37,10 @@ jobs:
         env:
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
           SALT: ${{ secrets.SALT }}
-        run: uv run python util/decrypt.py encrypted/predict_signal.py
+        run: uv run --frozen --no-dev python util/decrypt.py encrypted/predict_signal.py
 
       - name: Sleep until 00:00 UTC
-        run: uv run python scripts/sleep.py 00:00
+        run: uv run --frozen --no-dev python scripts/sleep.py 00:00
 
       - name: Predict signal
         env:
@@ -55,7 +55,7 @@ jobs:
           EMIT_SECRET: ${{ secrets.EMIT_SECRET }}
           SALT: ${{ secrets.SALT }}
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
-        run: uv run python encrypted/predict_signal.py
+        run: uv run --frozen --no-dev python encrypted/predict_signal.py
 
       - name: Execute order
         env:
@@ -68,4 +68,4 @@ jobs:
           KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
           KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
           PREF_EXCHANGE: ${{ secrets.PREF_EXCHANGE }}
-        run: uv run python scripts/execute_order.py
+        run: uv run --frozen --no-dev python scripts/execute_order.py

@@ -45,4 +45,4 @@ jobs:
           POLYGON: ${{ secrets.POLYGON }}
           ALPACA: ${{ secrets.ALPACA }}
           ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
-        run: uv run python scripts/update_ohlc.py
+        run: uv run --frozen --no-dev python scripts/update_ohlc.py

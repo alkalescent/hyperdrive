@@ -50,4 +50,4 @@ jobs:
           ETHERSCAN: ${{ secrets.ETHERSCAN }}
           POLYGON: ${{ secrets.POLYGON }}
           VALIDATOR: ${{ secrets.VALIDATOR }}
-        run: uv run python scripts/update_spreadsheet.py
+        run: uv run --frozen --no-dev python scripts/update_spreadsheet.py

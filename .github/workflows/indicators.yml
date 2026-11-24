@@ -48,4 +48,4 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
           RH_USERNAME: ${{ secrets.RH_USERNAME }}
           GLASSNODE_PASS: ${{ secrets.GLASSNODE_PASS }}
-        run: uv run python scripts/update_indicators.py
+        run: uv run --frozen --no-dev python scripts/update_indicators.py
