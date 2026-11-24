@@ -612,15 +612,16 @@ class Kraken(CEX):
         access = "public"
         endpoint = "Ticker"
         parts = [
-            "",
+            self.api_url,
             self.version,
             access,
             endpoint,
         ]
         url = "/".join(parts)
-        data = {"pair": pair} if pair else {}
-        response = self.make_auth_req(url, data)
-        return response
+        # A public endpoint, so the request carries no key or signature
+        params = {"pair": pair} if pair else {}
+        response = requests.get(url, params=params, timeout=C.API_TIMEOUT)
+        return self.handle_response(response)
 
     def get_price(self, pair: str) -> float:
         """Get current price for a trading pair.

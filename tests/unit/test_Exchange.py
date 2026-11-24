@@ -197,7 +197,7 @@ def mock_kraken_api(
 
         # Mock Ticker
         rsps.add(
-            responses.POST,
+            responses.GET,
             f"{base}/0/public/Ticker",
             json={"result": {"XXBTZUSD": {"c": ["50000.00"]}}, "error": []},
         )
@@ -542,19 +542,32 @@ class TestKraken:
     ) -> None:
         """Test getting ticker data."""
         mock_kraken_api.add(
-            responses.POST,
+            responses.GET,
             "https://api.kraken.com/0/public/Ticker",
             json={"result": {"XXBTZUSD": {"c": ["50000.00"]}}, "error": []},
         )
         ticker = kraken.get_ticker("XXBTZUSD")
         assert "XXBTZUSD" in ticker
 
+    def test_get_ticker_is_unsigned(
+        self, kraken: Any, mock_kraken_api: responses.RequestsMock
+    ) -> None:
+        """Test the public ticker request sends no API key or signature."""
+        kraken.get_ticker("XXBTZUSD")
+
+        request = mock_kraken_api.calls[-1].request
+        query = urllib.parse.urlsplit(request.url).query
+        assert request.method == "GET"
+        assert urllib.parse.parse_qs(query) == {"pair": ["XXBTZUSD"]}
+        assert "API-Key" not in request.headers
+        assert "API-Sign" not in request.headers
+
     def test_get_price(
         self, kraken: Any, mock_kraken_api: responses.RequestsMock
     ) -> None:
         """Test getting asset price."""
         mock_kraken_api.add(
-            responses.POST,
+            responses.GET,
             "https://api.kraken.com/0/public/Ticker",
             json={"result": {"XXBTZUSD": {"c": ["50000.00"]}}, "error": []},
         )
