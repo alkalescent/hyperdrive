@@ -752,6 +752,22 @@ class TestLaborStats:
         df = labor_stats.get_unemployment_rate(timeframe="2y")
         assert {C.TIME, C.UN_RATE}.issubset(df.columns)
 
+    def test_get_unemployment_rate_uses_request_timeout(self, labor_stats: Any) -> None:
+        """Bound BLS requests so a stalled connection cannot hang the job."""
+        data = [{"year": "2024", "period": "M01", "value": "3.7"}]
+        response = MagicMock(ok=True)
+        response.json.return_value = {
+            "status": "REQUEST_SUCCEEDED",
+            "Results": {"series": [{"data": data}]},
+        }
+
+        with patch(
+            "hyperdrive.DataSource.requests.post", return_value=response
+        ) as post:
+            labor_stats.get_unemployment_rate(timeframe="2y", retries=1)
+
+        assert post.call_args.kwargs["timeout"] == C.API_TIMEOUT
+
 
 class TestMarketDataSave:
     """Unit tests for MarketData save methods."""
@@ -969,6 +985,17 @@ class TestGlassnode:
         url = "https://api.glassnode.com/v1/metrics/indicators/stock_to_flow_ratio"
         response = glassnode.make_request(url)
         assert response.ok
+
+    def test_make_request_uses_request_timeout(self, glassnode: Any) -> None:
+        """Bound Glassnode requests so a stalled connection cannot hang the job."""
+        url = "https://api.glassnode.com/v1/metrics/indicators/stock_to_flow_ratio"
+        with (
+            patch("hyperdrive.DataSource.requests.get") as get,
+            patch("hyperdrive.DataSource.sleep"),
+        ):
+            glassnode.make_request(url)
+
+        assert get.call_args.kwargs["timeout"] == C.API_TIMEOUT
 
     def test_get_s2f_ratio(
         self,

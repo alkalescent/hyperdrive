@@ -297,6 +297,18 @@ class TestAlpacaEx:
         with pytest.raises(RuntimeError):
             alpaca.make_request("GET", "not_a_real_route")
 
+    def test_make_request_uses_request_timeout(self, alpaca: Any) -> None:
+        """Bound Alpaca requests so a stalled connection cannot hang the job."""
+        response = MagicMock(ok=True, content=b"{}")
+        response.json.return_value = {}
+
+        with patch(
+            "hyperdrive.Exchange.requests.request", return_value=response
+        ) as request:
+            alpaca.make_request("GET", "account")
+
+        assert request.call_args.kwargs["timeout"] == C.API_TIMEOUT
+
     def test_get_positions(self, alpaca: Any) -> None:
         """Test getting positions."""
         positions = alpaca.get_positions()
@@ -585,6 +597,21 @@ class TestKraken:
         )
         result = kraken.make_auth_req("/0/private/Balance")
         assert isinstance(result, dict)
+
+    def test_requests_use_request_timeout(self, kraken: Any) -> None:
+        """Bound Kraken requests so a stalled connection cannot hang the job."""
+        response = MagicMock()
+        response.json.return_value = {"result": {"XXBTZUSD": {}}, "error": []}
+
+        with (
+            patch("hyperdrive.Exchange.requests.post", return_value=response) as post,
+            patch("hyperdrive.Exchange.requests.get", return_value=response) as get,
+        ):
+            kraken.make_auth_req("/0/private/Balance")
+            kraken.get_asset_pair("XXBTZUSD")
+
+        assert post.call_args.kwargs["timeout"] == C.API_TIMEOUT
+        assert get.call_args.kwargs["timeout"] == C.API_TIMEOUT
 
 
 class TestAlpacaExEdgeCases:

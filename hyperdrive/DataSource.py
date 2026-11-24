@@ -1308,7 +1308,7 @@ class LaborStats(MarketData):
                 "seriesid": "LNS14000000",
             }
 
-            response = requests.post(url, data=params)
+            response = requests.post(url, data=params, timeout=C.API_TIMEOUT)
 
             if response.ok and response.json()["status"] == "REQUEST_SUCCEEDED":
                 payload = response.json()
@@ -1427,7 +1427,9 @@ class Glassnode(MarketData):
             params["api_key"] = self.token or ""
             headers = {}
             cookies = {}
-        response = requests.get(url, params=params, headers=headers, cookies=cookies)
+        response = requests.get(
+            url, params=params, headers=headers, cookies=cookies, timeout=C.API_TIMEOUT
+        )
         sleep(random() * 5)
         return response
 

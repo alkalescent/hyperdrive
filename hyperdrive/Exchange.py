@@ -163,7 +163,9 @@ class AlpacaEx(CEX):
             "APCA-API-KEY-ID": self.token,
             "APCA-API-SECRET-KEY": self.secret,
         }
-        response = requests.request(method, url, json=payload, headers=headers)
+        response = requests.request(
+            method, url, json=payload, headers=headers, timeout=C.API_TIMEOUT
+        )
         if response.ok:
             # A cancelled order answers 204 with no body, so decoding is guarded.
             return response.json() if response.content else None
@@ -322,7 +324,9 @@ class Kraken(CEX):
         # Equivalent to get_kraken_signature() in the Authentication section of
         # Kraken's REST API docs.
         headers["API-Sign"] = self.get_signature(uri_path, data)
-        response = requests.post((self.api_url + uri_path), headers=headers, data=data)
+        response = requests.post(
+            self.api_url + uri_path, headers=headers, data=data, timeout=C.API_TIMEOUT
+        )
         return self.handle_response(response)
 
     def gen_nonce(self) -> str:
@@ -372,7 +376,7 @@ class Kraken(CEX):
         ]
         url = "/".join(parts)
         params = {"pair": pair}
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=C.API_TIMEOUT)
         result = self.handle_response(response)[pair]
         return result
 
