@@ -57,6 +57,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          # Ray 2.54+ leaves .git out of the working directory it ships to its
+          # workers, and each worker's `uv run` needs .git for the hatch-vcs version.
+          RAY_OVERRIDE_RUNTIME_ENV_DEFAULT_EXCLUDES: ""
         run: uv run --frozen --no-dev python encrypted/create_model.py
 
       # Add step to create visualization after automating model creation
