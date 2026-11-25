@@ -251,6 +251,54 @@ jobs:
     - name: Run smoke tests
       run: python tests/smoke.py
 
+  # `pip install hyperdrive` resolves the newest dependencies the pyproject
+  # bounds allow, ignoring uv.lock. This job installs the built wheel the same
+  # way and runs the smoke and unit tests on it, so a dependency release that
+  # breaks hyperdrive fails a pull request before a release reaches PyPI,
+  # where Smoke PyPI would first see it.
+  smoke-fresh-install:
+    name: Smoke Fresh Install
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        fetch-depth: 0  # Full history needed for hatch-vcs
+        persist-credentials: false
+
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+
+    - name: Build wheel
+      run: uv build --wheel --out-dir "$RUNNER_TEMP/dist"
+
+    - name: Install wheel with fresh dependencies
+      run: |
+        pip install "$RUNNER_TEMP"/dist/*.whl
+        pip show vectorbt plotly polars pyarrow numpy | grep -E '^(Name|Version):'
+
+    - name: Run smoke tests
+      run: python tests/smoke.py
+
+    # After the smoke tests, so those run on a user's install alone. pip keeps
+    # the installed versions unless a test tool needs another.
+    - name: Install test tools
+      run: |
+        python -m pip install --upgrade pip  # --group needs pip 25.1 or later
+        pip install --group dev
+        pip show vectorbt plotly polars pyarrow numpy | grep -E '^(Name|Version):'
+
+    - name: Run unit tests
+      # python -m puts the checkout first on sys.path, as uv's editable install
+      # does for make cov, so test_Scripts.py can import scripts/, which the
+      # wheel leaves out. The code matches the wheel's; the dependencies are
+      # the fresh set installed above.
+      run: python -m pytest tests/unit
+
   # The release's build and Check built version steps, run against a local
   # throwaway tag. Nothing is pushed or published.
   release-build:
