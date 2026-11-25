@@ -317,7 +317,9 @@ class TestStore:
         work = tmp_path / "work"
         work.mkdir()
         monkeypatch.chdir(work)
-        s3_bucket.put_object(Key="data/../../outside.csv", Body=b"Time,Open\n")
+        # S3 lists keys in order, and this one sorts after data/symbols.csv, so
+        # a loop that checked each key as it downloaded would fetch that first.
+        s3_bucket.put_object(Key="data/zz/../../../outside.csv", Body=b"Time,Open\n")
 
         with pytest.raises(ValueError, match="outside the working directory"):
             store.download_dir("data/")
