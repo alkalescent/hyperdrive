@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -20,6 +21,7 @@ from hyperdrive.Staking import (
     Etherscan,
     QuickNodeRewardProvider,
     RelayIndex,
+    RewardProvider,
     RewardProviderError,
     RewardTotal,
     RewardWindow,
@@ -111,7 +113,7 @@ class FakeScan:
 
     def __init__(
         self,
-        pages: list[list[Any] | None] | None = None,
+        pages: Sequence[list[Any] | None] | None = None,
         bounds: tuple[int | None, int | None] = (100, 200),
     ) -> None:
         """Initialize the scan stub."""
@@ -779,7 +781,7 @@ class TestBlending:
         self, window: RewardWindow, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Use positive Dune rewards without averaging in a QuickNode zero."""
-        providers = {
+        providers: dict[str, RewardProvider] = {
             "dune": StubProvider({window: RewardTotal(40_000_000)}),
             "quicknode": StubProvider({window: RewardTotal(0)}),
         }
@@ -793,7 +795,7 @@ class TestBlending:
         self, window: RewardWindow, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Log a material difference without discarding either value."""
-        providers = {
+        providers: dict[str, RewardProvider] = {
             "dune": StubProvider({window: RewardTotal(10_000_000)}),
             "quicknode": StubProvider({window: RewardTotal(20_000_000)}),
         }

@@ -7,7 +7,7 @@ for fast, deterministic, offline testing.
 import urllib.parse
 from collections.abc import Generator
 from time import monotonic
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -463,7 +463,7 @@ class TestKraken:
     def test_standardize_order_buy(self, kraken: Any) -> None:
         """Test standardize_order with BUY side adjusts origQty."""
         buy_order = SAMPLE_KRAKEN_ORDER.copy()
-        descr = dict(SAMPLE_KRAKEN_ORDER["descr"])  # type: ignore[arg-type]
+        descr = dict(cast(dict[str, str], SAMPLE_KRAKEN_ORDER["descr"]))
         descr["type"] = "buy"
         buy_order["descr"] = descr
         trades = [SAMPLE_KRAKEN_TRADE.copy()]
@@ -556,7 +556,7 @@ class TestKraken:
         kraken.get_ticker("XXBTZUSD")
 
         request = mock_kraken_api.calls[-1].request
-        query = urllib.parse.urlsplit(request.url).query
+        query = urllib.parse.urlsplit(str(request.url)).query
         assert request.method == "GET"
         assert urllib.parse.parse_qs(query) == {"pair": ["XXBTZUSD"]}
         assert request.headers is not None

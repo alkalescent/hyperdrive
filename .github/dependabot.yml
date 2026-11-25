@@ -9,9 +9,19 @@ updates:
     directory: "/" # Location of pyproject.toml and uv.lock
     schedule:
       interval: "monthly"
+    groups:
+      # Each merge to master cuts a release, so minor and patch updates share
+      # one pull request; each major update still gets its own
+      uv:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       # Check for updates to GitHub Actions monthly
       interval: "monthly"
+    groups:
+      github-actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
