@@ -141,6 +141,8 @@ class FileReader:
         new: pd.DataFrame,
         column: str,
         save_fmt: str | None = None,
+        *,
+        missing_ok: bool = True,
     ) -> pd.DataFrame:
         """Merge new data with existing CSV data.
 
@@ -151,11 +153,18 @@ class FileReader:
             new: New DataFrame to merge.
             column: Column name to use for deduplication.
             save_fmt: Optional date format for saving.
+            missing_ok: Return the stored rows when ``new`` is empty and lacks
+                ``column``, as when a run places no orders. Data sources pass
+                False, so an empty fetch still raises KeyError and counts
+                against the failure budget of the script that called it.
 
         Returns:
             Merged DataFrame with new entries taking precedence.
         """
         old = self.load_csv(filename)
+        if missing_ok and new.empty and column not in new:
+            # Nothing to merge, so the stored rows stand.
+            return old
         if not old.empty:
             old[column] = pd.to_datetime(old[column])
             new[column] = pd.to_datetime(new[column])
@@ -252,7 +261,9 @@ class FileWriter:
     def save_csv(self, filename: str, data: pd.DataFrame | pl.DataFrame) -> bool:
         """Save a DataFrame as a CSV file and upload to S3.
 
-        Accepts both pandas and polars DataFrames.
+        Accepts both pandas and polars DataFrames. polars writes a pandas
+        DataFrame unless it cannot convert one of its columns, in which case
+        pandas writes it.
 
         Args:
             filename: Path to save the CSV file.
@@ -274,9 +285,16 @@ class FileWriter:
         if data.empty:
             return False
         self.store.finder.make_path(filename)
-        # Convert to polars for faster CSV writing
-        df_pl = pl.from_pandas(data)
-        df_pl.write_csv(filename)
+        try:
+            # Convert to polars for faster CSV writing
+            df_pl = pl.from_pandas(data)
+        except (TypeError, ValueError):
+            # polars cannot convert an object column that mixes types, such as
+            # stored float prices beside the numeric strings Alpaca returns for
+            # new orders. pandas writes such a frame as it did before polars.
+            data.to_csv(filename, index=False, lineterminator="\n")
+        else:
+            df_pl.write_csv(filename)
         self.store.upload_file(filename)
         return True
 
