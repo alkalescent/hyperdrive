@@ -153,7 +153,8 @@ jobs:
         # see the release while pip's request lands on a stale edge moments
         # later and fails with "No matching distribution found". Retrying the
         # real command makes the check and the action the same client. Only
-        # that error is retried; any other install error fails at once.
+        # that error for this release is retried; a dependency pip cannot
+        # find, or any other install error, fails at once.
         for i in $(seq 1 $MAX_ATTEMPTS); do
           if OUTPUT=$(pip install "${NAME}==${VERSION}" 2>&1); then
             echo "$OUTPUT"
@@ -161,7 +162,7 @@ jobs:
             exit 0
           fi
           echo "$OUTPUT"
-          if ! grep -qF "No matching distribution found" <<< "$OUTPUT"; then
+          if ! grep -qF "No matching distribution found for ${NAME}==${VERSION}" <<< "$OUTPUT"; then
             echo "Install failed with an error other than a missing release"
             exit 1
           fi
