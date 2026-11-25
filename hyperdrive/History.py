@@ -247,14 +247,14 @@ class Historian:
         prob = self.get_optimal_signals(close).mean()
 
         for _ in range(num_strats):
-            signals = pd.DataFrame.vbt.signals.generate_random(  # type: ignore[attr-defined]
+            signals = pd.DataFrame.vbt.signals.generate_random(  # ty: ignore[missing-attribute]
                 (len(close), 1), prob=prob
             )[0]
             portfolio = vbt.Portfolio.from_signals(
                 close, signals, ~signals, init_cash=1000, freq="D"
             )
-            sortinos.append(portfolio.sortino_ratio())  # type: ignore[attr-defined]
-            calmars.append(portfolio.calmar_ratio())  # type: ignore[attr-defined]
+            sortinos.append(portfolio.sortino_ratio())  # ty: ignore[missing-attribute]
+            calmars.append(portfolio.calmar_ratio())  # ty: ignore[missing-attribute]
             good_signals.append(signals)
             portfolios.append(portfolio)
 

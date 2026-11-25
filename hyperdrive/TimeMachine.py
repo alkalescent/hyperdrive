@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, tzinfo
 from datetime import time as dt_time
 from time import sleep
+from typing import overload
 
 from .Constants import DATE_FMT, PRECISE_TIME_FMT, TIME_FMT, TZ, UTC
 
@@ -122,9 +123,17 @@ class TimeTraveller:
             end = end.strftime(format)
         return start, end
 
+    @overload
+    def dates_in_range(self, timeframe: str) -> list[str]: ...
+
+    @overload
+    def dates_in_range(
+        self, timeframe: str, format: str
+    ) -> list[str] | list[datetime]: ...
+
     def dates_in_range(
         self, timeframe: str, format: str = DATE_FMT
-    ) -> list[FlexibleDate]:
+    ) -> list[str] | list[datetime]:
         """
         Get a list of dates in the specified timeframe.
 
@@ -134,9 +143,12 @@ class TimeTraveller:
                 e.g., '1d', '2w', '3m', '1y'.
             format (str):
                 The format to return the dates in, defaults to DATE_FMT.
+                An empty string returns datetime objects.
 
         Returns:
-            list[FlexibleDate]: A list of dates in the specified timeframe.
+            list[str] | list[datetime]:
+                The dates in the specified timeframe, as strings in the given
+                format, or as datetime objects when the format is empty.
         """
         start, end = self.convert_dates(timeframe, "")
         # When format is empty string, convert_dates returns datetime objects

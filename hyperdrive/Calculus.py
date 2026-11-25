@@ -22,7 +22,7 @@ class Calculator:
     and 3D shape operations.
     """
 
-    def avg(self, xs: list[float] | np.ndarray) -> float:
+    def avg(self, xs: Sequence[float] | np.ndarray) -> float:
         """Calculate the mean of a collection of numbers.
 
         Args:

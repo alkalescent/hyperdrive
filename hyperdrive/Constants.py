@@ -3,9 +3,9 @@
 import os
 from pathlib import Path
 
-import vectorbt as vbt
 from dotenv import find_dotenv, load_dotenv
 from pytz import timezone
+from vectorbt.utils.math_ import abs_tol
 
 load_dotenv(find_dotenv("config.env"))
 
@@ -119,7 +119,7 @@ SELL = "SELL"
 
 # API
 BAL = "Bal"
-ABS_TOL = vbt.utils.math_.abs_tol  # type: ignore[attr-defined]
+ABS_TOL = abs_tol
 
 # Model
 MAX_MODEL_AGE_DAYS = 90  # 3 months
