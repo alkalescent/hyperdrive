@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from scipy.signal import savgol_filter
 
 from hyperdrive.Calculus import Calculator
 
@@ -38,6 +39,17 @@ class TestCalculator:
         expected = [-8, 36, 63, 79, 63, 36, -8]
         for idx, s in enumerate(smoothed):
             assert round(s) == expected[idx]
+
+    def test_smooth_missing(self) -> None:
+        """Test that points whose window reaches a NaN come back NaN."""
+        values = np.arange(30, dtype=float) ** 1.5
+        smoothed = calc.smooth(pd.Series(np.r_[np.nan, np.nan, values]), 4, 2)
+        # the window of 5 reaches two points past the last leading NaN
+        assert np.isnan(smoothed[:4]).all()
+        assert np.allclose(smoothed[4:], savgol_filter(values, 5, 2)[2:])
+        values[10] = np.nan
+        smoothed = calc.smooth(pd.Series(values), 4, 2)
+        assert np.flatnonzero(np.isnan(smoothed)).tolist() == [8, 9, 10, 11, 12]
 
     def test_derive(self) -> None:
         """Test numerical derivative calculation."""

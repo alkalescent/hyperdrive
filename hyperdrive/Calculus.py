@@ -75,6 +75,12 @@ class Calculator:
     def smooth(self, series: pd.Series, window: int, order: int) -> np.ndarray:
         """Smooth a series using Savitzky-Golay filter.
 
+        A point comes back NaN when its window holds a NaN or infinite value,
+        and so does each end of the series when the window fitted to that end
+        holds one. scipy 1.17 raises on such an end window, where scipy 1.16
+        returned NaN, so the filter runs with those values zeroed and the
+        points they reach are set back to NaN.
+
         Args:
             series: Input time series.
             window: Filter window size (will be adjusted to odd number).
@@ -83,9 +89,16 @@ class Calculator:
         Returns:
             Smoothed array.
         """
-        return savgol_filter(
-            series, window + 1 if window % 2 == 0 else window + 2, order
-        )
+        length = window + 1 if window % 2 == 0 else window + 2
+        values = np.asarray(series, dtype=np.float64)
+        missing = ~np.isfinite(values)
+        smoothed = savgol_filter(np.where(missing, 0.0, values), length, order)
+        reached = np.convolve(missing, np.ones(length), mode="same") > 0
+        half = length // 2
+        reached[:half] |= missing[:length].any()
+        reached[len(values) - half :] |= missing[len(values) - length :].any()
+        smoothed[reached] = np.nan
+        return smoothed
 
     def get_difference(self, old: set[Any], new: set[Any]) -> tuple[set[Any], set[Any]]:
         """Find elements removed and added between two sets.
