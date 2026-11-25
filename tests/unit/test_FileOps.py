@@ -20,6 +20,7 @@ from botocore.exceptions import ClientError
 from moto import mock_aws
 
 from hyperdrive.FileOps import FileReader, FileWriter
+from hyperdrive.Storage import Store
 
 # ============================================================
 # Test Data
@@ -437,7 +438,9 @@ class TestFileReader:
         key = str(tmp_path / "history.csv")
         rows = "".join(f"2026-01-{day:02d},1.0\n" for day in range(1, 31))
         s3_bucket.put_object(Key=key, Body=f"date,open\n{rows}".encode())
-        failing = MagicMock()
+        # Only reads fail; an upload still reaches the bucket, so a save over
+        # the history would show in the stored object.
+        failing = MagicMock(wraps=s3_bucket)
         failing.download_fileobj.side_effect = ClientError(
             {
                 "Error": {"Code": code, "Message": "test"},
@@ -445,13 +448,15 @@ class TestFileReader:
             },
             "GetObject",
         )
-        monkeypatch.setattr(reader.store, "get_bucket", MagicMock(return_value=failing))
-        writer.store.bucket_name = s3_bucket.name
+        # update_csv reads through a FileReader of its own, so every Store
+        # gets the failing bucket.
+        monkeypatch.setattr(Store, "get_bucket", MagicMock(return_value=failing))
         new = pd.DataFrame({"date": ["2026-11-20", "2026-11-21"], "open": [2.0, 2.0]})
 
         with pytest.raises(ClientError):
-            merged = reader.update_df(key, new, "date")
-            writer.update_csv(key, merged)
+            reader.update_df(key, new, "date")
+        with pytest.raises(ClientError):
+            writer.update_csv(key, new)
 
         stored = s3_bucket.Object(key).get()["Body"].read().decode()
         assert len(stored.splitlines()) == 31
