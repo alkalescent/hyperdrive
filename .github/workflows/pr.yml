@@ -293,9 +293,11 @@ jobs:
         pip show vectorbt plotly polars pyarrow numpy | grep -E '^(Name|Version):'
 
     - name: Run unit tests
-      # The pytest script, not python -m pytest, keeps the checkout off
-      # sys.path, so the tests import the installed wheel.
-      run: pytest tests/unit
+      # python -m puts the checkout first on sys.path, as uv's editable install
+      # does for make cov, so test_Scripts.py can import scripts/, which the
+      # wheel leaves out. The code matches the wheel's; the dependencies are
+      # the fresh set installed above.
+      run: python -m pytest tests/unit
 
   # The release's build and Check built version steps, run against a local
   # throwaway tag. Nothing is pushed or published.
