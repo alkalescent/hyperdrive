@@ -358,7 +358,6 @@ Use the scripts provided in the [`scripts/`](https://github.com/alkalescent/hype
 
 Available data collection workflows:
 
-- [![Symbols](https://github.com/alkalescent/hyperdrive/workflows/Symbols/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3ASymbols) (from Robinhood)
 - [![OHLC](https://github.com/alkalescent/hyperdrive/workflows/OHLC/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3AOHLC) (from Polygon)
 - [![Intraday](https://github.com/alkalescent/hyperdrive/workflows/Intraday/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3AIntraday) (from Polygon)
 - [![Dividends](https://github.com/alkalescent/hyperdrive/workflows/Dividends/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3ADividends) (from Polygon)
