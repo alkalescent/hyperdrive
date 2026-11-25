@@ -208,6 +208,55 @@ def test_ohlc_worker_uses_timeframe_override(
     assert counter.value == 1
 
 
+def write_stored_ohlc(key: str) -> None:
+    """Write a stored OHLC history in place of an S3 download."""
+    path = Path(key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{C.TIME},{C.CLOSE}\n2026-11-20,272.9\n")
+
+
+@pytest.mark.parametrize(
+    ("fetch", "error"),
+    [
+        # Alpaca returns no bars, and the fetch raises on the missing date.
+        ("no bars", "'date'"),
+        # A fetch that returns an empty frame reaches the merge instead.
+        ("empty frame", f"'{C.TIME}'"),
+    ],
+)
+def test_ohlc_worker_counts_an_empty_fetch_as_failed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    fetch: str,
+    error: str,
+) -> None:
+    """Count a symbol whose fetch returns no rows as failed, and save nothing."""
+    module = load_script("scripts.update_ohlc")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("OHLC_TIMEFRAME", raising=False)
+    monkeypatch.setattr(module.C, "CI", False)
+    monkeypatch.setenv("ALPACA_PAPER", "test_alpaca_key")
+    monkeypatch.setenv("ALPACA_PAPER_SECRET", "test_alpaca_secret")
+    alpaca = module.AlpacaData(paper=True)
+    alpaca.reader.store.download_file = MagicMock(side_effect=write_stored_ohlc)
+    alpaca.writer = MagicMock()
+    if fetch == "empty frame":
+        monkeypatch.setattr(alpaca, "get_ohlc", MagicMock(return_value=pd.DataFrame()))
+    response = MagicMock(ok=True)
+    response.json.return_value = {"bars": {}, "next_page_token": None}
+    counter = Counter()
+
+    with patch("hyperdrive.DataSource.requests.get", return_value=response):
+        module._update_symbol(alpaca, "AAPL", "AAPL", 1, 1, counter)
+
+    result = capsys.readouterr().out.splitlines()[-1]
+    assert counter.value == 0
+    assert result.startswith("[alpaca 1/1] AAPL: failed after ")
+    assert result.endswith(f"s: {error}")
+    alpaca.writer.update_csv.assert_not_called()
+
+
 def test_update_api_import_has_no_runtime_state() -> None:
     """Build the API clients and read the signals only when main runs."""
     module = load_script("scripts.update_api")
