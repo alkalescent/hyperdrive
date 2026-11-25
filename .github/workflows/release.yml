@@ -145,30 +145,50 @@ jobs:
         VERSION="${{ needs.version.outputs.pypi_version }}"
         MAX_ATTEMPTS=40
         SLEEP_SECONDS=15
+        RELEASE_JSON="$RUNNER_TEMP/release.json"
+        DIST="$RUNNER_TEMP/pypi"
 
-        # Retry the install itself rather than polling an index first. The
-        # simple index is CDN-cached per edge, so a separate curl check can
-        # see the release while pip's request lands on a stale edge moments
-        # later and fails with "No matching distribution found". Retrying the
-        # real command makes the check and the action the same client. Only
-        # that error for this release is retried; a dependency pip cannot
-        # find, or any other install error, fails at once.
+        # Read this version's own JSON page instead of the project's simple
+        # index. The CDN can serve a simple index from before the upload for
+        # over 10 minutes: alkalescent/interstellar's v1.5.0 release run on
+        # 2026-11-25 saw one such page on all 40 attempts, starting 22 s after
+        # the upload. This job is the first to request its version's page,
+        # after the upload, so no edge holds an older copy of it. Only a 404
+        # is retried; any other status fails at once.
         for i in $(seq 1 $MAX_ATTEMPTS); do
-          if OUTPUT=$(pip install "${NAME}==${VERSION}" 2>&1); then
-            echo "$OUTPUT"
-            echo "Installed ${NAME}==${VERSION} on attempt $i"
-            exit 0
+          STATUS=$(curl -sS -o "$RELEASE_JSON" -w '%{http_code}' \
+            "https://pypi.org/pypi/${NAME}/${VERSION}/json")
+          if [ "$STATUS" = 200 ]; then
+            echo "Found ${NAME} ${VERSION} on attempt $i"
+            break
           fi
-          echo "$OUTPUT"
-          if ! grep -qF "No matching distribution found for ${NAME}==${VERSION}" <<< "$OUTPUT"; then
-            echo "Install failed with an error other than a missing release"
+          if [ "$STATUS" != 404 ]; then
+            echo "PyPI returned HTTP $STATUS for ${NAME} ${VERSION}"
             exit 1
           fi
-          echo "Attempt $i/$MAX_ATTEMPTS: not installable yet, waiting ${SLEEP_SECONDS}s..."
+          if [ "$i" = "$MAX_ATTEMPTS" ]; then
+            echo "Timed out after $((MAX_ATTEMPTS * SLEEP_SECONDS)) seconds"
+            exit 1
+          fi
+          echo "Attempt $i/$MAX_ATTEMPTS: not on PyPI yet, waiting ${SLEEP_SECONDS}s..."
           sleep $SLEEP_SECONDS
         done
-        echo "Timed out after $((MAX_ATTEMPTS * SLEEP_SECONDS)) seconds"
-        exit 1
+
+        # The page lists one wheel. Check its SHA-256, then install that file,
+        # with its dependencies from PyPI's index as a user's install takes them.
+        WHEEL_INFO=$(jq -er '[.urls[] | select(.packagetype == "bdist_wheel")]
+          | if length == 1 then .[0] | "\(.url) \(.digests.sha256)"
+            else error("expected one wheel, found \(length)") end' "$RELEASE_JSON")
+        read -r URL SHA256 <<< "$WHEEL_INFO"
+        case "$URL" in
+          https://files.pythonhosted.org/packages/*) ;;
+          *) echo "Unexpected wheel URL: $URL"; exit 1 ;;
+        esac
+        mkdir -p "$DIST"
+        WHEEL="$DIST/${URL##*/}"
+        curl -fsSL --retry 3 -o "$WHEEL" "$URL"
+        echo "$SHA256  $WHEEL" | sha256sum -c -
+        pip install "$WHEEL"
     
     - name: Run smoke tests
       run: python tests/smoke.py
