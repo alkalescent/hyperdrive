@@ -14,10 +14,13 @@ from unittest.mock import MagicMock
 
 import boto3
 import pandas as pd
+import polars as pl
 import pytest
+from botocore.exceptions import ClientError
 from moto import mock_aws
 
 from hyperdrive.FileOps import FileReader, FileWriter
+from hyperdrive.Storage import Store
 
 # ============================================================
 # Test Data
@@ -406,6 +409,58 @@ class TestFileReader:
         with pytest.raises(FileNotFoundError):
             reader.load_csv("nonexistent_file.csv")
 
+    def test_load_csv_missing_key(
+        self, reader: FileReader, s3_bucket: Any, tmp_path: Path
+    ) -> None:
+        """Test load_csv returns an empty DataFrame for a key S3 does not store."""
+        reader.store.bucket_name = s3_bucket.name
+        path = tmp_path / "missing.csv"
+
+        result = reader.load_csv(str(path))
+
+        assert result.empty
+        assert not path.exists()
+
+    @pytest.mark.parametrize(
+        ("code", "status"), [("SlowDown", 503), ("AccessDenied", 403)]
+    )
+    def test_update_csv_download_error_keeps_history(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        s3_bucket: Any,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        code: str,
+        status: int,
+    ) -> None:
+        """Test a failed S3 read stops the merge before the save."""
+        key = str(tmp_path / "history.csv")
+        rows = "".join(f"2026-01-{day:02d},1.0\n" for day in range(1, 31))
+        s3_bucket.put_object(Key=key, Body=f"date,open\n{rows}".encode())
+        # Only reads fail; an upload still reaches the bucket, so a save over
+        # the history would show in the stored object.
+        failing = MagicMock(wraps=s3_bucket)
+        failing.download_fileobj.side_effect = ClientError(
+            {
+                "Error": {"Code": code, "Message": "test"},
+                "ResponseMetadata": {"HTTPStatusCode": status},
+            },
+            "GetObject",
+        )
+        # update_csv reads through a FileReader of its own, so every Store
+        # gets the failing bucket.
+        monkeypatch.setattr(Store, "get_bucket", MagicMock(return_value=failing))
+        new = pd.DataFrame({"date": ["2026-11-20", "2026-11-21"], "open": [2.0, 2.0]})
+
+        with pytest.raises(ClientError):
+            reader.update_df(key, new, "date")
+        with pytest.raises(ClientError):
+            writer.update_csv(key, new)
+
+        stored = s3_bucket.Object(key).get()["Body"].read().decode()
+        assert len(stored.splitlines()) == 31
+
     def test_update_df(
         self,
         reader: FileReader,
@@ -536,19 +591,38 @@ class TestFileReader:
         assert result is True
         assert os.path.exists(pickle_path)
 
-    def test_load_csv_general_exception(
-        self, reader: FileReader, tmp_path: Path
-    ) -> None:
-        """Test load_csv with general exception (lines 52-53)."""
+    def test_load_csv_binary_data(self, reader: FileReader, tmp_path: Path) -> None:
+        """Test load_csv raises ValueError when polars panics on binary data."""
         reader.store.download_file = MagicMock()
 
-        # Create a malformed CSV that will cause a general exception during read
         bad_csv = tmp_path / "bad.csv"
         bad_csv.write_bytes(b"\x00\x01\x02\x03")  # Binary data
 
-        result = reader.load_csv(str(bad_csv))
-        # Should return empty DataFrame on general exception
-        assert result.empty
+        with pytest.raises(ValueError, match="could not be read"):
+            reader.load_csv(str(bad_csv))
+
+    @pytest.mark.parametrize(
+        "content",
+        [b"date,open\n2026-01-01,1.0,2.0\n", b"date,open\n\xff\xfe,1.0\n"],
+        ids=["extra-field", "invalid-utf8"],
+    )
+    def test_load_csv_polars_error(
+        self,
+        reader: FileReader,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        content: bytes,
+    ) -> None:
+        """Test load_csv raises ValueError when polars refuses a malformed file."""
+        monkeypatch.setattr(reader.store, "download_file", MagicMock())
+
+        bad_csv = tmp_path / "bad.csv"
+        bad_csv.write_bytes(content)
+
+        with pytest.raises(ValueError, match="could not be read") as raised:
+            reader.load_csv(str(bad_csv))
+
+        assert isinstance(raised.value.__cause__, pl.exceptions.PolarsError)
 
     def test_update_df_with_save_fmt(
         self, reader: FileReader, writer: FileWriter, tmp_path: Path

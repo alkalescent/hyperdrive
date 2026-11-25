@@ -169,14 +169,31 @@ class Store:
             print(f"{key} does not exist in S3.")
             os.remove(key)
             raise e
+        except BaseException:
+            # Remove the partly written file, so the next read downloads the
+            # key again instead of taking the partial file as the stored data.
+            if os.path.exists(key):
+                os.remove(key)
+            raise
 
     def download_dir(self, path: str) -> None:
         """Download all files in an S3 directory.
 
         Args:
             path: S3 prefix path to download.
+
+        Raises:
+            ValueError: If a listed key resolves outside the working directory.
         """
         keys = self.get_keys(path)
+        # Listed keys come from the bucket and become local paths, so check
+        # them all before downloading any.
+        root = os.path.realpath(os.getcwd())
+        for key in keys:
+            if os.path.commonpath([root, os.path.realpath(key)]) != root:
+                raise ValueError(
+                    f"S3 key {key!r} resolves outside the working directory"
+                )
         with ThreadPoolExecutor() as executor:
             list(executor.map(self.key_exists, keys, [True] * len(keys)))
 

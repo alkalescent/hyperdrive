@@ -12,6 +12,9 @@ on:
     # so no overlap between runs
     - cron: "*/90 * 15 * *"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,15 +26,15 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           enable-cache: true
 
@@ -42,7 +45,7 @@ jobs:
         env:
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
           SALT: ${{ secrets.SALT }}
-        run: uv run python util/decrypt.py encrypted/create_model.py
+        run: uv run --frozen --no-dev python util/decrypt.py encrypted/create_model.py
 
       - name: Create model
         env:
@@ -54,7 +57,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
-        run: uv run python encrypted/create_model.py
+        run: uv run --frozen --no-dev python encrypted/create_model.py
 
       # Add step to create visualization after automating model creation
       # Should be able to copy step from visualize.yml

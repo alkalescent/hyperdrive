@@ -10,20 +10,23 @@ on:
     # 2 hr before 00:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           enable-cache: true
 
@@ -34,10 +37,10 @@ jobs:
         env:
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
           SALT: ${{ secrets.SALT }}
-        run: uv run python util/decrypt.py encrypted/predict_signal.py
+        run: uv run --frozen --no-dev python util/decrypt.py encrypted/predict_signal.py
 
       - name: Sleep until 00:00 UTC
-        run: uv run python scripts/sleep.py 00:00
+        run: uv run --frozen --no-dev python scripts/sleep.py 00:00
 
       - name: Predict signal
         env:
@@ -52,7 +55,7 @@ jobs:
           EMIT_SECRET: ${{ secrets.EMIT_SECRET }}
           SALT: ${{ secrets.SALT }}
           RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
-        run: uv run python encrypted/predict_signal.py
+        run: uv run --frozen --no-dev python encrypted/predict_signal.py
 
       - name: Execute order
         env:
@@ -65,4 +68,4 @@ jobs:
           KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
           KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
           PREF_EXCHANGE: ${{ secrets.PREF_EXCHANGE }}
-        run: uv run python scripts/execute_order.py
+        run: uv run --frozen --no-dev python scripts/execute_order.py

@@ -3,6 +3,9 @@ NAME := $(shell basename $(CURDIR))
 # DEV=1 includes dev dependencies
 UV_SYNC := uv sync $(if $(DEV),--dev,--no-dev)
 UV_SYNC_FROZEN := uv sync --frozen $(if $(DEV),--dev,--no-dev)
+# --locked stops when uv.lock is out of date with pyproject.toml instead of
+# re-locking it
+UV_RUN := uv run --locked
 
 .PHONY: install ci lint format type smoke test cov clean qr help all
 
@@ -27,27 +30,27 @@ ci:
 	$(UV_SYNC_FROZEN)
 
 lint:
-	uv run ruff check .
-	uv run ruff format --check .
+	$(UV_RUN) ruff check .
+	$(UV_RUN) ruff format --check .
 
 format:
-	uv run ruff check . --fix
-	uv run ruff format .
+	$(UV_RUN) ruff check . --fix
+	$(UV_RUN) ruff format .
 
 type:
-	uv run ty check hyperdrive tests
+	$(UV_RUN) ty check hyperdrive tests
 
 test:
-	uv run python -m pytest
+	$(UV_RUN) python -m pytest
 
 cov:
-	uv run python -m pytest --cov
+	$(UV_RUN) python -m pytest --cov
 
 smoke:
-	uv run python tests/smoke.py
+	$(UV_RUN) python tests/smoke.py
 
 qr:
-	uv run python scripts/qr.py
+	$(UV_RUN) --no-dev --group qr python scripts/qr.py
 
 clean:
 	rm -rf dist/ build/ *.egg-info/ .coverage coverage.xml

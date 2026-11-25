@@ -1,16 +1,16 @@
 # hyperdrive
 
-| <img src="https://raw.githubusercontent.com/suchak1/hyperdrive/master/img/nasa_5mb_cropped.gif" width="250" /> | **_hyperdrive_**: an algorithmic trading library |
+| <img src="https://raw.githubusercontent.com/alkalescent/hyperdrive/master/img/nasa_5mb_cropped.gif" width="250" /> | **_hyperdrive_**: an algorithmic trading library |
 | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
 
-[![Release](https://github.com/suchak1/hyperdrive/actions/workflows/release.yml/badge.svg)](https://github.com/suchak1/hyperdrive/actions/workflows/release.yml)
-[![Pull Request](https://github.com/suchak1/hyperdrive/actions/workflows/pr.yml/badge.svg)](https://github.com/suchak1/hyperdrive/actions/workflows/pr.yml)
+[![Release](https://github.com/alkalescent/hyperdrive/actions/workflows/release.yml/badge.svg)](https://github.com/alkalescent/hyperdrive/actions/workflows/release.yml)
+[![Pull Request](https://github.com/alkalescent/hyperdrive/actions/workflows/pr.yml/badge.svg)](https://github.com/alkalescent/hyperdrive/actions/workflows/pr.yml)
 [![PyPI version](https://badge.fury.io/py/hyperdrive.svg)](https://pypi.org/project/hyperdrive/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://static.pepy.tech/personalized-badge/hyperdrive?period=total&units=international_system&left_color=red&right_color=red&left_text=downloads)](https://pepy.tech/project/hyperdrive)
 
-**_hyperdrive_** is an algorithmic trading library that powers quant research firm [<img src="https://raw.githubusercontent.com/suchak1/hyperdrive/master/img/logo.png" width="16" /> **Algotrade.io**](https://algotrade.io).
+**_hyperdrive_** is an algorithmic trading library that powers quant research firm [<img src="https://raw.githubusercontent.com/alkalescent/hyperdrive/master/img/logo.png" width="16" /> **Algotrade.io**](https://algotrade.io).
 
 Unlike other backtesting libraries, _`hyperdrive`_ specializes in data collection and quantitative research.
 
@@ -74,7 +74,7 @@ uv pip install hyperdrive
 Clone the repository and install in development mode:
 
 ```bash
-git clone https://github.com/suchak1/hyperdrive.git
+git clone https://github.com/alkalescent/hyperdrive.git
 cd hyperdrive
 make install DEV=1  # Install with dev dependencies
 ```
@@ -129,7 +129,7 @@ Output:
 
 ### 2. Creating a model
 
-Much of this code is still closed-source, but you can take a look at the [`Historian` class in the `History` module](https://github.com/suchak1/hyperdrive/blob/master/hyperdrive/History.py) for some ideas.
+Much of this code is still closed-source, but you can take a look at the [`Historian` class in the `History` module](https://github.com/alkalescent/hyperdrive/blob/master/hyperdrive/History.py) for some ideas.
 
 ### 3. Backtesting a strategy
 
@@ -214,7 +214,7 @@ Sortino Ratio                     7.727806
 Name: Close, dtype: object
 ```
 
-<img src="https://raw.githubusercontent.com/suchak1/hyperdrive/master/img/my_strat.png">
+<img src="https://raw.githubusercontent.com/alkalescent/hyperdrive/master/img/my_strat.png">
 
 ### 4. Executing an order
 
@@ -354,16 +354,15 @@ make smoke
 
 ## 📊 Data Collection
 
-Use the scripts provided in the [`scripts/`](https://github.com/suchak1/hyperdrive/tree/master/scripts) directory as a reference since they are actually used in production daily.
+Use the scripts provided in the [`scripts/`](https://github.com/alkalescent/hyperdrive/tree/master/scripts) directory as a reference since they are actually used in production daily.
 
 Available data collection workflows:
 
-- [![Symbols](https://github.com/suchak1/hyperdrive/workflows/Symbols/badge.svg)](https://github.com/suchak1/hyperdrive/actions?query=workflow%3ASymbols) (from Robinhood)
-- [![OHLC](https://github.com/suchak1/hyperdrive/workflows/OHLC/badge.svg)](https://github.com/suchak1/hyperdrive/actions?query=workflow%3AOHLC) (from Polygon)
-- [![Intraday](https://github.com/suchak1/hyperdrive/workflows/Intraday/badge.svg)](https://github.com/suchak1/hyperdrive/actions?query=workflow%3AIntraday) (from Polygon)
-- [![Dividends](https://github.com/suchak1/hyperdrive/workflows/Dividends/badge.svg)](https://github.com/suchak1/hyperdrive/actions?query=workflow%3ADividends) (from Polygon)
-- [![Splits](https://github.com/suchak1/hyperdrive/workflows/Splits/badge.svg)](https://github.com/suchak1/hyperdrive/actions?query=workflow%3ASplits) (from Polygon)
-- [![Unemployment](https://github.com/suchak1/hyperdrive/workflows/Unemployment/badge.svg)](https://github.com/suchak1/hyperdrive/actions?query=workflow%3AUnemployment) (from Bureau of Labor Statistics)
+- [![OHLC](https://github.com/alkalescent/hyperdrive/workflows/OHLC/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3AOHLC) (from Polygon)
+- [![Intraday](https://github.com/alkalescent/hyperdrive/workflows/Intraday/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3AIntraday) (from Polygon)
+- [![Dividends](https://github.com/alkalescent/hyperdrive/workflows/Dividends/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3ADividends) (from Polygon)
+- [![Splits](https://github.com/alkalescent/hyperdrive/workflows/Splits/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3ASplits) (from Polygon)
+- [![Unemployment](https://github.com/alkalescent/hyperdrive/workflows/Unemployment/badge.svg)](https://github.com/alkalescent/hyperdrive/actions?query=workflow%3AUnemployment) (from Bureau of Labor Statistics)
 
 ## 📄 License
 

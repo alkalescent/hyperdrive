@@ -29,28 +29,6 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
-def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
-) -> None:
-    """Skip integration tests unless explicitly requested."""
-    if config.getoption("--run-integration", default=False):
-        return
-    skip_integration = pytest.mark.skip(reason="need --run-integration option")
-    for item in items:
-        if "integration" in item.keywords:
-            item.add_marker(skip_integration)
-
-
-def pytest_addoption(parser: pytest.Parser) -> None:
-    """Add custom CLI options."""
-    parser.addoption(
-        "--run-integration",
-        action="store_true",
-        default=False,
-        help="run integration tests that use real APIs",
-    )
-
-
 # ============================================================
 # Sample Data Fixtures
 # ============================================================

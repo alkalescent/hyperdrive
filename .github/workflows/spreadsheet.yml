@@ -16,17 +16,15 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.head_ref }}
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.11"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           enable-cache: true
 
@@ -34,9 +32,11 @@ jobs:
         run: make ci
 
       - name: Set up Google credentials
+        env:
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
         run: |
           mkdir -p ~/.config/gspread
-          echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT }}' > ~/.config/gspread/service_account.json
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT" > ~/.config/gspread/service_account.json
 
       - name: Update spreadsheet
         env:
@@ -48,4 +48,4 @@ jobs:
           ETHERSCAN: ${{ secrets.ETHERSCAN }}
           POLYGON: ${{ secrets.POLYGON }}
           VALIDATOR: ${{ secrets.VALIDATOR }}
-        run: uv run python scripts/update_spreadsheet.py
+        run: uv run --frozen --no-dev python scripts/update_spreadsheet.py

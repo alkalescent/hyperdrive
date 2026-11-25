@@ -5,7 +5,7 @@ Glassnode, and LaborStats for fast, deterministic, offline testing.
 """
 
 from collections.abc import Generator
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -752,6 +752,22 @@ class TestLaborStats:
         df = labor_stats.get_unemployment_rate(timeframe="2y")
         assert {C.TIME, C.UN_RATE}.issubset(df.columns)
 
+    def test_get_unemployment_rate_uses_request_timeout(self, labor_stats: Any) -> None:
+        """Bound BLS requests so a stalled connection cannot hang the job."""
+        data = [{"year": "2024", "period": "M01", "value": "3.7"}]
+        response = MagicMock(ok=True)
+        response.json.return_value = {
+            "status": "REQUEST_SUCCEEDED",
+            "Results": {"series": [{"data": data}]},
+        }
+
+        with patch(
+            "hyperdrive.DataSource.requests.post", return_value=response
+        ) as post:
+            labor_stats.get_unemployment_rate(timeframe="2y", retries=1)
+
+        assert post.call_args.kwargs["timeout"] == C.API_TIMEOUT
+
 
 class TestMarketDataSave:
     """Unit tests for MarketData save methods."""
@@ -970,6 +986,17 @@ class TestGlassnode:
         response = glassnode.make_request(url)
         assert response.ok
 
+    def test_make_request_uses_request_timeout(self, glassnode: Any) -> None:
+        """Bound Glassnode requests so a stalled connection cannot hang the job."""
+        url = "https://api.glassnode.com/v1/metrics/indicators/stock_to_flow_ratio"
+        with (
+            patch("hyperdrive.DataSource.requests.get") as get,
+            patch("hyperdrive.DataSource.sleep"),
+        ):
+            glassnode.make_request(url)
+
+        assert get.call_args.kwargs["timeout"] == C.API_TIMEOUT
+
     def test_get_s2f_ratio(
         self,
         glassnode: Any,
@@ -1027,6 +1054,39 @@ class TestPolygonIntraday:
         polygon.last_api_call_time = time() - 100  # 100 seconds ago
         # Should not delay since enough time has passed
         polygon.obey_free_limit(C.POLY_FREE_DELAY)
+
+    def test_get_intraday_skips_empty_day(self, polygon: Any) -> None:
+        """Test a day without bars is skipped and later days are still requested."""
+
+        class Bar:
+            def __init__(self, timestamp: int) -> None:
+                self.open = self.high = self.low = self.close = 1.0
+                self.volume = 10.0
+                self.vwap = 1.0
+                self.timestamp = timestamp
+                self.transactions = 1
+
+        dates = polygon.traveller.dates_in_range("3d")
+        requested: list[str] = []
+
+        def get_aggs(*args: Any, from_: str, **kwargs: Any) -> list[Bar]:
+            requested.append(from_)
+            if from_ == dates[1]:
+                return []  # what polygon-api-client returns for a day without bars
+            # 17:00 UTC falls on the same date in New York
+            bar_time = datetime.strptime(from_, C.DATE_FMT).replace(hour=17, tzinfo=UTC)
+            return [Bar(int(bar_time.timestamp() * 1000))]
+
+        polygon.client.get_aggs = get_aggs
+        polygon.obey_free_limit = MagicMock()
+
+        dfs = list(polygon.get_intraday(symbol="AAPL", timeframe="3d"))
+
+        assert requested == dates
+        assert [df[C.TIME].dt.strftime(C.DATE_FMT).tolist() for df in dfs] == [
+            [dates[0]],
+            [dates[2]],
+        ]
 
 
 class TestAlpacaDataOHLC:

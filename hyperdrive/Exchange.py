@@ -163,7 +163,9 @@ class AlpacaEx(CEX):
             "APCA-API-KEY-ID": self.token,
             "APCA-API-SECRET-KEY": self.secret,
         }
-        response = requests.request(method, url, json=payload, headers=headers)
+        response = requests.request(
+            method, url, json=payload, headers=headers, timeout=C.API_TIMEOUT
+        )
         if response.ok:
             # A cancelled order answers 204 with no body, so decoding is guarded.
             return response.json() if response.content else None
@@ -322,7 +324,9 @@ class Kraken(CEX):
         # Equivalent to get_kraken_signature() in the Authentication section of
         # Kraken's REST API docs.
         headers["API-Sign"] = self.get_signature(uri_path, data)
-        response = requests.post((self.api_url + uri_path), headers=headers, data=data)
+        response = requests.post(
+            self.api_url + uri_path, headers=headers, data=data, timeout=C.API_TIMEOUT
+        )
         return self.handle_response(response)
 
     def gen_nonce(self) -> str:
@@ -372,7 +376,7 @@ class Kraken(CEX):
         ]
         url = "/".join(parts)
         params = {"pair": pair}
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=C.API_TIMEOUT)
         result = self.handle_response(response)[pair]
         return result
 
@@ -430,14 +434,17 @@ class Kraken(CEX):
         precision = pair_info[precision_label]
         volume = "{:0.0{}f}".format(amount, precision)
 
-        data = {
+        data: dict[str, Any] = {
             "ordertype": "market",
             "type": side.lower(),
             "pair": pair,
             "oflags": ",".join(oflags),
             "volume": volume,
-            "validate": test or self.test,
         }
+        # A bool posts as "True" or "False", so send validate only when testing
+        # and keep a live order from depending on how Kraken reads "False".
+        if test or self.test:
+            data["validate"] = True
         response = self.make_auth_req(url, data)
         return response
 
@@ -605,15 +612,16 @@ class Kraken(CEX):
         access = "public"
         endpoint = "Ticker"
         parts = [
-            "",
+            self.api_url,
             self.version,
             access,
             endpoint,
         ]
         url = "/".join(parts)
-        data = {"pair": pair} if pair else {}
-        response = self.make_auth_req(url, data)
-        return response
+        # A public endpoint, so the request carries no key or signature
+        params = {"pair": pair} if pair else {}
+        response = requests.get(url, params=params, timeout=C.API_TIMEOUT)
+        return self.handle_response(response)
 
     def get_price(self, pair: str) -> float:
         """Get current price for a trading pair.
@@ -706,9 +714,12 @@ class Binance(CEX):
             balance_label = base
             quantity_label = "quantity"
             filters = validated_symbol_info["filters"]
+            step_size = None
             for filter in filters:
                 if filter["filterType"] == "LOT_SIZE":
                     step_size = float(filter["stepSize"])
+            if step_size is None:
+                raise ValueError(f"Symbol info for {pair} has no LOT_SIZE filter")
         elif side == C.BUY:
             side = self.client.SIDE_BUY
             balance_label = quote

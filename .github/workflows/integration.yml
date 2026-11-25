@@ -1,0 +1,54 @@
+name: Integration
+
+# Runs the live API tests (pytest -m integration), which every other workflow
+# deselects. Started by hand only; each test reads its provider's secret below.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+
+    - name: Install dependencies
+      run: make ci DEV=1
+
+    - name: Run integration tests
+      env:
+        # Store
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        S3_BUCKET: ${{ secrets.S3_DEV_BUCKET }}
+        # Polygon, AlpacaData, LaborStats, Glassnode
+        POLYGON: ${{ secrets.POLYGON }}
+        ALPACA_PAPER: ${{ secrets.ALPACA_PAPER }}
+        ALPACA_PAPER_SECRET: ${{ secrets.ALPACA_PAPER_SECRET }}
+        BLS: ${{ secrets.BLS }}
+        GLASSNODE: ${{ secrets.GLASSNODE }}
+        # AlpacaEx (the Alpaca paper keys above), Binance, Kraken
+        BINANCE_TESTNET_KEY: ${{ secrets.BINANCE_TESTNET_KEY }}
+        BINANCE_TESTNET_SECRET: ${{ secrets.BINANCE_TESTNET_SECRET }}
+        KRAKEN_KEY: ${{ secrets.KRAKEN_KEY }}
+        KRAKEN_SECRET: ${{ secrets.KRAKEN_SECRET }}
+        # Robinhood
+        RH_USERNAME: ${{ secrets.RH_USERNAME }}
+        RH_PASSWORD: ${{ secrets.RH_PASSWORD }}
+        RH_2FA: ${{ secrets.RH_2FA }}
+      # One process (-n 0), so the live calls keep to each provider's rate limit.
+      run: uv run --locked python -m pytest -m integration -n 0 tests/integration

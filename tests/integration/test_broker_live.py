@@ -1,8 +1,12 @@
 """Integration tests for Broker module.
 
 These tests make real API calls to Robinhood.
-Run with: pytest tests/integration/ -v
+Run with: pytest tests/integration/ -m integration -v
 """
+
+import pytest
+
+pytestmark = pytest.mark.integration
 
 
 class TestRobinhoodIntegration:
