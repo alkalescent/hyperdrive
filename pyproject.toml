@@ -14,6 +14,9 @@ dependencies = [
     "polygon-api-client>=1.11.0",
     "pytz>=2025.2",
     "vectorbt>=0.28.0",
+    # vectorbt registers its plotly templates at import, and plotly 7.2.0 fails
+    # on them ("Bad property path: scattermapbox"). vectorbt sets no upper bound.
+    "plotly<7",
     "ta>=0.11.0",
     "scipy>=1.15.3",
     "scikit-learn>=1.6.1",

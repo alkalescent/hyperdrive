@@ -253,8 +253,9 @@ jobs:
 
   # `pip install hyperdrive` resolves the newest dependencies the pyproject
   # bounds allow, ignoring uv.lock. This job installs the built wheel the same
-  # way, so a dependency release that breaks the import fails a pull request
-  # before a release reaches PyPI, where Smoke PyPI would first see it.
+  # way and runs the smoke and unit tests on it, so a dependency release that
+  # breaks hyperdrive fails a pull request before a release reaches PyPI,
+  # where Smoke PyPI would first see it.
   smoke-fresh-install:
     name: Smoke Fresh Install
     needs: test
@@ -278,10 +279,23 @@ jobs:
     - name: Install wheel with fresh dependencies
       run: |
         pip install "$RUNNER_TEMP"/dist/*.whl
-        pip show plotly vectorbt | grep -E '^(Name|Version):'
+        pip show vectorbt plotly polars pyarrow numpy | grep -E '^(Name|Version):'
 
     - name: Run smoke tests
       run: python tests/smoke.py
+
+    # After the smoke tests, so those run on a user's install alone. pip keeps
+    # the installed versions unless a test tool needs another.
+    - name: Install test tools
+      run: |
+        python -m pip install --upgrade pip  # --group needs pip 25.1 or later
+        pip install --group dev
+        pip show vectorbt plotly polars pyarrow numpy | grep -E '^(Name|Version):'
+
+    - name: Run unit tests
+      # The pytest script, not python -m pytest, keeps the checkout off
+      # sys.path, so the tests import the installed wheel.
+      run: pytest tests/unit
 
   # The release's build and Check built version steps, run against a local
   # throwaway tag. Nothing is pushed or published.
