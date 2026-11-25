@@ -114,10 +114,12 @@ class FileReader:
             raise
         except pd.errors.EmptyDataError:
             raise
-        except pl.exceptions.PanicException as e:
-            # polars panics on some malformed files, such as one with a NUL
-            # byte in its header. A panic is a BaseException, which the
-            # scripts' per-symbol `except Exception` handlers do not catch.
+        except (pl.exceptions.PolarsError, pl.exceptions.PanicException) as e:
+            # polars refuses most malformed files with a PolarsError, such as
+            # a ComputeError for a row with extra fields, and panics on some,
+            # such as one with a NUL byte in its header. A panic is a
+            # BaseException, which the scripts' per-symbol `except Exception`
+            # handlers do not catch.
             raise ValueError(f"{filename} could not be read as a CSV file.") from e
         return df
 

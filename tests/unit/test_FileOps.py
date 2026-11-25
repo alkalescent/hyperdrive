@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 
 import boto3
 import pandas as pd
+import polars as pl
 import pytest
 from botocore.exceptions import ClientError
 from moto import mock_aws
@@ -594,6 +595,29 @@ class TestFileReader:
 
         with pytest.raises(ValueError, match="could not be read"):
             reader.load_csv(str(bad_csv))
+
+    @pytest.mark.parametrize(
+        "content",
+        [b"date,open\n2026-01-01,1.0,2.0\n", b"date,open\n\xff\xfe,1.0\n"],
+        ids=["extra-field", "invalid-utf8"],
+    )
+    def test_load_csv_polars_error(
+        self,
+        reader: FileReader,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        content: bytes,
+    ) -> None:
+        """Test load_csv raises ValueError when polars refuses a malformed file."""
+        monkeypatch.setattr(reader.store, "download_file", MagicMock())
+
+        bad_csv = tmp_path / "bad.csv"
+        bad_csv.write_bytes(content)
+
+        with pytest.raises(ValueError, match="could not be read") as raised:
+            reader.load_csv(str(bad_csv))
+
+        assert isinstance(raised.value.__cause__, pl.exceptions.PolarsError)
 
     def test_update_df_with_save_fmt(
         self, reader: FileReader, writer: FileWriter, tmp_path: Path
