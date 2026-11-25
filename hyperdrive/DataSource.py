@@ -197,7 +197,7 @@ class MarketData:
         if os.path.exists(filename):
             os.remove(filename)
         df = self.reader.update_df(
-            filename, self.get_dividends(**kwargs), C.EX, C.DATE_FMT
+            filename, self.get_dividends(**kwargs), C.EX, C.DATE_FMT, missing_ok=False
         )
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
@@ -255,7 +255,7 @@ class MarketData:
         if os.path.exists(filename):
             os.remove(filename)
         df = self.reader.update_df(
-            filename, self.get_splits(**kwargs), C.EX, C.DATE_FMT
+            filename, self.get_splits(**kwargs), C.EX, C.DATE_FMT, missing_ok=False
         )
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
@@ -329,7 +329,9 @@ class MarketData:
         if os.path.exists(filename):
             os.remove(filename)
         fetched = self.get_ohlc(**kwargs)
-        df = self.reader.update_df(filename, fetched, C.TIME, C.DATE_FMT)
+        df = self.reader.update_df(
+            filename, fetched, C.TIME, C.DATE_FMT, missing_ok=False
+        )
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
             return filename
@@ -439,7 +441,11 @@ class MarketData:
         if os.path.exists(filename):
             os.remove(filename)
         df = self.reader.update_df(
-            filename, self.get_unemployment_rate(**kwargs), C.TIME, "%Y-%m"
+            filename,
+            self.get_unemployment_rate(**kwargs),
+            C.TIME,
+            "%Y-%m",
+            missing_ok=False,
         )
         self.writer.update_csv(filename, df)
         if os.path.exists(filename):
@@ -499,7 +505,7 @@ class MarketData:
             os.remove(filename)
 
         df = self.reader.update_df(
-            filename, self.get_s2f_ratio(**kwargs), C.TIME, C.DATE_FMT
+            filename, self.get_s2f_ratio(**kwargs), C.TIME, C.DATE_FMT, missing_ok=False
         )
 
         self.writer.update_csv(filename, df)
@@ -568,7 +574,11 @@ class MarketData:
             os.remove(filename)
 
         df = self.reader.update_df(
-            filename, self.get_diff_ribbon(**kwargs), C.TIME, C.DATE_FMT
+            filename,
+            self.get_diff_ribbon(**kwargs),
+            C.TIME,
+            C.DATE_FMT,
+            missing_ok=False,
         )
 
         self.writer.update_csv(filename, df)
@@ -627,7 +637,7 @@ class MarketData:
             os.remove(filename)
 
         df = self.reader.update_df(
-            filename, self.get_sopr(**kwargs), C.TIME, C.DATE_FMT
+            filename, self.get_sopr(**kwargs), C.TIME, C.DATE_FMT, missing_ok=False
         )
 
         self.writer.update_csv(filename, df)

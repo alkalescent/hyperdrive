@@ -15,10 +15,12 @@ from unittest.mock import MagicMock
 import boto3
 import pandas as pd
 import polars as pl
+import pyarrow as pa
 import pytest
 from botocore.exceptions import ClientError
 from moto import mock_aws
 
+from hyperdrive import Constants as C
 from hyperdrive.FileOps import FileReader, FileWriter
 from hyperdrive.Storage import Store
 
@@ -36,6 +38,116 @@ SAMPLE_SNIPPET = {
     "open": 445.00,
     "volume": 102265,
     "date": "2015-01-15",
+}
+
+# An orders file as pandas saved it, which polars reads back with float columns.
+STORED_ORDERS = (
+    "id,created_at,symbol,notional,qty,filled_qty,filled_avg_price,side,"
+    "extended_hours\n"
+    "a1,2026-08-07 14:18:30.123456+00:00,AAPL,100.0,,0.48,208.33,buy,False\n"
+    "a2,2026-08-07 14:18:31.654321+00:00,MSFT,,1.5,1.5,410.2,sell,False\n"
+)
+
+# Filled orders as Alpaca returns them, with every number as a string.
+NEW_ORDERS = [
+    {
+        "id": "b1",
+        "created_at": "2026-11-03T20:06:01.123456Z",
+        "symbol": "NVDA",
+        "notional": "254.21",
+        "qty": None,
+        "filled_qty": "1.395",
+        "filled_avg_price": "182.23",
+        "side": "buy",
+        "extended_hours": False,
+    },
+    {
+        "id": "b2",
+        "created_at": "2026-11-03T20:06:02.654321Z",
+        "symbol": "AAPL",
+        "notional": None,
+        "qty": "0.48",
+        "filled_qty": "0.48",
+        "filled_avg_price": "271.4",
+        "side": "sell",
+        "extended_hours": False,
+    },
+]
+
+# Frames shaped like those the other pandas callers of save_csv write: the
+# MarketData save paths through update_csv, Broker.get_hists, and
+# Broker.save_symbols.
+CALLER_FRAMES = {
+    "ohlc": pd.DataFrame(
+        {
+            C.TIME: ["2026-11-19", "2026-11-20"],
+            C.OPEN: [270.5, 271.0],
+            C.HIGH: [272.25, 273.5],
+            C.LOW: [269.75, 270.0],
+            C.CLOSE: [271.4, 272.9],
+            C.VOL: [41000000, 39000000],
+            C.AVG: [271.12, float("nan")],
+            C.TRADES: [512000, 0],
+        }
+    ),
+    "intraday": pd.DataFrame(
+        {
+            C.TIME: ["2026-11-20 09:30", "2026-11-20 09:31"],
+            C.OPEN: [270.5, 270.61],
+            C.HIGH: [270.9, 270.8],
+            C.LOW: [270.4, 270.5],
+            C.CLOSE: [270.6, 270.7],
+            C.VOL: [120000, 95000],
+            C.AVG: [270.63, 270.66],
+            C.TRADES: [1500, 1200],
+        }
+    ),
+    "dividends": pd.DataFrame(
+        {
+            C.EX: ["2026-08-11", "2026-11-10"],
+            C.PAY: ["2026-08-14", None],
+            C.DEC: ["2026-07-31", None],
+            C.DIV: [0.26, 0.27],
+        }
+    ),
+    "splits": pd.DataFrame({C.EX: ["2020-08-31", "2024-06-10"], C.RATIO: [0.25, 0.1]}),
+    "unemployment": pd.DataFrame(
+        {C.TIME: ["2026-09", "2026-10"], C.UN_RATE: [4.3, 4.4]}
+    ),
+    "s2f": pd.DataFrame(
+        {
+            C.TIME: ["2026-11-19", "2026-11-20"],
+            C.HALVING: [512.0, 511.0],
+            C.RATIO: [56.1, 56.2],
+        }
+    ),
+    "diff_ribbon": pd.DataFrame(
+        {C.TIME: ["2026-11-19", "2026-11-20"]} | {ma: [1.1e14, 1.2e14] for ma in C.MAs}
+    ),
+    "sopr": pd.DataFrame({C.TIME: ["2026-11-19", "2026-11-20"], C.SOPR: [1.01, 0.99]}),
+    "ndx": pd.DataFrame(
+        {
+            C.TIME: ["2026-11-20", "2026-11-20"],
+            C.SYMBOL: ["AAPL", "WBA"],
+            C.DELTA: ["+", "-"],
+        }
+    ),
+    "hists": pd.DataFrame(
+        {
+            "begins_at": pd.to_datetime(["2026-11-19", "2026-11-20"]),
+            "open_price": ["270.500000", "271.000000"],
+            "close_price": ["271.400000", "272.900000"],
+            "high_price": ["272.250000", "273.500000"],
+            "low_price": ["269.750000", "270.000000"],
+            "volume": [41000000, 39000000],
+            "session": ["reg", "reg"],
+            "interpolated": [False, False],
+            "symbol": ["AAPL", "AAPL"],
+        }
+    ),
+    "symbols": pd.DataFrame(
+        {C.SYMBOL: ["AAPL", "MSFT"], C.NAME: ["Apple", "Microsoft"]}
+    ),
 }
 
 
@@ -213,6 +325,67 @@ class TestFileWriter:
         # Verify new data
         df = pd.read_csv(temp_files["csv2"])
         assert len(df) == len(test_dataframes["big_df"])
+
+    def test_update_csv_saves_alpaca_order_strings(
+        self, reader: FileReader, writer: FileWriter, tmp_path: Path
+    ) -> None:
+        """Test saving stored orders merged with the strings Alpaca returns.
+
+        The merged price columns hold the stored floats beside new numeric
+        strings, which polars cannot convert, so pandas writes the frame as it
+        did before polars.
+        """
+        reader.store.download_file = MagicMock()
+        writer.store.upload_file = MagicMock()
+        path = tmp_path / "orders.csv"
+        path.write_bytes(STORED_ORDERS.encode())
+
+        orders = reader.update_df(str(path), pd.DataFrame(NEW_ORDERS), "created_at")
+        with pytest.raises(
+            pa.ArrowInvalid,
+            match="Could not convert '254.21' with type str: tried to convert to double",
+        ):
+            pl.from_pandas(orders)
+        writer.update_csv(str(path), orders)
+
+        expected = orders.to_csv(index=False, lineterminator="\n")
+        assert path.read_bytes() == expected.encode()
+        writer.store.upload_file.assert_called_once_with(str(path))
+        # The next run reads every number back as a float.
+        nan = float("nan")
+        saved = pd.DataFrame(
+            {
+                "id": ["a1", "a2", "b1", "b2"],
+                "created_at": [
+                    "2026-08-07 14:18:30.123456+00:00",
+                    "2026-08-07 14:18:31.654321+00:00",
+                    "2026-11-03 20:06:01.123456+00:00",
+                    "2026-11-03 20:06:02.654321+00:00",
+                ],
+                "symbol": ["AAPL", "MSFT", "NVDA", "AAPL"],
+                "notional": [100.0, nan, 254.21, nan],
+                "qty": [nan, 1.5, nan, 0.48],
+                "filled_qty": [0.48, 1.5, 1.395, 0.48],
+                "filled_avg_price": [208.33, 410.2, 182.23, 271.4],
+                "side": ["buy", "sell", "buy", "sell"],
+                "extended_hours": [False, False, False, False],
+            }
+        )
+        pd.testing.assert_frame_equal(reader.load_csv(str(path)), saved)
+
+    @pytest.mark.parametrize("name", list(CALLER_FRAMES))
+    def test_save_csv_keeps_polars_output(
+        self, writer: FileWriter, tmp_path: Path, name: str
+    ) -> None:
+        """Test the frames the other callers save are still written by polars."""
+        writer.store.upload_file = MagicMock()
+        frame = CALLER_FRAMES[name]
+        path = tmp_path / f"{name}.csv"
+
+        assert writer.save_csv(str(path), frame) is True
+
+        assert path.read_bytes() == pl.from_pandas(frame).write_csv().encode()
+        writer.store.upload_file.assert_called_once_with(str(path))
 
     def test_remove_files(self, writer: FileWriter, tmp_path: Path) -> None:
         """Test removing files."""
@@ -518,6 +691,60 @@ class TestFileReader:
 
         result = reader.update_df(csv_path, new_data, "date")
         assert len(result) >= 1
+
+    def test_update_df_without_new_orders_keeps_stored_orders(
+        self, reader: FileReader, writer: FileWriter, tmp_path: Path
+    ) -> None:
+        """Test a run that places no orders saves the stored orders unchanged."""
+        reader.store.download_file = MagicMock()
+        writer.store.upload_file = MagicMock()
+        path = tmp_path / "orders.csv"
+        path.write_bytes(STORED_ORDERS.encode())
+        stored = reader.load_csv(str(path))
+
+        # A frame built from no orders has neither rows nor columns.
+        orders = reader.update_df(str(path), pd.DataFrame([]), "created_at")
+        writer.update_csv(str(path), orders)
+
+        pd.testing.assert_frame_equal(orders, stored)
+        pd.testing.assert_frame_equal(reader.load_csv(str(path)), stored)
+        writer.store.upload_file.assert_called_once_with(str(path))
+
+    def test_update_df_without_new_orders_or_stored_orders(
+        self,
+        reader: FileReader,
+        writer: FileWriter,
+        s3_bucket: Any,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test a run that places no orders before any are stored saves nothing."""
+        # update_csv reads through a FileReader of its own, so every Store
+        # gets the mocked bucket, which stores no orders file.
+        monkeypatch.setattr(Store, "get_bucket_name", lambda self: s3_bucket.name)
+        reader.store.bucket_name = s3_bucket.name
+        writer.store.upload_file = MagicMock()
+        path = tmp_path / "orders.csv"
+
+        orders = reader.update_df(str(path), pd.DataFrame([]), "created_at")
+        writer.update_csv(str(path), orders)
+
+        assert orders.empty
+        assert not path.exists()
+        writer.store.upload_file.assert_not_called()
+
+    def test_update_df_empty_fetch_raises(
+        self, reader: FileReader, tmp_path: Path
+    ) -> None:
+        """Test an empty fetch still raises when the caller requires the column."""
+        reader.store.download_file = MagicMock()
+        path = tmp_path / "AAPL.csv"
+        path.write_text(f"{C.TIME},{C.CLOSE}\n2026-11-20,272.9\n")
+
+        with pytest.raises(KeyError, match=C.TIME):
+            reader.update_df(
+                str(path), pd.DataFrame(), C.TIME, C.DATE_FMT, missing_ok=False
+            )
 
     def test_data_in_timeframe(self, reader: FileReader) -> None:
         """Test data_in_timeframe filters data correctly."""

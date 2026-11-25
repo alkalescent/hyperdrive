@@ -15,6 +15,7 @@ import pytest
 import responses
 
 from hyperdrive import Constants as C
+from hyperdrive.FileOps import FileReader
 
 # ============================================================
 # Sample Test Data
@@ -887,6 +888,61 @@ class TestMarketDataSave:
             result = market_data.save_ndx()
             assert result == str(ndx_path)
             assert ndx_path.exists()
+
+    @pytest.mark.parametrize(
+        ("save_name", "get_name", "path_name", "column", "kwargs"),
+        [
+            (
+                "save_dividends",
+                "get_dividends",
+                "get_dividends_path",
+                C.EX,
+                {"symbol": "AAPL"},
+            ),
+            ("save_splits", "get_splits", "get_splits_path", C.EX, {"symbol": "AAPL"}),
+            ("save_ohlc", "get_ohlc", "get_ohlc_path", C.TIME, {"symbol": "AAPL"}),
+            (
+                "save_unemployment_rate",
+                "get_unemployment_rate",
+                "get_unemployment_path",
+                C.TIME,
+                {},
+            ),
+            ("save_s2f_ratio", "get_s2f_ratio", "get_s2f_path", C.TIME, {}),
+            ("save_diff_ribbon", "get_diff_ribbon", "get_diff_ribbon_path", C.TIME, {}),
+            ("save_sopr", "get_sopr", "get_sopr_path", C.TIME, {}),
+        ],
+    )
+    def test_save_fails_on_empty_fetch(
+        self,
+        market_data: Any,
+        mock_file_ops: dict[str, MagicMock],
+        tmp_path: Path,
+        save_name: str,
+        get_name: str,
+        path_name: str,
+        column: str,
+        kwargs: dict[str, str],
+    ) -> None:
+        """Test an empty fetch raises before the save and counts as a failure."""
+        stored_path = tmp_path / "stored.csv"
+
+        def download(key: str) -> None:
+            Path(key).write_text(f"{column},value\n2026-11-20,1.0\n")
+
+        mock_file_ops["store"].download_file.side_effect = download
+        setattr(market_data.finder, path_name, lambda *args: str(stored_path))
+        # The real merge, reading the stored file through the mocked Store.
+        market_data.reader = FileReader()
+
+        with (
+            patch.object(market_data, get_name, return_value=pd.DataFrame()),
+            pytest.raises(KeyError, match=column),
+        ):
+            getattr(market_data, save_name)(**kwargs)
+
+        mock_file_ops["store"].download_file.assert_called_once_with(str(stored_path))
+        mock_file_ops["writer"].update_csv.assert_not_called()
 
     def test_get_s2f_ratio(
         self, market_data: Any, mock_file_ops: dict[str, MagicMock]
