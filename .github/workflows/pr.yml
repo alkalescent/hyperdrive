@@ -251,6 +251,48 @@ jobs:
     - name: Run smoke tests
       run: python tests/smoke.py
 
+  # The release's build and Check built version steps, run against a local
+  # throwaway tag. Nothing is pushed or published.
+  release-build:
+    name: Release Build
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      VERSION: 0.0.0
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      with:
+        fetch-depth: 0  # Full history needed for hatch-vcs
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.11'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+
+    - name: Refuse an untagged build
+      run: |
+        uv build --sdist --out-dir "$RUNNER_TEMP/untagged"
+        uv build --wheel --out-dir "$RUNNER_TEMP/untagged"
+        if python scripts/check_dist.py "$VERSION" "$RUNNER_TEMP/untagged"; then
+          echo "The check accepted a build of an untagged commit"
+          exit 1
+        fi
+
+    - name: Tag throwaway version
+      run: git tag --force "v$VERSION"
+
+    - name: Build distributions
+      run: |
+        uv build --sdist
+        uv build --wheel
+
+    - name: Check built version
+      run: python scripts/check_dist.py "$VERSION"
+
   # =============================================================================
   # Data Pipeline Jobs (parallelized after test matrix)
   # =============================================================================

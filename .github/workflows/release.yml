@@ -83,13 +83,11 @@ jobs:
         uv build --sdist
         uv build --wheel
     
+    # The Release Build job in pr.yml runs these build and check steps.
     - name: Check built version
       env:
         PYPI_VERSION: ${{ needs.version.outputs.pypi_version }}
-      run: |
-        ls dist
-        test -f "dist/hyperdrive-${PYPI_VERSION}.tar.gz"
-        test -f "dist/hyperdrive-${PYPI_VERSION}-py3-none-any.whl"
+      run: python scripts/check_dist.py "$PYPI_VERSION"
     
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

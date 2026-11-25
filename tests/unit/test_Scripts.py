@@ -2,6 +2,7 @@
 
 import importlib
 from contextlib import nullcontext
+from pathlib import Path
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
@@ -262,3 +263,39 @@ def test_update_api_main_saves_delayed_previews(
     for currency in ("BTC", "USD"):
         assert preview[currency]["data"][-1][C.TIME] == last
         assert len(preview[currency]["data"]) == 2 * (40 - 7)
+
+
+RELEASE_FILES = ["hyperdrive-1.6.0.tar.gz", "hyperdrive-1.6.0-py3-none-any.whl"]
+UNTAGGED_FILES = [
+    "hyperdrive-1.5.1.dev3+g0123abc.tar.gz",
+    "hyperdrive-1.5.1.dev3+g0123abc-py3-none-any.whl",
+]
+
+
+@pytest.mark.parametrize(
+    ("files", "code"),
+    [
+        ([*RELEASE_FILES, ".gitignore"], 0),
+        (UNTAGGED_FILES, 1),
+        (RELEASE_FILES[:1], 1),
+        ([*RELEASE_FILES, "hyperdrive-1.5.0.tar.gz"], 1),
+        ([], 1),
+    ],
+    ids=["release", "untagged", "no-wheel", "stale-sdist", "empty"],
+)
+def test_check_dist_accepts_only_the_release_files(
+    tmp_path: Path, files: list[str], code: int
+) -> None:
+    """Pass a build of the release version and refuse any other build."""
+    module = load_script("scripts.check_dist")
+    for name in files:
+        (tmp_path / name).write_bytes(b"")
+
+    assert module.main(["1.6.0", str(tmp_path)]) == code
+
+
+def test_check_dist_refuses_missing_dir(tmp_path: Path) -> None:
+    """Refuse a build directory that does not exist."""
+    module = load_script("scripts.check_dist")
+
+    assert module.main(["1.6.0", str(tmp_path / "dist")]) == 1
