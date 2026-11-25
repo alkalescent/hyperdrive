@@ -623,9 +623,13 @@ class TestKraken:
         ):
             kraken.make_auth_req("/0/private/Balance")
             kraken.get_asset_pair("XXBTZUSD")
+            kraken.get_ticker("XXBTZUSD")
 
         assert post.call_args.kwargs["timeout"] == C.API_TIMEOUT
-        assert get.call_args.kwargs["timeout"] == C.API_TIMEOUT
+        assert [call.kwargs.get("timeout") for call in get.call_args_list] == [
+            C.API_TIMEOUT,
+            C.API_TIMEOUT,
+        ]
 
 
 class TestAlpacaExEdgeCases:
